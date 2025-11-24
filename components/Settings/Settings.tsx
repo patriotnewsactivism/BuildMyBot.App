@@ -1,11 +1,28 @@
 import React, { useState } from 'react';
-import { User, Bell, Lock, Building, CreditCard, Save } from 'lucide-react';
+import { User, Bell, Lock, Building, CreditCard, Save, Globe, Server } from 'lucide-react';
+import { User as UserType } from '../../types';
 
-export const Settings: React.FC = () => {
+interface SettingsProps {
+  user?: UserType;
+  onUpdateUser?: (user: UserType) => void;
+}
+
+export const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
   const [activeTab, setActiveTab] = useState('profile');
   const [notification, setNotification] = useState<string | null>(null);
+  
+  // Local state for forms
+  const [customDomain, setCustomDomain] = useState(user?.customDomain || '');
+  const [companyName, setCompanyName] = useState(user?.companyName || '');
 
   const handleSave = () => {
+    if (onUpdateUser && user) {
+      onUpdateUser({
+        ...user,
+        companyName,
+        customDomain
+      });
+    }
     setNotification('Settings saved successfully!');
     setTimeout(() => setNotification(null), 3000);
   };
@@ -52,21 +69,23 @@ export const Settings: React.FC = () => {
             <div className="space-y-6">
                <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-100 pb-4">Personal Information</h3>
                <div className="flex items-center gap-6">
-                 <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-blue-900 text-2xl font-bold">AJ</div>
+                 <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-blue-900 text-2xl font-bold">
+                    {user?.name ? user.name.split(' ').map(n => n[0]).join('').substring(0,2) : 'AJ'}
+                 </div>
                  <button className="text-sm text-blue-900 font-medium hover:text-blue-950">Change Avatar</button>
                </div>
                <div className="grid grid-cols-2 gap-6">
                  <div>
                    <label className="block text-sm font-medium text-slate-700 mb-2">First Name</label>
-                   <input type="text" defaultValue="Alex" className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900" />
+                   <input type="text" defaultValue={user?.name.split(' ')[0]} className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900" />
                  </div>
                  <div>
                    <label className="block text-sm font-medium text-slate-700 mb-2">Last Name</label>
-                   <input type="text" defaultValue="Johnson" className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900" />
+                   <input type="text" defaultValue={user?.name.split(' ')[1]} className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900" />
                  </div>
                  <div className="col-span-2">
                    <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
-                   <input type="email" defaultValue="alex@agency.com" className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900" />
+                   <input type="email" defaultValue={user?.email} className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900" />
                  </div>
                </div>
             </div>
@@ -77,12 +96,51 @@ export const Settings: React.FC = () => {
                 <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-100 pb-4">Business Details</h3>
                 <div>
                    <label className="block text-sm font-medium text-slate-700 mb-2">Company Name</label>
-                   <input type="text" defaultValue="Apex Digital" className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900" />
+                   <input 
+                      type="text" 
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900" 
+                   />
                 </div>
-                <div>
-                   <label className="block text-sm font-medium text-slate-700 mb-2">Website URL</label>
-                   <input type="text" defaultValue="https://apexdigital.com" className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900" />
+                
+                <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mt-6">
+                   <div className="flex items-center gap-2 mb-4">
+                      <Globe size={18} className="text-blue-900"/>
+                      <h4 className="font-semibold text-slate-800">White-Label Deployment (Vercel)</h4>
+                   </div>
+                   <p className="text-sm text-slate-500 mb-4">
+                     This app is designed to be deployed to <strong>Vercel</strong>. To connect your custom domain:
+                   </p>
+                   <ol className="list-decimal ml-4 text-sm text-slate-600 space-y-2 mb-4">
+                      <li>Deploy this repo to your Vercel account.</li>
+                      <li>Go to <strong>Settings &gt; Domains</strong> in Vercel dashboard.</li>
+                      <li>Add your domain (e.g. <code>app.youragency.com</code>).</li>
+                      <li>Vercel will provide A/CNAME records. Add them to your DNS provider (GoDaddy/Namecheap).</li>
+                      <li>Enter that domain below so the app generates the correct links.</li>
+                   </ol>
+                   <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Custom Domain URL</label>
+                      <input 
+                        type="text" 
+                        value={customDomain}
+                        onChange={(e) => setCustomDomain(e.target.value)}
+                        placeholder="e.g., app.myagency.com"
+                        className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900 font-mono text-sm"
+                      />
+                   </div>
                 </div>
+                
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-start gap-3">
+                   <Server className="text-blue-900 shrink-0 mt-0.5" size={18} />
+                   <div>
+                      <h5 className="text-sm font-bold text-blue-900">Environment Config</h5>
+                      <p className="text-xs text-blue-700 mt-1">
+                        Ensure you have set <code>OPENAI_API_KEY</code> in your Vercel Project Settings for the AI features to work.
+                      </p>
+                   </div>
+                </div>
+
                 <div>
                    <label className="block text-sm font-medium text-slate-700 mb-2">Industry</label>
                    <select className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900">
@@ -97,17 +155,21 @@ export const Settings: React.FC = () => {
 
           {activeTab === 'notifications' && (
             <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-100 pb-4">Email Notifications</h3>
+              <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-100 pb-4">Alerts & Notifications</h3>
               <div className="space-y-4">
                 {[
-                  'New lead captured',
+                  'SMS Alert: Hot Lead Detected (Score > 80)',
+                  'Email Alert: New Lead Captured',
                   'Daily performance summary',
                   'Weekly analytics report',
                   'System updates and maintenance',
                   'Reseller commission alerts'
                 ].map((item, i) => (
-                  <div key={i} className="flex items-center justify-between py-2">
-                    <span className="text-slate-700 text-sm">{item}</span>
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+                    <span className={`text-sm ${item.includes('Hot Lead') ? 'font-bold text-slate-800' : 'text-slate-600'}`}>
+                      {item}
+                      {item.includes('Hot Lead') && <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">High Priority</span>}
+                    </span>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" className="sr-only peer" defaultChecked={i < 3} />
                       <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-900"></div>

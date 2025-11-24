@@ -1,16 +1,73 @@
 import { PlanType } from './types';
 
 export const PLANS = {
-  [PlanType.FREE]: { price: 0, bots: 1, conversations: 20, name: 'Free Tier' },
-  [PlanType.STARTER]: { price: 29, bots: 1, conversations: 100, name: 'Starter' },
-  [PlanType.PROFESSIONAL]: { price: 99, bots: 5, conversations: 1000, name: 'Professional' },
-  [PlanType.EXECUTIVE]: { price: 199, bots: 10, conversations: 5000, name: 'Executive' },
+  [PlanType.FREE]: { 
+    price: 0, 
+    bots: 1, 
+    conversations: 60, 
+    name: 'Free Tier',
+    features: [
+      '1 bot',
+      '60 conversations/month',
+      'Basic analytics'
+    ]
+  },
+  [PlanType.STARTER]: { 
+    price: 29, 
+    bots: 1, 
+    conversations: 750, 
+    name: 'Starter',
+    features: [
+      '1 bot',
+      '750 conversations/month',
+      'GPT-4o-mini model',
+      'Basic analytics'
+    ]
+  },
+  [PlanType.PROFESSIONAL]: { 
+    price: 99, 
+    bots: 5, 
+    conversations: 5000, 
+    name: 'Professional',
+    features: [
+      '5 bots',
+      '5,000 conversations/month',
+      'Advanced analytics',
+      'API access',
+      'Custom training data',
+      'Priority support',
+      'Multi-language support'
+    ]
+  },
+  [PlanType.EXECUTIVE]: { 
+    price: 199, 
+    bots: 10, 
+    conversations: 15000, 
+    name: 'Executive',
+    features: [
+      '10 bots',
+      '15,000 conversations/month',
+      'Custom integrations',
+      'Premium analytics',
+      'Priority support',
+      'Team collaboration'
+    ]
+  },
   [PlanType.ENTERPRISE]: { 
     price: 399, 
-    bots: 9999, // Represents Unlimited in UI logic
-    conversations: 20000, 
+    bots: 9999, // Represents Unlimited
+    conversations: 50000, 
     name: 'Enterprise',
-    overage: 0.05 // Cost per conversation over limit
+    overage: 0.01, // Cost per conversation over limit
+    features: [
+      'Unlimited bots',
+      '50,000 convos included',
+      '$0.01 per overage conversation',
+      'White-labeling',
+      'SLA & Priority Support',
+      'Enterprise analytics',
+      'All Executive features'
+    ]
   },
 };
 
@@ -19,6 +76,11 @@ export const RESELLER_TIERS = [
   { min: 50, max: 149, commission: 0.30, label: 'Silver' },
   { min: 150, max: 249, commission: 0.40, label: 'Gold' },
   { min: 250, max: 999999, commission: 0.50, label: 'Platinum' },
+];
+
+export const AVAILABLE_MODELS = [
+  { id: 'gpt-4o', name: 'GPT-4o (Omni)', description: 'Flagship intelligence. Cheapest & fastest frontier model.' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Ultra-fast, low cost. Best for simple queries.' },
 ];
 
 export const MOCK_ANALYTICS_DATA = [

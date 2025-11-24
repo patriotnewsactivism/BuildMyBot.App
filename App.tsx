@@ -12,6 +12,8 @@ import { Billing } from './components/Billing/Billing';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { Settings } from './components/Settings/Settings';
 import { LandingPage } from './components/Landing/LandingPage';
+import { PartnerProgramPage } from './components/Landing/PartnerProgramPage';
+import { PartnerSignup } from './components/Auth/PartnerSignup';
 import { User, UserRole, PlanType, Bot, ResellerStats } from './types';
 import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
@@ -25,6 +27,7 @@ const MOCK_USER: User = {
   plan: PlanType.ENTERPRISE, 
   companyName: 'Apex Global',
   resellerCode: 'APEX2024',
+  customDomain: 'app.apexglobal.com'
 };
 
 const MOCK_BOTS: Bot[] = [
@@ -33,7 +36,7 @@ const MOCK_BOTS: Bot[] = [
     name: 'Sales Assistant', 
     type: 'Sales', 
     systemPrompt: 'You are a sales assistant.', 
-    model: 'gemini-2.5-flash', 
+    model: 'gpt-4o', 
     temperature: 0.8, 
     knowledgeBase: [], 
     active: true, 
@@ -47,7 +50,7 @@ const MOCK_BOTS: Bot[] = [
     name: 'Support Bot', 
     type: 'Customer Support', 
     systemPrompt: 'You are a support agent.', 
-    model: 'gemini-2.5-flash', 
+    model: 'gpt-4o', 
     temperature: 0.4, 
     knowledgeBase: [], 
     active: true, 
@@ -68,12 +71,38 @@ const MOCK_RESELLER_STATS: ResellerStats = {
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
+  const [showPartnerPage, setShowPartnerPage] = useState(false);
+  const [showPartnerSignup, setShowPartnerSignup] = useState(false);
   const [user, setUser] = useState<User>(MOCK_USER);
   const [bots, setBots] = useState<Bot[]>(MOCK_BOTS);
+  
+  // Mobile Sidebar State
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // If not logged in, show Public Landing Page
+  // Handle Admin Portal Access
+  const handleAdminLogin = () => {
+      setUser({ ...MOCK_USER, role: UserRole.ADMIN, name: 'Master Admin' });
+      setIsLoggedIn(true);
+      setCurrentView('admin');
+  };
+
+  const handlePartnerSignup = (data: any) => {
+    setUser({ ...MOCK_USER, role: UserRole.RESELLER, name: data.name, companyName: data.companyName || 'My Agency' });
+    setIsLoggedIn(true);
+    setCurrentView('reseller');
+    setShowPartnerSignup(false);
+    setShowPartnerPage(false);
+  };
+
+  // If not logged in, show Public Landing Page or Partner Page
   if (!isLoggedIn) {
-    return <LandingPage onLogin={() => setIsLoggedIn(true)} />;
+    if (showPartnerSignup) {
+        return <PartnerSignup onBack={() => setShowPartnerSignup(false)} onComplete={handlePartnerSignup} />;
+    }
+    if (showPartnerPage) {
+      return <PartnerProgramPage onBack={() => setShowPartnerPage(false)} onLogin={() => setIsLoggedIn(true)} onSignup={() => setShowPartnerSignup(true)} />;
+    }
+    return <LandingPage onLogin={() => setIsLoggedIn(true)} onNavigateToPartner={() => setShowPartnerPage(true)} onAdminLogin={handleAdminLogin} />;
   }
 
   // Simple Dashboard View Component
@@ -171,12 +200,32 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans overflow-hidden">
-      <Sidebar currentView={currentView} setView={setCurrentView} role={user.role} />
+      <Sidebar 
+        currentView={currentView} 
+        setView={setCurrentView} 
+        role={user.role} 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
       
-      <main className="ml-64 flex-1 p-8 overflow-y-auto h-screen relative">
-        <div className="max-w-7xl mx-auto pb-12">
+      {/* Main Content Area */}
+      {/* md:ml-64 ensures space for sidebar on desktop. On mobile, it's 0 margin (full width) */}
+      <main className="flex-1 overflow-y-auto h-screen relative transition-all duration-300 md:ml-64 w-full">
+        
+        {/* Mobile Header for Hamburger */}
+        <div className="md:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sticky top-0 z-20">
+            <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600 hover:bg-slate-50 rounded-lg">
+               <Menu size={24} />
+            </button>
+            <div className="font-bold text-slate-800 flex items-center gap-2">
+               <BotIcon size={20} className="text-blue-900" /> BuildMyBot
+            </div>
+            <div className="w-10"></div> {/* Spacer for center alignment */}
+        </div>
+
+        <div className="p-4 md:p-8 max-w-7xl mx-auto pb-12">
           {currentView === 'dashboard' && <Dashboard />}
-          {currentView === 'bots' && <BotBuilder bots={bots} onSave={(b) => setBots([...bots.filter(x => x.id !== b.id), b])} />}
+          {currentView === 'bots' && <BotBuilder bots={bots} onSave={(b) => setBots([...bots.filter(x => x.id !== b.id), b])} customDomain={user.customDomain} />}
           {currentView === 'reseller' && <ResellerDashboard user={user} stats={MOCK_RESELLER_STATS} />}
           {currentView === 'marketing' && <MarketingTools />}
           {currentView === 'leads' && <LeadsCRM />}
@@ -186,7 +235,7 @@ function App() {
           {currentView === 'chat-logs' && <ChatLogs />}
           {currentView === 'billing' && <Billing />}
           {currentView === 'admin' && <AdminDashboard />}
-          {currentView === 'settings' && <Settings />}
+          {currentView === 'settings' && <Settings user={user} onUpdateUser={setUser} />}
         </div>
       </main>
     </div>
