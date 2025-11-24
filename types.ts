@@ -38,6 +38,8 @@ export interface Bot {
   websiteUrl?: string; // For the AI website builder
   maxMessages?: number; // Fail-safe for billing (soft limit)
   randomizeIdentity?: boolean; // Human-like behavior
+  avatar?: string; // Custom avatar URL/Base64
+  responseDelay?: number; // Simulated typing delay in ms
 }
 
 export interface Lead {
