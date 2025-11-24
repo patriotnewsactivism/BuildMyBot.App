@@ -14,7 +14,7 @@ import { Settings } from './components/Settings/Settings';
 import { LandingPage } from './components/Landing/LandingPage';
 import { PartnerProgramPage } from './components/Landing/PartnerProgramPage';
 import { PartnerSignup } from './components/Auth/PartnerSignup';
-import { User, UserRole, PlanType, Bot, ResellerStats } from './types';
+import { User, UserRole, PlanType, Bot as BotType, ResellerStats } from './types';
 import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu } from 'lucide-react';
@@ -30,7 +30,7 @@ const MOCK_USER: User = {
   customDomain: 'app.apexglobal.com'
 };
 
-const MOCK_BOTS: Bot[] = [
+const MOCK_BOTS: BotType[] = [
   { 
     id: 'b1', 
     name: 'Sales Assistant', 
@@ -74,7 +74,7 @@ function App() {
   const [showPartnerPage, setShowPartnerPage] = useState(false);
   const [showPartnerSignup, setShowPartnerSignup] = useState(false);
   const [user, setUser] = useState<User>(MOCK_USER);
-  const [bots, setBots] = useState<Bot[]>(MOCK_BOTS);
+  const [bots, setBots] = useState<BotType[]>(MOCK_BOTS);
   
   // Mobile Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

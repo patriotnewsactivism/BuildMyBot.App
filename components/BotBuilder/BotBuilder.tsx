@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap } from 'lucide-react';
-import { Bot } from '../../types';
+import { Bot as BotType } from '../../types';
 import { generateBotResponse } from '../../services/geminiService';
 import { AVAILABLE_MODELS } from '../../constants';
 
 interface BotBuilderProps {
-  bots: Bot[];
-  onSave: (bot: Bot) => void;
+  bots: BotType[];
+  onSave: (bot: BotType) => void;
   customDomain?: string;
 }
 
@@ -15,7 +15,7 @@ const AVATAR_COLORS = ['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed', '#
 
 export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDomain }) => {
   const [selectedBotId, setSelectedBotId] = useState<string>(bots[0]?.id || 'new');
-  const [activeBot, setActiveBot] = useState<Bot>(bots[0] || {
+  const [activeBot, setActiveBot] = useState<BotType>(bots[0] || {
     id: 'new',
     name: 'New Assistant',
     type: 'Customer Support',

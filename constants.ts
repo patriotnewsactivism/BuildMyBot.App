@@ -9,7 +9,8 @@ export const PLANS = {
     features: [
       '1 bot',
       '60 conversations/month',
-      'Basic analytics'
+      'Basic analytics',
+      'Community support'
     ]
   },
   [PlanType.STARTER]: { 
@@ -21,7 +22,8 @@ export const PLANS = {
       '1 bot',
       '750 conversations/month',
       'GPT-4o-mini model',
-      'Basic analytics'
+      'Basic analytics',
+      'Email support'
     ]
   },
   [PlanType.PROFESSIONAL]: { 
