@@ -1,24 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock } from 'lucide-react';
+import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap } from 'lucide-react';
 import { Bot } from '../../types';
 import { generateBotResponse } from '../../services/geminiService';
+import { AVAILABLE_MODELS } from '../../constants';
 
 interface BotBuilderProps {
   bots: Bot[];
   onSave: (bot: Bot) => void;
+  customDomain?: string;
 }
 
 const HUMAN_NAMES = ['Sarah', 'Michael', 'Jessica', 'David', 'Emma', 'James', 'Emily', 'Robert'];
 const AVATAR_COLORS = ['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed', '#db2777'];
 
-export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave }) => {
+export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDomain }) => {
   const [selectedBotId, setSelectedBotId] = useState<string>(bots[0]?.id || 'new');
   const [activeBot, setActiveBot] = useState<Bot>(bots[0] || {
     id: 'new',
     name: 'New Assistant',
     type: 'Customer Support',
     systemPrompt: 'You are a helpful customer support assistant. Act like a human, be casual, and never repeat the exact same response twice. Do not reveal you are an AI.',
-    model: 'gemini-2.5-flash',
+    model: 'gpt-4o',
     temperature: 0.9,
     knowledgeBase: [],
     active: true,
@@ -38,6 +40,9 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave }) => {
   
   // Random identity for preview
   const [previewIdentity, setPreviewIdentity] = useState({ name: 'Bot', color: '#1e3a8a' });
+
+  // Determine domain for snippets: use custom domain setting if available, otherwise fallback to window location or default
+  const displayDomain = customDomain || (typeof window !== 'undefined' ? window.location.host : 'buildmybot.app');
 
   useEffect(() => {
     if (activeBot.randomizeIdentity) {
@@ -80,7 +85,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave }) => {
 
       // Convert history for API (strip timestamps)
       const historyForApi = newHistory.map(h => ({ role: h.role, text: h.text }));
-      const response = await generateBotResponse(systemPromptToUse, historyForApi, userMessageToUse);
+      const response = await generateBotResponse(systemPromptToUse, historyForApi, userMessageToUse, activeBot.model);
       
       // Calculate remaining delay
       const generationTime = Date.now() - startTime;
@@ -163,7 +168,9 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave }) => {
                   onChange={(e) => setActiveBot({...activeBot, name: e.target.value})}
                   className="font-bold text-lg text-slate-800 border-none focus:ring-0 p-0 hover:bg-slate-50 rounded"
                 />
-               <p className="text-xs text-slate-500">{activeBot.model}</p>
+               <p className="text-xs text-slate-500 font-medium text-emerald-600 flex items-center gap-1">
+                 <Zap size={10} /> Powered by OpenAI {activeBot.model}
+               </p>
              </div>
           </div>
           <div className="flex gap-2">
@@ -202,10 +209,33 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave }) => {
             <div className="max-w-3xl space-y-6">
               
               <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-center gap-2 mb-3">
-                  <BotIcon className="text-blue-900" size={20} />
-                  <h4 className="font-bold text-slate-800">Bot Personality & Logic</h4>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <BotIcon className="text-blue-900" size={20} />
+                    <h4 className="font-bold text-slate-800">Bot Personality & Engine</h4>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-500">Model:</span>
+                    <select 
+                      value={activeBot.model}
+                      onChange={(e) => setActiveBot({...activeBot, model: e.target.value})}
+                      className="text-xs border-slate-200 bg-slate-50 rounded-lg py-1.5 pl-2 pr-8 font-medium text-slate-700 focus:ring-blue-900 cursor-pointer"
+                    >
+                      {AVAILABLE_MODELS.map(m => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
+                
+                <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-lg flex items-start gap-2">
+                  <div className="mt-0.5 text-emerald-600"><Zap size={14} /></div>
+                  <div>
+                    <p className="text-xs font-bold text-emerald-900">Active Engine: {AVAILABLE_MODELS.find(m => m.id === activeBot.model)?.name}</p>
+                    <p className="text-[10px] text-emerald-700">{AVAILABLE_MODELS.find(m => m.id === activeBot.model)?.description}</p>
+                  </div>
+                </div>
+
                 <label className="block text-sm font-medium text-slate-700 mb-2">System Instructions</label>
                 <p className="text-xs text-slate-500 mb-3">Define how your bot behaves. We recommend instructing it to act like a human and vary its responses to maintain a natural conversation flow.</p>
                 <textarea 
@@ -266,260 +296,134 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave }) => {
                       className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-900"
                     />
                     <div className="flex justify-between text-xs text-slate-500 mt-2">
-                      <span>Robotic</span>
+                      <span>Precise</span>
                       <span>{activeBot.temperature}</span>
-                      <span>Human-like</span>
+                      <span>Creative</span>
                     </div>
                  </div>
 
                  {/* Response Timing */}
                  <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm col-span-2">
                     <div className="flex items-center gap-2 mb-4">
-                       <Clock className="text-blue-900" size={18} />
-                       <h4 className="font-bold text-slate-800 text-sm">Response Timing</h4>
+                      <Clock className="text-blue-900" size={18} />
+                      <h4 className="font-bold text-slate-800 text-sm">Artificial Latency</h4>
                     </div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Typing Delay (Simulated Human Speed)</label>
-                    <div className="flex items-center justify-between mb-2">
-                         <span className="text-xs text-slate-500">Instant (Bot)</span>
-                         <span className="text-sm font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded">{((activeBot.responseDelay || 0) / 1000).toFixed(1)}s</span>
-                         <span className="text-xs text-slate-500">Thoughtful (Human)</span>
-                    </div>
-                    <input 
-                      type="range" 
-                      min="0" max="10000" step="500"
-                      value={activeBot.responseDelay || 0}
-                      onChange={(e) => setActiveBot({...activeBot, responseDelay: parseInt(e.target.value)})}
-                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-900"
-                    />
-                    <p className="text-[10px] text-slate-500 mt-2">Adds an artificial delay with a typing indicator to make the bot feel more human. Max 10 seconds.</p>
-                 </div>
-
-                 {/* Appearance */}
-                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm col-span-2">
-                    <h4 className="font-bold text-slate-800 text-sm mb-4">Appearance</h4>
-                    <div className="flex items-start gap-6">
-                      <div className="flex-1">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Theme Color</label>
-                        <div className="flex gap-3 flex-wrap">
-                          {['#1e3a8a', '#1e40af', '#0f172a', '#334155', '#475569', '#0891b2', '#0369a1', '#be123c'].map(c => (
-                            <button 
-                              key={c}
-                              onClick={() => setActiveBot({...activeBot, themeColor: c})}
-                              className={`w-10 h-10 rounded-full shadow-sm border-2 transition ${activeBot.themeColor === c ? 'border-slate-800 scale-110' : 'border-transparent'}`}
-                              style={{ backgroundColor: c }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                         <label className="block text-sm font-medium text-slate-700 mb-2">Custom Avatar</label>
-                         <div className="flex items-center gap-4">
-                            {activeBot.avatar ? (
-                              <div className="relative">
-                                <img src={activeBot.avatar} alt="Avatar" className="w-16 h-16 rounded-full object-cover border border-slate-200" />
-                                <button onClick={() => setActiveBot({...activeBot, avatar: ''})} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><X size={12}/></button>
-                              </div>
-                            ) : (
-                              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 border border-dashed border-slate-300">
-                                <ImageIcon size={24} />
-                              </div>
-                            )}
-                            <label className="cursor-pointer bg-white border border-slate-300 px-3 py-1.5 rounded-lg text-sm text-slate-700 hover:bg-slate-50 shadow-sm">
-                               Upload Image
-                               <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
-                            </label>
-                         </div>
-                         <p className="text-[10px] text-slate-500 mt-2">Used when "Randomize Identity" is disabled.</p>
-                      </div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Response Delay (ms)</label>
+                    <p className="text-xs text-slate-500 mb-3">GPT-4o is instant. We add a delay to make it feel like a human is typing.</p>
+                    <div className="flex items-center gap-4">
+                      <input 
+                        type="range" 
+                        min="0" max="5000" step="100"
+                        value={activeBot.responseDelay || 2000}
+                        onChange={(e) => setActiveBot({...activeBot, responseDelay: parseInt(e.target.value)})}
+                        className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-900"
+                      />
+                      <span className="text-sm font-bold text-slate-700 w-16 text-right">{activeBot.responseDelay || 2000}ms</span>
                     </div>
                  </div>
               </div>
-            </div>
-          )}
-
-          {activeTab === 'knowledge' && (
-            <div className="max-w-3xl">
-               <div className="bg-white p-8 rounded-xl border border-dashed border-slate-300 flex flex-col items-center justify-center text-center">
-                  <div className="w-12 h-12 bg-blue-50 text-blue-900 rounded-full flex items-center justify-center mb-4">
-                    <Upload size={24} />
-                  </div>
-                  <h4 className="text-lg font-medium text-slate-800">Upload Training Data</h4>
-                  <p className="text-sm text-slate-500 max-w-sm mt-1 mb-6">Drag and drop PDF, DOCX, or TXT files here to train your bot on specific business knowledge.</p>
-                  <button className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition">
-                    Select Files
-                  </button>
-               </div>
-               
-               <div className="mt-6">
-                 <h4 className="text-sm font-semibold text-slate-800 mb-3">Website Crawling</h4>
-                 <div className="flex gap-2">
-                   <div className="flex-1 relative">
-                     <Globe className="absolute left-3 top-3 text-slate-400" size={16} />
-                     <input type="text" placeholder="https://yourbusiness.com" className="w-full pl-10 pr-4 py-2 rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900" />
-                   </div>
-                   <button className="px-4 py-2 bg-blue-900 text-white rounded-lg text-sm font-medium hover:bg-blue-950">Fetch</button>
-                 </div>
-               </div>
             </div>
           )}
 
           {activeTab === 'test' && (
-            <div className="flex h-full flex-col bg-slate-100 rounded-xl border border-slate-200 overflow-hidden max-w-md mx-auto shadow-xl">
-               {/* Chat Header */}
-               <div className="p-4 bg-white border-b border-slate-100 flex items-center justify-between shadow-sm z-10">
+            <div className="max-w-md mx-auto h-full flex flex-col bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+                <div className="bg-blue-900 p-4 text-white flex justify-between items-center">
                   <div className="flex items-center gap-3">
-                    <div className="relative">
-                      {activeBot.avatar && !activeBot.randomizeIdentity ? (
-                        <img src={activeBot.avatar} alt="Bot" className="w-10 h-10 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{ backgroundColor: previewIdentity.color }}>
-                          {previewIdentity.name.substring(0,2)}
-                        </div>
-                      )}
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></div>
+                    <div className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center font-bold text-xs" style={{backgroundColor: previewIdentity.color}}>
+                      {previewIdentity.name.substring(0,2)}
                     </div>
                     <div>
-                      <span className="text-sm font-bold text-slate-800 block">{activeBot.randomizeIdentity ? previewIdentity.name : activeBot.name}</span>
-                      <span className="text-xs text-slate-500 flex items-center gap-1">
-                        {isTesting ? 'Typing...' : 'Online'}
+                      <span className="font-bold text-sm block">{previewIdentity.name}</span>
+                      <span className="text-[10px] opacity-80 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span> Online
                       </span>
                     </div>
                   </div>
-                  <button onClick={restartChat} className="p-2 hover:bg-slate-50 rounded-full text-slate-400 hover:text-blue-900 transition" title="Restart Chat">
-                    <RefreshCcw size={16} />
-                  </button>
-               </div>
+                  <button onClick={restartChat} className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition">Reset</button>
+                </div>
+                
+                <div className="flex-1 bg-slate-50 p-4 overflow-y-auto space-y-4" ref={scrollRef}>
+                   {testHistory.length === 0 && (
+                     <div className="text-center text-xs text-slate-400 mt-4">
+                       This is a preview of your bot.<br/>Start chatting to test behavior.
+                     </div>
+                   )}
+                   {testHistory.map((msg, i) => (
+                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm ${
+                          msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-slate-700 border border-slate-200 rounded-bl-none shadow-sm'
+                        }`}>
+                          {msg.text}
+                        </div>
+                     </div>
+                   ))}
+                   {isTesting && (
+                     <div className="flex justify-start">
+                        <div className="bg-white border border-slate-200 px-3 py-2 rounded-2xl rounded-bl-none shadow-sm flex gap-1 items-center">
+                          <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce"></div>
+                          <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                          <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                        </div>
+                     </div>
+                   )}
+                </div>
 
-               {/* Chat Area */}
-               <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-100" ref={scrollRef}>
-                  <div className="flex justify-center mb-4">
-                     <span className="text-[10px] bg-slate-200 text-slate-500 px-2 py-1 rounded-full uppercase font-bold tracking-wide">Today</span>
-                  </div>
-                  
-                  {testHistory.length === 0 && (
-                    <div className="text-center mt-20 text-slate-400">
-                      <p className="text-sm">Start a conversation with</p>
-                      <p className="font-bold text-slate-500">{activeBot.randomizeIdentity ? previewIdentity.name : activeBot.name}</p>
-                    </div>
-                  )}
-
-                  {testHistory.map((msg, idx) => (
-                    <div key={idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`flex max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} gap-2`}>
-                         
-                         {/* Avatar for bot messages */}
-                         {msg.role === 'model' && (
-                           <div className="flex-shrink-0 mt-auto">
-                              {activeBot.avatar && !activeBot.randomizeIdentity ? (
-                                <img src={activeBot.avatar} className="w-6 h-6 rounded-full object-cover" />
-                              ) : (
-                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] text-white font-bold" style={{ backgroundColor: previewIdentity.color }}>
-                                  {previewIdentity.name.substring(0,2)}
-                                </div>
-                              )}
-                           </div>
-                         )}
-
-                         <div>
-                           <div className={`px-4 py-2.5 text-sm shadow-sm relative group ${
-                              msg.role === 'user' 
-                              ? 'bg-blue-600 text-white rounded-2xl rounded-br-sm' 
-                              : 'bg-white text-slate-700 rounded-2xl rounded-bl-sm border border-slate-200'
-                            }`}>
-                              {msg.text}
-                           </div>
-                           <p className={`text-[10px] text-slate-400 mt-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                             {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                           </p>
-                         </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {isTesting && (
-                    <div className="flex w-full justify-start">
-                       <div className="flex max-w-[85%] gap-2">
-                          <div className="flex-shrink-0 mt-auto">
-                             {activeBot.avatar && !activeBot.randomizeIdentity ? (
-                                <img src={activeBot.avatar} className="w-6 h-6 rounded-full object-cover" />
-                              ) : (
-                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] text-white font-bold" style={{ backgroundColor: previewIdentity.color }}>
-                                  {previewIdentity.name.substring(0,2)}
-                                </div>
-                              )}
-                          </div>
-                          <div className="bg-white text-slate-700 rounded-2xl rounded-bl-sm border border-slate-200 px-4 py-3 shadow-sm flex items-center gap-1">
-                             <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
-                             <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                             <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                          </div>
-                       </div>
-                    </div>
-                  )}
-               </div>
-
-               {/* Input Area */}
-               <div className="p-4 bg-white border-t border-slate-100">
-                 <div className="relative flex items-center">
-                   <input 
-                     type="text" 
-                     value={testInput}
-                     onChange={(e) => setTestInput(e.target.value)}
-                     onKeyDown={(e) => e.key === 'Enter' && handleTestSend()}
-                     placeholder="Type a message..." 
-                     className="w-full pl-4 pr-12 py-3 bg-slate-50 border-transparent focus:bg-white focus:border-blue-900 focus:ring-0 rounded-full text-sm transition-all"
+                <div className="p-3 bg-white border-t border-slate-100">
+                  <div className="relative">
+                    <input 
+                      value={testInput}
+                      onChange={(e) => setTestInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleTestSend()}
+                      placeholder="Type a message..."
+                      className="w-full pl-3 pr-10 py-2 text-sm bg-slate-50 border-transparent focus:bg-white focus:border-blue-500 focus:ring-0 rounded-lg"
                     />
-                   <button 
-                    onClick={handleTestSend}
-                    disabled={isTesting || !testInput.trim()}
-                    className="absolute right-2 p-2 bg-blue-900 text-white rounded-full hover:bg-blue-950 disabled:opacity-50 disabled:hover:bg-blue-900 transition shadow-sm">
-                     <Play size={14} fill="currentColor" className="ml-0.5" />
-                   </button>
-                 </div>
-                 <div className="text-center mt-2">
-                   <span className="text-[10px] text-slate-400">Powered by BuildMyBot AI</span>
-                 </div>
-               </div>
+                    <button 
+                      onClick={handleTestSend}
+                      disabled={!testInput.trim() || isTesting}
+                      className="absolute right-1 top-1 p-1.5 text-blue-900 hover:bg-blue-50 rounded-md disabled:opacity-50"
+                    >
+                      <Play size={14} fill="currentColor" />
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-center text-slate-300 mt-2 flex items-center justify-center gap-1">
+                     <Zap size={8} /> Powered by GPT-4o
+                  </div>
+                </div>
             </div>
           )}
 
           {activeTab === 'embed' && (
-            <div className="max-w-3xl space-y-6">
-              <div className="bg-white p-6 rounded-xl border border-slate-200">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-blue-50 rounded-lg text-blue-900"><Code size={20} /></div>
-                  <div>
-                    <h3 className="font-semibold text-slate-800">Javascript Snippet</h3>
-                    <p className="text-xs text-slate-500">Copy and paste this into your website's &lt;body&gt; tag.</p>
+             <div className="max-w-2xl mx-auto space-y-6">
+                <div className="bg-slate-900 rounded-xl p-6 text-slate-300 font-mono text-sm relative group">
+                  <button className="absolute top-4 right-4 text-slate-500 hover:text-white"><Share2 size={16} /></button>
+                  <p className="text-green-400 mb-2">&lt;!-- BuildMyBot Embed Code --&gt;</p>
+                  <div className="whitespace-pre-wrap break-all">
+{`<script>
+  window.bmbConfig = {
+    botId: "${activeBot.id}",
+    theme: "${activeBot.themeColor}",
+    domain: "${displayDomain}"
+  };
+</script>
+<script src="https://${displayDomain}/embed.js" async></script>`}
                   </div>
                 </div>
-                <div className="bg-slate-900 rounded-lg p-4 font-mono text-xs text-slate-300 relative group">
-                  <p>{`<script src="https://cdn.buildmybot.app/widget.js" data-id="${activeBot.id}"></script>`}</p>
-                  <button className="absolute top-2 right-2 px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-white text-[10px] transition">Copy</button>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-blue-900 text-sm flex items-start gap-3">
+                   <Globe className="shrink-0 mt-0.5" size={18} />
+                   <div>
+                     <p className="font-bold">White-Label Domain Active</p>
+                     <p>This code is optimized for <strong>{displayDomain}</strong>. Ensure your Vercel DNS settings are configured correctly to serve the script.</p>
+                   </div>
                 </div>
-              </div>
+             </div>
+          )}
 
-              <div className="grid grid-cols-3 gap-6">
-                <div className="col-span-1 bg-white p-4 rounded-xl border border-slate-200 hover:border-blue-900 cursor-pointer transition border-blue-900 ring-1 ring-blue-900">
-                  <div className="h-24 bg-slate-50 rounded mb-3 flex items-end justify-end p-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-900"></div>
-                  </div>
-                  <p className="font-medium text-center text-sm">Bubble Widget</p>
-                </div>
-                <div className="col-span-1 bg-white p-4 rounded-xl border border-slate-200 hover:border-blue-900 cursor-pointer transition">
-                  <div className="h-24 bg-slate-50 rounded mb-3 flex items-center justify-center p-2">
-                    <div className="w-24 h-16 bg-white border border-slate-200 rounded shadow-sm"></div>
-                  </div>
-                  <p className="font-medium text-center text-sm">Embedded Box</p>
-                </div>
-                <div className="col-span-1 bg-white p-4 rounded-xl border border-slate-200 hover:border-blue-900 cursor-pointer transition">
-                  <div className="h-24 bg-slate-50 rounded mb-3 flex items-center justify-center p-2">
-                    <div className="w-full h-full bg-white border border-slate-200 rounded"></div>
-                  </div>
-                  <p className="font-medium text-center text-sm">Full Page</p>
-                </div>
-              </div>
-            </div>
+          {activeTab === 'knowledge' && (
+             <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+                <Upload size={48} className="mb-4 opacity-20" />
+                <p>Drag and drop PDF, TXT, or CSV files here to train your bot.</p>
+                <button className="mt-4 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium">Browse Files</button>
+             </div>
           )}
 
         </div>

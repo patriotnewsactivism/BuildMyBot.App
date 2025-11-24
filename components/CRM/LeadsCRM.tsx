@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Phone, Mail, MoreHorizontal, User as UserIcon } from 'lucide-react';
+import { Search, Filter, Phone, Mail, MoreHorizontal, User as UserIcon, Flame } from 'lucide-react';
 import { Lead } from '../../types';
 
 export const LeadsCRM: React.FC = () => {
@@ -10,7 +10,7 @@ export const LeadsCRM: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([
     { id: '1', name: 'Sarah Connor', email: 'sarah@skynet.com', phone: '+1 555-0123', score: 95, status: 'New', sourceBotId: 'b1', createdAt: '2024-05-15T10:00:00Z' },
     { id: '2', name: 'John Doe', email: 'john.doe@example.com', phone: '+1 555-0199', score: 45, status: 'Contacted', sourceBotId: 'b2', createdAt: '2024-05-14T08:30:00Z' },
-    { id: '3', name: 'Emily Blunt', email: 'emily@hollywood.com', phone: '', score: 80, status: 'Qualified', sourceBotId: 'b1', createdAt: '2024-05-12T14:20:00Z' },
+    { id: '3', name: 'Emily Blunt', email: 'emily@hollywood.com', phone: '', score: 82, status: 'Qualified', sourceBotId: 'b1', createdAt: '2024-05-12T14:20:00Z' },
     { id: '4', name: 'Michael Scott', email: 'michael@dunder.com', phone: '+1 555-9999', score: 10, status: 'Closed', sourceBotId: 'b1', createdAt: '2024-05-10T09:00:00Z' },
     { id: '5', name: 'Dwight Schrute', email: 'beetfarmer@farms.com', phone: '+1 555-2342', score: 65, status: 'New', sourceBotId: 'b2', createdAt: '2024-05-16T11:45:00Z' },
   ]);
@@ -79,20 +79,25 @@ export const LeadsCRM: React.FC = () => {
                 <th className="px-6 py-4">Lead Name</th>
                 <th className="px-6 py-4">Contact Info</th>
                 <th className="px-6 py-4">Captured</th>
-                <th className="px-6 py-4">Lead Score</th>
+                <th className="px-6 py-4">Qualification Score</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredLeads.map((lead) => (
-                <tr key={lead.id} className="hover:bg-slate-50/50 transition group">
+              {filteredLeads.map((lead) => {
+                const isHot = lead.score >= 75;
+                return (
+                <tr key={lead.id} className={`hover:bg-slate-50/50 transition group ${isHot ? 'bg-red-50/10' : ''}`}>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-900 flex items-center justify-center font-bold text-xs">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${isHot ? 'bg-red-100 text-red-700 ring-2 ring-red-200' : 'bg-blue-100 text-blue-900'}`}>
                         {lead.name.charAt(0)}
                       </div>
-                      <span className="font-medium text-slate-800 text-sm">{lead.name}</span>
+                      <div>
+                        <span className="font-medium text-slate-800 text-sm block">{lead.name}</span>
+                        {isHot && <span className="text-[10px] text-red-600 font-bold flex items-center gap-0.5"><Flame size={10} fill="currentColor"/> HOT LEAD</span>}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -113,9 +118,9 @@ export const LeadsCRM: React.FC = () => {
                   <td className="px-6 py-4">
                      <div className="flex items-center gap-2">
                        <div className="w-16 h-2 bg-slate-200 rounded-full overflow-hidden">
-                         <div className={`h-full rounded-full ${lead.score > 70 ? 'bg-emerald-500' : lead.score > 40 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{width: `${lead.score}%`}}></div>
+                         <div className={`h-full rounded-full ${lead.score >= 75 ? 'bg-red-500' : lead.score > 40 ? 'bg-yellow-500' : 'bg-slate-500'}`} style={{width: `${lead.score}%`}}></div>
                        </div>
-                       <span className="text-xs font-medium text-slate-600">{lead.score}</span>
+                       <span className={`text-xs font-bold ${lead.score >= 75 ? 'text-red-600' : 'text-slate-600'}`}>{lead.score}</span>
                      </div>
                   </td>
                   <td className="px-6 py-4">
@@ -129,7 +134,7 @@ export const LeadsCRM: React.FC = () => {
                     </button>
                   </td>
                 </tr>
-              ))}
+              )})}
               {filteredLeads.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-slate-400">

@@ -22,6 +22,7 @@ export interface User {
   avatarUrl?: string;
   resellerCode?: string;
   resellerClientCount?: number; // For tier calculation
+  customDomain?: string; // White-label domain (e.g., app.myagency.com)
 }
 
 export interface Bot {

@@ -1,12 +1,12 @@
 import React from 'react';
-import { Users, DollarSign, Server, Activity, AlertTriangle, CheckCircle, Search } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { Users, DollarSign, Server, Activity, AlertTriangle, CheckCircle, Search, Briefcase, Eye, Globe } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const GLOBAL_STATS = [
   { label: 'Total MRR', value: '$42,590', change: '+15%', icon: DollarSign, color: 'emerald' },
   { label: 'Total Users', value: '1,240', change: '+8%', icon: Users, color: 'blue' },
   { label: 'Active Bots', value: '3,850', change: '+12%', icon: Activity, color: 'blue' },
-  { label: 'System Load', value: '24%', change: 'Stable', icon: Server, color: 'slate' },
+  { label: 'Partners', value: '142', change: '+5', icon: Briefcase, color: 'purple' },
 ];
 
 const REVENUE_DATA = [
@@ -18,27 +18,38 @@ const REVENUE_DATA = [
   { month: 'Jun', amount: 42590 },
 ];
 
-const RECENT_USERS = [
-  { id: 1, name: 'TechFlow Agency', plan: 'Enterprise', status: 'Active', joined: '2 hrs ago' },
-  { id: 2, name: 'Dr. Smith Dental', plan: 'Starter', status: 'Active', joined: '5 hrs ago' },
-  { id: 3, name: 'Pizza Palace', plan: 'Free', status: 'Inactive', joined: '1 day ago' },
-  { id: 4, name: 'Legal Eagles', plan: 'Professional', status: 'Active', joined: '1 day ago' },
-  { id: 5, name: 'Startup Inc', plan: 'Executive', status: 'Active', joined: '2 days ago' },
+const ALL_BUSINESSES = [
+  { id: 1, name: 'TechFlow Agency', plan: 'Enterprise', status: 'Active', joined: '2 hrs ago', bots: 12, revenue: '$399' },
+  { id: 2, name: 'Dr. Smith Dental', plan: 'Starter', status: 'Active', joined: '5 hrs ago', bots: 1, revenue: '$29' },
+  { id: 3, name: 'Pizza Palace', plan: 'Free', status: 'Inactive', joined: '1 day ago', bots: 1, revenue: '$0' },
+  { id: 4, name: 'Legal Eagles', plan: 'Professional', status: 'Active', joined: '1 day ago', bots: 3, revenue: '$99' },
+  { id: 5, name: 'Startup Inc', plan: 'Executive', status: 'Active', joined: '2 days ago', bots: 8, revenue: '$199' },
+];
+
+const ALL_PARTNERS = [
+  { id: 101, name: 'Digital Growth', tier: 'Platinum', clients: 312, earnings: '$12,400', status: 'Active' },
+  { id: 102, name: 'Marketer Mike', tier: 'Gold', clients: 156, earnings: '$4,200', status: 'Active' },
+  { id: 103, name: 'Local SEO Pros', tier: 'Silver', clients: 89, earnings: '$1,800', status: 'Active' },
+  { id: 104, name: 'Jane Doe', tier: 'Bronze', clients: 12, earnings: '$150', status: 'Pending Approval' },
 ];
 
 export const AdminDashboard: React.FC = () => {
   return (
-    <div className="space-y-8 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Super Admin</h2>
-          <p className="text-slate-500">Platform-wide overview and management.</p>
-        </div>
-        <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800">
-            <Server size={16} /> System Logs
-          </button>
-        </div>
+    <div className="space-y-8 animate-fade-in pb-20">
+      <div className="bg-slate-900 text-white p-6 -mx-4 -mt-4 md:-mx-8 md:-mt-8 md:rounded-b-2xl mb-8 shadow-lg">
+          <div className="flex justify-between items-center max-w-7xl mx-auto">
+            <div>
+                <h2 className="text-3xl font-bold flex items-center gap-2">
+                    <Globe className="text-blue-400"/> Master Platform Access
+                </h2>
+                <p className="text-slate-400">System-wide visibility and control.</p>
+            </div>
+            <div className="flex gap-2">
+                <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm shadow-lg shadow-blue-900/20">
+                    <Server size={16} /> Live System Status
+                </button>
+            </div>
+          </div>
       </div>
 
       {/* Global Stats */}
@@ -59,10 +70,10 @@ export const AdminDashboard: React.FC = () => {
         ))}
       </div>
 
+      {/* Main Charts Area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Revenue Chart */}
         <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="font-semibold text-slate-800 mb-6">MRR Growth</h3>
+          <h3 className="font-semibold text-slate-800 mb-6">MRR Growth (System Wide)</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={REVENUE_DATA}>
@@ -81,9 +92,8 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* System Health */}
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="font-semibold text-slate-800 mb-4">System Health</h3>
+          <h3 className="font-semibold text-slate-800 mb-4">Operational Health</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-100">
               <div className="flex items-center gap-3">
@@ -99,7 +109,7 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center gap-3">
                 <CheckCircle className="text-emerald-600" size={20} />
                 <div>
-                  <p className="font-medium text-slate-800 text-sm">Database (Postgres)</p>
+                  <p className="font-medium text-slate-800 text-sm">Database</p>
                   <p className="text-xs text-emerald-600">Operational</p>
                 </div>
               </div>
@@ -109,71 +119,119 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center gap-3">
                 <AlertTriangle className="text-yellow-600" size={20} />
                 <div>
-                  <p className="font-medium text-slate-800 text-sm">Email Worker</p>
+                  <p className="font-medium text-slate-800 text-sm">Email Queues</p>
                   <p className="text-xs text-yellow-600">High Latency</p>
                 </div>
               </div>
               <span className="text-xs font-mono text-yellow-700">2.4s</span>
             </div>
           </div>
-          
-          <div className="mt-6 pt-6 border-t border-slate-100">
-             <h4 className="text-sm font-semibold text-slate-700 mb-3">Pending Approvals</h4>
-             <div className="flex justify-between items-center text-sm text-slate-600 mb-2">
-                <span>Reseller Payouts</span>
-                <span className="font-medium text-slate-900">4 pending ($1,250)</span>
-             </div>
-             <button className="w-full py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition">
-               Manage Approvals
-             </button>
-          </div>
         </div>
       </div>
 
-      {/* User Management */}
+      {/* All Businesses Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-          <h3 className="font-semibold text-slate-800">Recent Signups</h3>
-          <div className="relative">
+        <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div>
+              <h3 className="font-bold text-slate-800">All Businesses</h3>
+              <p className="text-xs text-slate-500">Master list of all client accounts.</p>
+          </div>
+          <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
-            <input type="text" placeholder="Search users..." className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-blue-900 focus:border-blue-900" />
+            <input type="text" placeholder="Search businesses..." className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-blue-900 focus:border-blue-900" />
           </div>
         </div>
-        <table className="w-full text-left">
-          <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-            <tr>
-              <th className="px-6 py-3">Company</th>
-              <th className="px-6 py-3">Plan</th>
-              <th className="px-6 py-3">Status</th>
-              <th className="px-6 py-3">Joined</th>
-              <th className="px-6 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {RECENT_USERS.map((user) => (
-              <tr key={user.id} className="hover:bg-slate-50">
-                <td className="px-6 py-4 font-medium text-slate-800">{user.name}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    user.plan === 'Enterprise' ? 'bg-slate-200 text-slate-800' :
-                    user.plan === 'Executive' ? 'bg-blue-100 text-blue-900' :
-                    'bg-slate-100 text-slate-600'
-                  }`}>{user.plan}</span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`flex items-center gap-1.5 text-sm ${user.status === 'Active' ? 'text-emerald-600' : 'text-slate-400'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                    {user.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-slate-500">{user.joined}</td>
-                <td className="px-6 py-4 text-sm text-blue-900 hover:text-blue-950 cursor-pointer font-medium">
-                  Login as
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+            <table className="w-full text-left">
+            <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
+                <tr>
+                <th className="px-6 py-3">Company</th>
+                <th className="px-6 py-3">Plan</th>
+                <th className="px-6 py-3">Bots</th>
+                <th className="px-6 py-3">MRR</th>
+                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-sm">
+                {ALL_BUSINESSES.map((user) => (
+                <tr key={user.id} className="hover:bg-slate-50">
+                    <td className="px-6 py-4 font-medium text-slate-800">{user.name}</td>
+                    <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        user.plan === 'Enterprise' ? 'bg-slate-800 text-white' :
+                        user.plan === 'Executive' ? 'bg-blue-100 text-blue-900' :
+                        'bg-slate-100 text-slate-600'
+                    }`}>{user.plan}</span>
+                    </td>
+                    <td className="px-6 py-4">{user.bots}</td>
+                    <td className="px-6 py-4 font-mono">{user.revenue}</td>
+                    <td className="px-6 py-4">
+                    <span className={`flex items-center gap-1.5 ${user.status === 'Active' ? 'text-emerald-600' : 'text-slate-400'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                        {user.status}
+                    </span>
+                    </td>
+                    <td className="px-6 py-4">
+                    <button className="text-blue-900 hover:text-blue-700 font-medium flex items-center gap-1">
+                        <Eye size={14}/> View
+                    </button>
+                    </td>
+                </tr>
+                ))}
+            </tbody>
+            </table>
+        </div>
+      </div>
+
+      {/* All Partners Table */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <div>
+              <h3 className="font-bold text-slate-800">All Partners & Resellers</h3>
+              <p className="text-xs text-slate-500">Master list of all affiliate partners.</p>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+            <table className="w-full text-left">
+            <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
+                <tr>
+                <th className="px-6 py-3">Partner Name</th>
+                <th className="px-6 py-3">Tier</th>
+                <th className="px-6 py-3">Clients Referred</th>
+                <th className="px-6 py-3">Total Earnings</th>
+                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-sm">
+                {ALL_PARTNERS.map((partner) => (
+                <tr key={partner.id} className="hover:bg-slate-50">
+                    <td className="px-6 py-4 font-medium text-slate-800">{partner.name}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                          partner.tier === 'Platinum' ? 'bg-slate-900 text-white' : 
+                          partner.tier === 'Gold' ? 'bg-yellow-100 text-yellow-800' : 
+                          'bg-orange-100 text-orange-800'
+                      }`}>
+                          {partner.tier}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">{partner.clients}</td>
+                    <td className="px-6 py-4 font-mono font-bold text-emerald-600">{partner.earnings}</td>
+                    <td className="px-6 py-4">
+                        <span className={`text-xs ${partner.status === 'Active' ? 'text-emerald-600' : 'text-orange-600'}`}>{partner.status}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                    <button className="text-blue-900 hover:text-blue-700 font-medium flex items-center gap-1">
+                        <Eye size={14}/> View
+                    </button>
+                    </td>
+                </tr>
+                ))}
+            </tbody>
+            </table>
+        </div>
       </div>
     </div>
   );

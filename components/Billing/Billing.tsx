@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Check, Shield, Zap, Star, Crown } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
@@ -7,6 +7,8 @@ export const Billing: React.FC = () => {
   const currentPlan = PlanType.PROFESSIONAL;
 
   const handleUpgrade = (planId: string) => {
+    // In a real implementation, this would call your backend to create a Stripe Checkout Session
+    // Example: await fetch('/api/create-checkout-session', { method: 'POST', body: JSON.stringify({ planId }) })
     alert(`Redirecting to Stripe Checkout for ${planId} plan...`);
   };
 
@@ -21,7 +23,7 @@ export const Billing: React.FC = () => {
          {Object.entries(PLANS).map(([key, plan]: [string, any]) => {
            const isCurrent = key === currentPlan;
            const isEnterprise = key === PlanType.ENTERPRISE;
-           const isExecutive = key === PlanType.EXECUTIVE;
+           const isFree = key === PlanType.FREE;
            
            return (
              <div 
@@ -51,61 +53,19 @@ export const Billing: React.FC = () => {
                      <span className="text-slate-500 text-sm ml-1">/mo</span>
                    </div>
                    <p className="text-xs text-slate-400 mt-2 h-4">
-                     {isEnterprise ? 'For agencies & large teams' : key === PlanType.FREE ? 'For hobbyists' : 'For growing businesses'}
+                     {isEnterprise ? 'For agencies & scale' : isFree ? 'Forever free' : 'For growing businesses'}
                    </p>
                 </div>
                 
                 <div className="space-y-3 flex-1 mb-8">
-                  {/* Core Limits */}
-                  <div className="flex items-center gap-2 text-sm text-slate-700 font-medium bg-slate-50 p-2 rounded-lg">
-                    <Zap size={16} className={isEnterprise ? "text-yellow-500 fill-yellow-500" : "text-blue-900"} /> 
-                    <span>{plan.bots >= 9999 ? 'Unlimited' : plan.bots} Active Bots</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-slate-700 font-medium bg-slate-50 p-2 rounded-lg">
-                    <Zap size={16} className={isEnterprise ? "text-yellow-500 fill-yellow-500" : "text-blue-900"} /> 
-                    <span>{plan.conversations.toLocaleString()} Conversations/mo</span>
-                  </div>
-
-                  {/* Feature List */}
-                  <div className="pt-2 space-y-3">
-                    {key !== PlanType.FREE && (
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <Check size={16} className="text-emerald-500 shrink-0" /> 
-                        <span>{isEnterprise ? <b>Enterprise Analytics</b> : 'Advanced Analytics'}</span>
+                  {/* Dynamic Feature List */}
+                  <div className="pt-2 space-y-3 border-t border-slate-50 mt-2">
+                    {plan.features.map((feature: string, idx: number) => (
+                      <div key={idx} className="flex items-start gap-2 text-sm text-slate-600">
+                        <Check size={16} className={`shrink-0 mt-0.5 ${isEnterprise ? 'text-yellow-500 fill-yellow-500' : 'text-emerald-500'}`} /> 
+                        <span className="leading-tight">{feature}</span>
                       </div>
-                    )}
-                    
-                    {(isExecutive || isEnterprise) && (
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <Check size={16} className="text-emerald-500 shrink-0" /> 
-                        <span>Remove Branding</span>
-                      </div>
-                    )}
-
-                    {isEnterprise && (
-                      <>
-                          <div className="flex items-center gap-2 text-sm text-slate-600">
-                              <Check size={16} className="text-emerald-500 shrink-0" />
-                              <span className="font-semibold text-slate-800">${plan.overage} / overage conv</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-slate-600">
-                              <Check size={16} className="text-emerald-500 shrink-0" />
-                              <span>White-label Agency</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-slate-600">
-                              <Check size={16} className="text-emerald-500 shrink-0" />
-                              <span>SLA Priority Support</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-slate-600">
-                              <Check size={16} className="text-emerald-500 shrink-0" />
-                              <span>Dedicated Acct. Mgr</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-slate-600">
-                              <Check size={16} className="text-emerald-500 shrink-0" />
-                              <span>All Executive Features</span>
-                          </div>
-                      </>
-                    )}
+                    ))}
                   </div>
                 </div>
 
@@ -120,7 +80,7 @@ export const Billing: React.FC = () => {
                         : 'bg-blue-900 text-white hover:bg-blue-950 hover:shadow-blue-200'
                   }`}
                 >
-                  {isCurrent ? 'Current Plan' : isEnterprise ? 'Upgrade to Enterprise' : `Upgrade to ${plan.name}`}
+                  {isCurrent ? 'Current Plan' : isEnterprise ? 'Contact Sales / Upgrade' : `Upgrade to ${plan.name}`}
                 </button>
              </div>
            );
@@ -128,9 +88,14 @@ export const Billing: React.FC = () => {
       </div>
       
       <div className="mt-12 p-6 bg-slate-100 rounded-xl border border-slate-200 text-center max-w-3xl mx-auto">
-        <h4 className="font-bold text-slate-800 mb-2">Need a custom high-volume solution?</h4>
-        <p className="text-slate-500 text-sm mb-4">For volume exceeding 100k+ conversations or custom on-premise deployment, contact our sales team.</p>
-        <button className="text-blue-900 font-medium text-sm hover:underline">Contact Sales</button>
+        <h4 className="font-bold text-slate-800 mb-2">Enterprise Customization</h4>
+        <p className="text-slate-500 text-sm mb-4">
+            Need more than 50,000 conversations? Our Enterprise plan scales with you at just <strong>$0.01</strong> per additional conversation.
+            We also offer custom SLA and on-premise deployment.
+        </p>
+        <button className="text-blue-900 font-medium text-sm hover:underline flex items-center justify-center gap-1 mx-auto">
+            <Shield size={14} /> Contact our Sales Team
+        </button>
       </div>
     </div>
   );
