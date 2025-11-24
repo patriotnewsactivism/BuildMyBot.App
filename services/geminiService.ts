@@ -1,5 +1,5 @@
 // NOTE: Filename retained as geminiService.ts to prevent breaking imports in other files,
-// but the implementation has been switched to OpenAI GPT-4o as requested.
+// but the implementation has been switched to OpenAI GPT-4o Mini as requested.
 
 const API_KEY = process.env.OPENAI_API_KEY || process.env.REACT_APP_OPENAI_API_KEY || ''; 
 
@@ -7,7 +7,7 @@ export const generateBotResponse = async (
   systemPrompt: string,
   history: { role: 'user' | 'model'; text: string }[],
   lastMessage: string,
-  modelName: string = 'gpt-4o'
+  modelName: string = 'gpt-4o-mini'
 ): Promise<string> => {
   if (!API_KEY) return "Configuration Error: OPENAI_API_KEY is missing. Please set this in your Vercel environment variables.";
 
@@ -68,7 +68,7 @@ export const generateMarketingContent = async (
         "Authorization": `Bearer ${API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.8
       })
@@ -97,7 +97,7 @@ export const generateWebsiteStructure = async (businessName: string, description
           "Authorization": `Bearer ${API_KEY}`
         },
         body: JSON.stringify({
-          model: "gpt-4o",
+          model: "gpt-4o-mini",
           messages: [{ role: "user", content: prompt }],
           response_format: { type: "json_object" }
         })

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu } from 'lucide-react';
+import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
 import { generateBotResponse } from '../../services/geminiService';
@@ -156,7 +156,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
             title = 'Platform Features';
             content = (
                 <ul className="space-y-3">
-                    <li className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-1"/> <strong>GPT-4o Intelligence:</strong> Understands nuance, sarcasm, and intent better than any other model.</li>
+                    <li className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-1"/> <strong>GPT-4o Mini Intelligence:</strong> Understands nuance, sarcasm, and intent better than any other model.</li>
                     <li className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-1"/> <strong>Hot Lead Detection:</strong> Automatically scores leads based on conversation quality.</li>
                     <li className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-1"/> <strong>Instant Alerts:</strong> Get an SMS or Email the second a lead is qualified.</li>
                     <li className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-1"/> <strong>Visual Builder:</strong> Drag-and-drop customization. No coding required.</li>
@@ -185,6 +185,81 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     );
   };
 
+  const industries = [
+    {
+      title: 'Home Services',
+      icon: Wrench,
+      color: 'blue',
+      desc: 'Plumbers, HVAC, Electricians. The first to pick up gets the job. Stop losing emergency calls to voicemail and start booking jobs instantly.'
+    },
+    {
+      title: 'Real Estate',
+      icon: Home,
+      color: 'emerald',
+      desc: 'Qualify buyers instantly. Schedule viewings 24/7. Speed to lead is the only metric that matters in a hot market.'
+    },
+    {
+      title: 'Automotive',
+      icon: Car,
+      color: 'red',
+      desc: 'Dealerships & Mechanics. Book service appointments and answer inventory questions immediately, keeping your bays full.'
+    },
+    {
+      title: 'Healthcare',
+      icon: Stethoscope,
+      color: 'cyan',
+      desc: 'Dentists & Clinics. Reduce patient anxiety by providing instant answers. Fill cancellations automatically and handle insurance FAQs.'
+    },
+    {
+      title: 'Law Firms',
+      icon: Gavel,
+      color: 'amber',
+      desc: 'Instant case intake. Capture high-value clients when they need you most. Automate the initial screening process securely.'
+    },
+    {
+      title: 'Politicians',
+      icon: Landmark,
+      color: 'slate',
+      desc: 'The 24/7 Town Hall. Engage constituents, accept donations, and clarify policy positions instantly, without a massive staff.'
+    },
+    {
+      title: 'Hospitality',
+      icon: Utensils,
+      color: 'orange',
+      desc: 'Restaurants & Hotels. Handle reservation requests and room service queries instantly. Happier guests, fewer phone calls.'
+    },
+    {
+      title: 'Influencers',
+      icon: Instagram,
+      color: 'purple',
+      desc: 'Scale your personal brand. Reply to every DM, engage fans, and sell merch automatically without spending all day on your phone.'
+    },
+    {
+      title: 'Fitness & Wellness',
+      icon: Dumbbell,
+      color: 'lime',
+      desc: 'Gyms, Yoga, & Spas. Book classes, sell memberships, and answer pricing questions while you are training clients.'
+    },
+    {
+      title: 'Education',
+      icon: GraduationCap,
+      color: 'indigo',
+      desc: 'Tutors & Schools. Streamline enrollment and answer parent FAQs immediately. Capture interest during peak research hours.'
+    },
+    {
+      title: 'E-commerce',
+      icon: ShoppingBag,
+      color: 'pink',
+      desc: 'Recover abandoned carts. Answer product questions to boost conversion rates and reduce support ticket volume.'
+    },
+    {
+      title: 'Agencies',
+      icon: Briefcase,
+      color: 'sky',
+      desc: 'White-label our platform. Sell AI chatbots to your own clients under your brand and create a new recurring revenue stream.'
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden">
       {modalContent && <InfoModal />}
@@ -211,7 +286,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                   </div>
                   
                   <div className="flex-1 bg-slate-50 overflow-y-auto p-4 space-y-4" ref={chatScrollRef}>
-                      <div className="text-center text-[10px] text-slate-400 font-medium uppercase tracking-wider my-2">Powered by GPT-4o</div>
+                      <div className="text-center text-[10px] text-slate-400 font-medium uppercase tracking-wider my-2">Powered by GPT-4o Mini</div>
                       {chatHistory.map((msg, i) => (
                           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                               <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm shadow-sm ${
@@ -431,49 +506,21 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Who is this for?</h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">BuildMyBot is the engine behind thousands of growing businesses.</p>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">BuildMyBot powers the immediate response engine for thousands of industries.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="p-8 rounded-2xl bg-slate-50 hover:bg-white hover:shadow-xl transition-all duration-300 border border-slate-100">
-              <div className="w-12 h-12 bg-pink-100 text-pink-600 rounded-xl flex items-center justify-center mb-6">
-                <Instagram size={24} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {industries.map((ind, i) => (
+              <div key={i} className="p-8 rounded-2xl bg-slate-50 hover:bg-white hover:shadow-xl transition-all duration-300 border border-slate-100 group">
+                <div className={`w-12 h-12 bg-${ind.color}-100 text-${ind.color}-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                  <ind.icon size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">{ind.title}</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  {ind.desc}
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Influencers</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                You have thousands of DMs. Let AI engage your fans, answer FAQs, and promote your merch while you sleep.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-2xl bg-slate-50 hover:bg-white hover:shadow-xl transition-all duration-300 border border-slate-100">
-              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-6">
-                <Briefcase size={24} />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Service Business</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                Plumbers, Dentists, Lawyers. Stop playing phone tag. The bot books appointments and qualifies clients instantly.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-2xl bg-slate-50 hover:bg-white hover:shadow-xl transition-all duration-300 border border-slate-100">
-              <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-6">
-                <Target size={24} />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Lead Gen Experts</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                Don't waste ad spend on slow follow-ups. The bot engages leads within seconds of a click, increasing conversion by 300%.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-2xl bg-slate-50 hover:bg-white hover:shadow-xl transition-all duration-300 border border-slate-100">
-              <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-6">
-                <DollarSign size={24} />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Agencies</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                White-label our platform. Sell AI chatbots to your clients under your own brand and keep 100% of the markup.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
