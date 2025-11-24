@@ -20,7 +20,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     name: 'New Assistant',
     type: 'Customer Support',
     systemPrompt: 'You are a helpful customer support assistant. Act like a human, be casual, and never repeat the exact same response twice. Do not reveal you are an AI.',
-    model: 'gpt-4o',
+    model: 'gpt-4o-mini',
     temperature: 0.9,
     knowledgeBase: [],
     active: true,
@@ -169,7 +169,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                   className="font-bold text-lg text-slate-800 border-none focus:ring-0 p-0 hover:bg-slate-50 rounded"
                 />
                <p className="text-xs text-slate-500 font-medium text-emerald-600 flex items-center gap-1">
-                 <Zap size={10} /> Powered by OpenAI {activeBot.model}
+                 <Zap size={10} /> Powered by OpenAI {AVAILABLE_MODELS.find(m => m.id === activeBot.model)?.name}
                </p>
              </div>
           </div>
@@ -309,7 +309,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                       <h4 className="font-bold text-slate-800 text-sm">Artificial Latency</h4>
                     </div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">Response Delay (ms)</label>
-                    <p className="text-xs text-slate-500 mb-3">GPT-4o is instant. We add a delay to make it feel like a human is typing.</p>
+                    <p className="text-xs text-slate-500 mb-3">GPT-4o Mini is instant. We add a delay to make it feel like a human is typing.</p>
                     <div className="flex items-center gap-4">
                       <input 
                         type="range" 
@@ -386,7 +386,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                     </button>
                   </div>
                   <div className="text-[10px] text-center text-slate-300 mt-2 flex items-center justify-center gap-1">
-                     <Zap size={8} /> Powered by GPT-4o
+                     <Zap size={8} /> Powered by {AVAILABLE_MODELS.find(m => m.id === activeBot.model)?.name || 'AI'}
                   </div>
                 </div>
             </div>

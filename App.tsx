@@ -36,7 +36,7 @@ const MOCK_BOTS: BotType[] = [
     name: 'Sales Assistant', 
     type: 'Sales', 
     systemPrompt: 'You are a sales assistant.', 
-    model: 'gpt-4o', 
+    model: 'gpt-4o-mini', 
     temperature: 0.8, 
     knowledgeBase: [], 
     active: true, 
@@ -50,7 +50,7 @@ const MOCK_BOTS: BotType[] = [
     name: 'Support Bot', 
     type: 'Customer Support', 
     systemPrompt: 'You are a support agent.', 
-    model: 'gpt-4o', 
+    model: 'gpt-4o-mini', 
     temperature: 0.4, 
     knowledgeBase: [], 
     active: true, 
@@ -195,49 +195,6 @@ function App() {
            </button>
         </div>
       </div>
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-slate-50 flex font-sans overflow-hidden">
-      <Sidebar 
-        currentView={currentView} 
-        setView={setCurrentView} 
-        role={user.role} 
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-      />
-      
-      {/* Main Content Area */}
-      {/* md:ml-64 ensures space for sidebar on desktop. On mobile, it's 0 margin (full width) */}
-      <main className="flex-1 overflow-y-auto h-screen relative transition-all duration-300 md:ml-64 w-full">
-        
-        {/* Mobile Header for Hamburger */}
-        <div className="md:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sticky top-0 z-20">
-            <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600 hover:bg-slate-50 rounded-lg">
-               <Menu size={24} />
-            </button>
-            <div className="font-bold text-slate-800 flex items-center gap-2">
-               <BotIcon size={20} className="text-blue-900" /> BuildMyBot
-            </div>
-            <div className="w-10"></div> {/* Spacer for center alignment */}
-        </div>
-
-        <div className="p-4 md:p-8 max-w-7xl mx-auto pb-12">
-          {currentView === 'dashboard' && <Dashboard />}
-          {currentView === 'bots' && <BotBuilder bots={bots} onSave={(b) => setBots([...bots.filter(x => x.id !== b.id), b])} customDomain={user.customDomain} />}
-          {currentView === 'reseller' && <ResellerDashboard user={user} stats={MOCK_RESELLER_STATS} />}
-          {currentView === 'marketing' && <MarketingTools />}
-          {currentView === 'leads' && <LeadsCRM />}
-          {currentView === 'website' && <WebsiteBuilder />}
-          {currentView === 'marketplace' && <Marketplace />}
-          {currentView === 'phone' && <PhoneAgent />}
-          {currentView === 'chat-logs' && <ChatLogs />}
-          {currentView === 'billing' && <Billing />}
-          {currentView === 'admin' && <AdminDashboard />}
-          {currentView === 'settings' && <Settings user={user} onUpdateUser={setUser} />}
-        </div>
-      </main>
     </div>
   );
 }

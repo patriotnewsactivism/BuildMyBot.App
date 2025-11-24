@@ -21,7 +21,7 @@ export const PLANS = {
     features: [
       '1 bot',
       '750 conversations/month',
-      'GPT-4o-mini model',
+      'GPT-4o Mini model',
       'Basic analytics',
       'Email support'
     ]
@@ -81,8 +81,8 @@ export const RESELLER_TIERS = [
 ];
 
 export const AVAILABLE_MODELS = [
-  { id: 'gpt-4o', name: 'GPT-4o (Omni)', description: 'Flagship intelligence. Cheapest & fastest frontier model.' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Ultra-fast, low cost. Best for simple queries.' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Ultra-fast, low cost. Best for high-volume tasks.' },
+  { id: 'gpt-4o', name: 'GPT-4o (Omni)', description: 'Flagship intelligence. Best for complex reasoning.' },
 ];
 
 export const MOCK_ANALYTICS_DATA = [
