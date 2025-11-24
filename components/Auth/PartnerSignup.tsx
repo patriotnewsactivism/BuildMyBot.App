@@ -7,17 +7,16 @@ interface PartnerSignupProps {
 }
 
 export const PartnerSignup: React.FC<PartnerSignupProps> = ({ onBack, onComplete }) => {
-  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     companyName: '',
-    website: ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // In a real app, this would hit the backend API to create the user
     onComplete(formData);
   };
 

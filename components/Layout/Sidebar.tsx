@@ -45,13 +45,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, role, is
       {/* Mobile Overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm"
+          className="fixed inset-0 bg-slate-900/80 z-40 md:hidden backdrop-blur-sm transition-opacity"
           onClick={onClose}
         ></div>
       )}
 
       {/* Sidebar Container */}
-      <div className={`fixed top-0 left-0 h-full w-64 bg-[#0f172a] text-slate-400 border-r border-slate-900 z-50 transition-transform duration-300 ease-in-out transform ${
+      <div className={`fixed top-0 left-0 h-full w-64 bg-[#0f172a] text-slate-400 border-r border-slate-900 z-50 transition-transform duration-300 ease-in-out transform shadow-2xl ${
         isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       }`}>
         <div className="p-6 flex items-center justify-between">
