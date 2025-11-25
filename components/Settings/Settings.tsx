@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Bell, Lock, Building, CreditCard, Save, Globe, Server } from 'lucide-react';
+import { User, Bell, Lock, Building, CreditCard, Save, Globe, Server, Webhook, Key } from 'lucide-react';
 import { User as UserType } from '../../types';
 
 interface SettingsProps {
@@ -14,6 +14,7 @@ export const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
   // Local state for forms
   const [customDomain, setCustomDomain] = useState(user?.customDomain || '');
   const [companyName, setCompanyName] = useState(user?.companyName || '');
+  const [webhookUrl, setWebhookUrl] = useState('');
 
   const handleSave = () => {
     if (onUpdateUser && user) {
@@ -46,6 +47,7 @@ export const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
             { id: 'billing', label: 'Billing & Invoices', icon: CreditCard },
             { id: 'security', label: 'Security', icon: Lock },
             { id: 'notifications', label: 'Notifications', icon: Bell },
+            { id: 'developers', label: 'Developer API', icon: Webhook },
           ].map((item) => (
             <button
               key={item.id}
@@ -178,6 +180,40 @@ export const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
                 ))}
               </div>
             </div>
+          )}
+
+          {activeTab === 'developers' && (
+             <div className="space-y-6">
+               <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-100 pb-4">Developers & Integrations</h3>
+               
+               <div>
+                 <label className="block text-sm font-medium text-slate-700 mb-2">Webhook URL</label>
+                 <p className="text-xs text-slate-500 mb-2">We will POST JSON data to this URL for events like <code>lead.captured</code>.</p>
+                 <div className="relative">
+                    <Webhook className="absolute left-3 top-2.5 text-slate-400" size={18} />
+                    <input 
+                      type="url" 
+                      value={webhookUrl} 
+                      onChange={(e) => setWebhookUrl(e.target.value)}
+                      placeholder="https://your-api.com/webhooks"
+                      className="w-full pl-10 pr-4 py-2 rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900"
+                    />
+                 </div>
+               </div>
+
+               <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mt-4">
+                  <div className="flex items-center justify-between mb-4">
+                     <h5 className="font-bold text-slate-800">API Access Token</h5>
+                     <button className="text-xs text-blue-900 font-medium hover:underline">Regenerate</button>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white border border-slate-200 p-2 rounded-lg">
+                     <Key size={16} className="text-slate-400" />
+                     <code className="text-xs text-slate-600 font-mono flex-1">sk_live_51Msz...x92a</code>
+                     <button className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600 hover:text-slate-900">Copy</button>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">Use this token to authenticate requests to the BuildMyBot API.</p>
+               </div>
+             </div>
           )}
 
           {/* Placeholder for other tabs */}

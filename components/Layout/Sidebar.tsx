@@ -1,6 +1,7 @@
 import React from 'react';
 import { LayoutDashboard, MessageSquare, Users, TrendingUp, Settings, Briefcase, Bot, Megaphone, Globe, Shield, ShoppingBag, Phone, X } from 'lucide-react';
-import { UserRole } from '../../types';
+import { UserRole, User } from '../../types';
+import { PLANS } from '../../constants';
 
 interface SidebarProps {
   currentView: string;
@@ -8,9 +9,11 @@ interface SidebarProps {
   role: UserRole;
   isOpen: boolean;
   onClose: () => void;
+  user?: User;
+  usage?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, role, isOpen, onClose }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, role, isOpen, onClose, user, usage = 0 }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'bots', label: 'My Bots', icon: Bot },
@@ -39,6 +42,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, role, is
       onClose();
     }
   };
+
+  const planName = user?.plan || 'Free';
+  const planLimit = PLANS[user?.plan || 'FREE']?.conversations || 60;
+  const usagePercent = Math.min(100, Math.round((usage / planLimit) * 100));
 
   return (
     <>
@@ -87,13 +94,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, role, is
           <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
             <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Current Plan</p>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-slate-200 font-bold truncate">Professional</span>
+              <span className="text-slate-200 font-bold truncate capitalize">{planName.toLowerCase()}</span>
               <span className="bg-emerald-900/30 text-emerald-400 text-xs px-2 py-0.5 rounded-full border border-emerald-900/50">Active</span>
             </div>
-            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-blue-600 h-full w-[65%]"></div>
+            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden relative">
+              <div 
+                className={`h-full transition-all duration-500 ${usagePercent > 90 ? 'bg-red-500' : 'bg-blue-600'}`} 
+                style={{width: `${usagePercent}%`}}
+              ></div>
             </div>
-            <p className="text-[10px] text-slate-500 mt-2">650 / 1,000 conversations</p>
+            <p className="text-[10px] text-slate-500 mt-2 flex justify-between">
+               <span>{usage.toLocaleString()} / {planLimit.toLocaleString()} msgs</span>
+               {usagePercent > 90 && <span className="text-red-400 font-bold cursor-pointer hover:underline" onClick={() => setView('billing')}>Upgrade</span>}
+            </p>
           </div>
         </div>
       </div>

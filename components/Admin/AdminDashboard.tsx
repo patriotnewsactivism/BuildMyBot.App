@@ -1,5 +1,5 @@
-import React from 'react';
-import { Users, DollarSign, Server, Activity, AlertTriangle, CheckCircle, Search, Briefcase, Eye, Globe } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, DollarSign, Server, Activity, AlertTriangle, CheckCircle, Search, Briefcase, Eye, Globe, Ban, MoreHorizontal } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const GLOBAL_STATS = [
@@ -18,7 +18,7 @@ const REVENUE_DATA = [
   { month: 'Jun', amount: 42590 },
 ];
 
-const ALL_BUSINESSES = [
+const INITIAL_BUSINESSES = [
   { id: 1, name: 'TechFlow Agency', plan: 'Enterprise', status: 'Active', joined: '2 hrs ago', bots: 12, revenue: '$399' },
   { id: 2, name: 'Dr. Smith Dental', plan: 'Starter', status: 'Active', joined: '5 hrs ago', bots: 1, revenue: '$29' },
   { id: 3, name: 'Pizza Palace', plan: 'Free', status: 'Inactive', joined: '1 day ago', bots: 1, revenue: '$0' },
@@ -26,14 +26,25 @@ const ALL_BUSINESSES = [
   { id: 5, name: 'Startup Inc', plan: 'Executive', status: 'Active', joined: '2 days ago', bots: 8, revenue: '$199' },
 ];
 
-const ALL_PARTNERS = [
+const INITIAL_PARTNERS = [
   { id: 101, name: 'Digital Growth', tier: 'Platinum', clients: 312, earnings: '$12,400', status: 'Active' },
   { id: 102, name: 'Marketer Mike', tier: 'Gold', clients: 156, earnings: '$4,200', status: 'Active' },
   { id: 103, name: 'Local SEO Pros', tier: 'Silver', clients: 89, earnings: '$1,800', status: 'Active' },
-  { id: 104, name: 'Jane Doe', tier: 'Bronze', clients: 12, earnings: '$150', status: 'Pending Approval' },
+  { id: 104, name: 'Jane Doe', tier: 'Bronze', clients: 0, earnings: '$0', status: 'Pending Approval' },
 ];
 
 export const AdminDashboard: React.FC = () => {
+  const [businesses, setBusinesses] = useState(INITIAL_BUSINESSES);
+  const [partners, setPartners] = useState(INITIAL_PARTNERS);
+
+  const handleApprovePartner = (id: number) => {
+    setPartners(partners.map(p => p.id === id ? { ...p, status: 'Active' } : p));
+  };
+
+  const handleToggleBusinessStatus = (id: number) => {
+    setBusinesses(businesses.map(b => b.id === id ? { ...b, status: b.status === 'Active' ? 'Suspended' : 'Active' } : b));
+  };
+
   return (
     <div className="space-y-8 animate-fade-in pb-20">
       <div className="bg-slate-900 text-white p-6 -mx-4 -mt-4 md:-mx-8 md:-mt-8 md:rounded-b-2xl mb-8 shadow-lg">
@@ -154,7 +165,7 @@ export const AdminDashboard: React.FC = () => {
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
-                {ALL_BUSINESSES.map((user) => (
+                {businesses.map((user) => (
                 <tr key={user.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4 font-medium text-slate-800">{user.name}</td>
                     <td className="px-6 py-4">
@@ -167,15 +178,18 @@ export const AdminDashboard: React.FC = () => {
                     <td className="px-6 py-4">{user.bots}</td>
                     <td className="px-6 py-4 font-mono">{user.revenue}</td>
                     <td className="px-6 py-4">
-                    <span className={`flex items-center gap-1.5 ${user.status === 'Active' ? 'text-emerald-600' : 'text-slate-400'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                    <span className={`flex items-center gap-1.5 ${user.status === 'Active' ? 'text-emerald-600' : 'text-red-500'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                         {user.status}
                     </span>
                     </td>
-                    <td className="px-6 py-4">
-                    <button className="text-blue-900 hover:text-blue-700 font-medium flex items-center gap-1">
-                        <Eye size={14}/> View
-                    </button>
+                    <td className="px-6 py-4 flex gap-2">
+                      <button 
+                        onClick={() => handleToggleBusinessStatus(user.id)}
+                        className={`text-xs px-2 py-1 rounded border ${user.status === 'Active' ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
+                      >
+                         {user.status === 'Active' ? 'Suspend' : 'Activate'}
+                      </button>
                     </td>
                 </tr>
                 ))}
@@ -205,7 +219,7 @@ export const AdminDashboard: React.FC = () => {
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
-                {ALL_PARTNERS.map((partner) => (
+                {partners.map((partner) => (
                 <tr key={partner.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4 font-medium text-slate-800">{partner.name}</td>
                     <td className="px-6 py-4">
@@ -223,9 +237,16 @@ export const AdminDashboard: React.FC = () => {
                         <span className={`text-xs ${partner.status === 'Active' ? 'text-emerald-600' : 'text-orange-600'}`}>{partner.status}</span>
                     </td>
                     <td className="px-6 py-4">
-                    <button className="text-blue-900 hover:text-blue-700 font-medium flex items-center gap-1">
-                        <Eye size={14}/> View
-                    </button>
+                      {partner.status === 'Pending Approval' ? (
+                         <button 
+                           onClick={() => handleApprovePartner(partner.id)}
+                           className="bg-blue-900 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-950 shadow-sm"
+                         >
+                            Approve Application
+                         </button>
+                      ) : (
+                        <span className="text-xs text-slate-400">Approved</span>
+                      )}
                     </td>
                 </tr>
                 ))}

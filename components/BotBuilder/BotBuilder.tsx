@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap } from 'lucide-react';
+import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus } from 'lucide-react';
 import { Bot as BotType } from '../../types';
 import { generateBotResponse } from '../../services/geminiService';
 import { AVAILABLE_MODELS } from '../../constants';
@@ -8,12 +8,13 @@ interface BotBuilderProps {
   bots: BotType[];
   onSave: (bot: BotType) => void;
   customDomain?: string;
+  onLeadDetected?: (email: string) => void;
 }
 
 const HUMAN_NAMES = ['Sarah', 'Michael', 'Jessica', 'David', 'Emma', 'James', 'Emily', 'Robert'];
 const AVATAR_COLORS = ['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed', '#db2777'];
 
-export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDomain }) => {
+export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDomain, onLeadDetected }) => {
   const [selectedBotId, setSelectedBotId] = useState<string>(bots[0]?.id || 'new');
   const [activeBot, setActiveBot] = useState<BotType>(bots[0] || {
     id: 'new',
@@ -36,7 +37,18 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   const [testInput, setTestInput] = useState('');
   const [testHistory, setTestHistory] = useState<{role: 'user'|'model', text: string, timestamp: number}[]>([]);
   const [isTesting, setIsTesting] = useState(false);
+  
+  // Knowledge Base State
+  const [kbInput, setKbInput] = useState('');
+  
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Embed Config State
+  const [embedConfig, setEmbedConfig] = useState({
+    position: 'bottom-right',
+    welcomeMessage: 'Hi there! How can I help you today?',
+    buttonStyle: 'rounded-full'
+  });
   
   // Random identity for preview
   const [previewIdentity, setPreviewIdentity] = useState({ name: 'Bot', color: '#1e3a8a' });
@@ -60,11 +72,36 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     }
   }, [testHistory, isTesting]);
 
+  const handleAddKnowledge = () => {
+    if (!kbInput.trim()) return;
+    setActiveBot({
+      ...activeBot,
+      knowledgeBase: [...(activeBot.knowledgeBase || []), kbInput]
+    });
+    setKbInput('');
+  };
+
+  const removeKnowledge = (index: number) => {
+    const newKb = [...(activeBot.knowledgeBase || [])];
+    newKb.splice(index, 1);
+    setActiveBot({
+      ...activeBot,
+      knowledgeBase: newKb
+    });
+  };
+
   const handleTestSend = async () => {
     if (!testInput.trim()) return;
     
     // Fail-safe check
     const isLimitReached = activeBot.maxMessages && testHistory.length >= (activeBot.maxMessages - 1);
+
+    // Detect Email for Lead Capture
+    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
+    const foundEmail = testInput.match(emailRegex);
+    if (foundEmail && onLeadDetected) {
+       onLeadDetected(foundEmail[0]);
+    }
 
     const userMsg = { role: 'user' as const, text: testInput, timestamp: Date.now() };
     const newHistory = [...testHistory, userMsg];
@@ -75,6 +112,9 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     try {
       let systemPromptToUse = activeBot.systemPrompt;
       let userMessageToUse = userMsg.text;
+      
+      // Combine Knowledge Base
+      const context = activeBot.knowledgeBase?.join('\n\n') || '';
 
       if (isLimitReached) {
         systemPromptToUse += " [SYSTEM INSTRUCTION: The conversation limit has been reached. Politely tell the user you have to go now (e.g., meeting, phone call, shift end), but ask them to please leave their email or phone number so a team member can contact them directly. Do not mention 'limit' or 'AI'. Just say you need to run.]";
@@ -85,7 +125,13 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
 
       // Convert history for API (strip timestamps)
       const historyForApi = newHistory.map(h => ({ role: h.role, text: h.text }));
-      const response = await generateBotResponse(systemPromptToUse, historyForApi, userMessageToUse, activeBot.model);
+      const response = await generateBotResponse(
+          systemPromptToUse, 
+          historyForApi, 
+          userMessageToUse, 
+          activeBot.model,
+          context // Pass knowledge base context
+      );
       
       // Calculate remaining delay
       const generationTime = Date.now() - startTime;
@@ -110,17 +156,6 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
       const randomName = HUMAN_NAMES[Math.floor(Math.random() * HUMAN_NAMES.length)];
       const randomColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
       setPreviewIdentity({ name: randomName, color: randomColor });
-    }
-  };
-
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setActiveBot({ ...activeBot, avatar: reader.result as string });
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -345,7 +380,8 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                 <div className="flex-1 bg-slate-50 p-4 overflow-y-auto space-y-4" ref={scrollRef}>
                    {testHistory.length === 0 && (
                      <div className="text-center text-xs text-slate-400 mt-4">
-                       This is a preview of your bot.<br/>Start chatting to test behavior.
+                       This is a preview of your bot.<br/>Start chatting to test behavior.<br/><br/>
+                       <span className="text-blue-500 bg-blue-50 px-2 py-1 rounded">Tip: Type an email to test lead capture!</span>
                      </div>
                    )}
                    {testHistory.map((msg, i) => (
@@ -393,36 +429,153 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
           )}
 
           {activeTab === 'embed' && (
-             <div className="max-w-2xl mx-auto space-y-6">
-                <div className="bg-slate-900 rounded-xl p-6 text-slate-300 font-mono text-sm relative group">
-                  <button className="absolute top-4 right-4 text-slate-500 hover:text-white"><Share2 size={16} /></button>
-                  <p className="text-green-400 mb-2">&lt;!-- BuildMyBot Embed Code --&gt;</p>
-                  <div className="whitespace-pre-wrap break-all">
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                       <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                         <LayoutTemplate size={18} className="text-blue-900" /> Widget Configuration
+                       </h4>
+                       
+                       <div className="space-y-4">
+                          <div>
+                             <label className="block text-sm font-medium text-slate-700 mb-2">Greeting Message</label>
+                             <input 
+                               type="text"
+                               value={embedConfig.welcomeMessage}
+                               onChange={(e) => setEmbedConfig({...embedConfig, welcomeMessage: e.target.value})}
+                               className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900 text-sm"
+                             />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                             <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Position</label>
+                                <select 
+                                  value={embedConfig.position}
+                                  onChange={(e) => setEmbedConfig({...embedConfig, position: e.target.value})}
+                                  className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900 text-sm"
+                                >
+                                  <option value="bottom-right">Bottom Right</option>
+                                  <option value="bottom-left">Bottom Left</option>
+                                </select>
+                             </div>
+                             <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Launcher Style</label>
+                                <select 
+                                  value={embedConfig.buttonStyle}
+                                  onChange={(e) => setEmbedConfig({...embedConfig, buttonStyle: e.target.value})}
+                                  className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900 text-sm"
+                                >
+                                  <option value="rounded-full">Circle</option>
+                                  <option value="rounded-xl">Square</option>
+                                </select>
+                             </div>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Brand Color</label>
+                            <div className="flex gap-2">
+                               {AVATAR_COLORS.map(c => (
+                                 <button
+                                   key={c}
+                                   onClick={() => setActiveBot({...activeBot, themeColor: c})}
+                                   className={`w-8 h-8 rounded-full border-2 transition ${activeBot.themeColor === c ? 'border-slate-800 scale-110' : 'border-transparent'}`}
+                                   style={{backgroundColor: c}}
+                                 />
+                               ))}
+                            </div>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-blue-900 text-sm flex items-start gap-3">
+                       <Globe className="shrink-0 mt-0.5" size={18} />
+                       <div>
+                         <p className="font-bold">White-Label Domain Active</p>
+                         <p>This code is optimized for <strong>{displayDomain}</strong>. Ensure your Vercel DNS settings are configured correctly to serve the script.</p>
+                       </div>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    <div className="bg-slate-900 rounded-xl p-6 text-slate-300 font-mono text-sm relative group h-full">
+                      <div className="absolute top-4 right-4 flex gap-2">
+                        <button className="text-slate-500 hover:text-white" title="Copy Code"><Share2 size={16} /></button>
+                      </div>
+                      <p className="text-green-400 mb-2">&lt;!-- BuildMyBot Embed Code --&gt;</p>
+                      <div className="whitespace-pre-wrap break-all leading-relaxed">
 {`<script>
   window.bmbConfig = {
     botId: "${activeBot.id}",
     theme: "${activeBot.themeColor}",
-    domain: "${displayDomain}"
+    domain: "${displayDomain}",
+    position: "${embedConfig.position}",
+    greeting: "${embedConfig.welcomeMessage}",
+    launcher: "${embedConfig.buttonStyle}"
   };
 </script>
 <script src="https://${displayDomain}/embed.js" async></script>`}
-                  </div>
-                </div>
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-blue-900 text-sm flex items-start gap-3">
-                   <Globe className="shrink-0 mt-0.5" size={18} />
-                   <div>
-                     <p className="font-bold">White-Label Domain Active</p>
-                     <p>This code is optimized for <strong>{displayDomain}</strong>. Ensure your Vercel DNS settings are configured correctly to serve the script.</p>
-                   </div>
+                      </div>
+                    </div>
                 </div>
              </div>
           )}
 
           {activeTab === 'knowledge' && (
-             <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-                <Upload size={48} className="mb-4 opacity-20" />
-                <p>Drag and drop PDF, TXT, or CSV files here to train your bot.</p>
-                <button className="mt-4 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium">Browse Files</button>
+             <div className="max-w-3xl space-y-6">
+                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                      <FileText className="text-blue-900" size={20} />
+                      <h4 className="font-bold text-slate-800">Knowledge Base & Training</h4>
+                    </div>
+                    
+                    <div className="space-y-4">
+                       <div>
+                         <label className="block text-sm font-medium text-slate-700 mb-2">Add Content</label>
+                         <div className="flex gap-2">
+                           <textarea 
+                             value={kbInput}
+                             onChange={(e) => setKbInput(e.target.value)}
+                             placeholder="Paste your FAQ, product details, or pricing here..."
+                             className="flex-1 h-24 rounded-lg border-slate-200 text-sm focus:ring-blue-900 focus:border-blue-900 p-3"
+                           />
+                           <button 
+                             onClick={handleAddKnowledge}
+                             disabled={!kbInput.trim()}
+                             className="px-4 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 transition"
+                           >
+                             <Plus size={20} />
+                           </button>
+                         </div>
+                       </div>
+                       
+                       <div className="bg-slate-50 rounded-lg p-4">
+                         <h5 className="text-xs font-bold text-slate-500 uppercase mb-3">Trained Knowledge ({activeBot.knowledgeBase?.length || 0} items)</h5>
+                         {activeBot.knowledgeBase && activeBot.knowledgeBase.length > 0 ? (
+                           <ul className="space-y-2">
+                             {activeBot.knowledgeBase.map((item, idx) => (
+                               <li key={idx} className="flex justify-between items-start bg-white p-2 rounded border border-slate-200 text-sm">
+                                  <p className="text-slate-600 line-clamp-1 flex-1">{item}</p>
+                                  <button onClick={() => removeKnowledge(idx)} className="text-slate-400 hover:text-red-500 ml-2">
+                                    <Trash2 size={14} />
+                                  </button>
+                               </li>
+                             ))}
+                           </ul>
+                         ) : (
+                           <p className="text-center text-sm text-slate-400 italic py-2">No knowledge added yet. The bot will rely on general AI knowledge.</p>
+                         )}
+                       </div>
+                       
+                       <div className="border-t border-slate-100 pt-4 mt-4">
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Upload Documents</label>
+                          <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 transition cursor-pointer">
+                            <Upload size={32} className="mb-2 opacity-50" />
+                            <p className="text-xs">Drag and drop PDF, TXT, or CSV files here.</p>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
              </div>
           )}
 
