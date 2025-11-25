@@ -173,20 +173,41 @@ export async function POST(
       })
       .eq('id', conversation.id);
 
-    // 12. Check for hot lead and trigger webhook
+    // 12. Check for hot lead and trigger webhook + email
     if (leadInfo.email || leadInfo.phone) {
       const leadScore = calculateLeadScore(messageHistory || [], leadInfo, sentimentScore);
 
-      if (leadScore >= (bot.hot_lead_threshold || 75) && bot.webhook_url) {
+      if (leadScore >= (bot.hot_lead_threshold || 75)) {
         // Trigger webhook asynchronously (don't wait)
-        triggerWebhook(bot.webhook_url, {
-          event: 'hot_lead',
-          bot_id: params.botId,
-          conversation_id: conversation.id,
-          lead: leadInfo,
-          score: leadScore,
-          url: metadata?.url,
-        }).catch(err => console.error('Webhook failed:', err));
+        if (bot.webhook_url) {
+          triggerWebhook(bot.webhook_url, {
+            event: 'hot_lead',
+            bot_id: params.botId,
+            conversation_id: conversation.id,
+            lead: leadInfo,
+            score: leadScore,
+            url: metadata?.url,
+          }).catch(err => console.error('Webhook failed:', err));
+        }
+
+        // Send hot lead email alert to bot owner
+        const { data: owner } = await supabase
+          .from('users')
+          .select('email')
+          .eq('id', bot.user_id)
+          .single();
+
+        if (owner?.email) {
+          const { sendHotLeadAlert } = await import('@/lib/email');
+          sendHotLeadAlert(owner.email, {
+            email: leadInfo.email,
+            phone: leadInfo.phone,
+            score: leadScore,
+            botName: bot.name,
+            conversationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/conversations/${conversation.id}`,
+            messages: (messageHistory || []).map((m: any) => m.content),
+          }).catch(err => console.error('Failed to send lead alert:', err));
+        }
       }
     }
 
