@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createServerSupabaseClient, requireAuth, checkPlanLimits } from '@/lib/auth';
 
 /**
- * GET /api/bots - List all bots for a user
+ * GET /api/bots - List all bots for authenticated user
  */
 export async function GET(request: NextRequest) {
+  // Require authentication
+  const user = await requireAuth(request);
+  if (user instanceof NextResponse) return user; // Return 401 if not authenticated
+
   try {
-    // TODO: Get user ID from session/JWT
-    const userId = request.headers.get('x-user-id') || 'u1'; // Mock for now
+    const supabase = createServerSupabaseClient();
 
     const { data, error } = await supabase
       .from('bots')
       .select('*')
-      .eq('user_id', userId)
-      .eq('deleted_at', null)
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -35,13 +38,14 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/bots - Create a new bot
+ * POST /api/bots - Create a new bot (with plan limit checks)
  */
 export async function POST(request: NextRequest) {
-  try {
-    // TODO: Get user ID from session/JWT
-    const userId = request.headers.get('x-user-id') || 'u1'; // Mock for now
+  // Require authentication
+  const user = await requireAuth(request);
+  if (user instanceof NextResponse) return user; // Return 401 if not authenticated
 
+  try {
     const body = await request.json();
     const {
       name,
@@ -70,13 +74,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Check plan limits (how many bots user can create)
+    // Check plan limits
+    const limits = await checkPlanLimits(user.id, 'bots');
+    if (!limits.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Bot limit reached',
+          message: `You've reached your plan limit of ${limits.limit} bots. Please upgrade to create more.`,
+          current: limits.current,
+          limit: limits.limit,
+        },
+        { status: 403 }
+      );
+    }
 
     // Create bot
+    const supabase = createServerSupabaseClient();
     const { data, error } = await supabase
       .from('bots')
       .insert({
-        user_id: userId,
+        user_id: user.id,
         name,
         type,
         system_prompt: systemPrompt,

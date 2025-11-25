@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createServerSupabaseClient, requireAuth } from '@/lib/auth';
 
 /**
- * GET /api/bots/[id] - Get a specific bot
+ * GET /api/bots/[id] - Get a specific bot for authenticated user
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const user = await requireAuth(request);
+  if (user instanceof NextResponse) return user;
+
   try {
-    const userId = request.headers.get('x-user-id') || 'u1'; // Mock for now
+    const supabase = createServerSupabaseClient();
 
     const { data, error } = await supabase
       .from('bots')
       .select('*')
       .eq('id', params.id)
-      .eq('user_id', userId)
-      .eq('deleted_at', null)
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
       .single();
 
     if (error || !data) {
@@ -37,15 +40,18 @@ export async function GET(
 }
 
 /**
- * PUT /api/bots/[id] - Update a bot
+ * PUT /api/bots/[id] - Update a bot for authenticated user
  */
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const user = await requireAuth(request);
+  if (user instanceof NextResponse) return user;
+
   try {
-    const userId = request.headers.get('x-user-id') || 'u1'; // Mock for now
     const body = await request.json();
+    const supabase = createServerSupabaseClient();
 
     // Remove fields that shouldn't be updated
     const { id, user_id, created_at, ...updateData } = body;
@@ -61,7 +67,7 @@ export async function PUT(
       .from('bots')
       .update(dbUpdateData)
       .eq('id', params.id)
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .select()
       .single();
 
@@ -83,20 +89,23 @@ export async function PUT(
 }
 
 /**
- * DELETE /api/bots/[id] - Soft delete a bot
+ * DELETE /api/bots/[id] - Soft delete a bot for authenticated user
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const user = await requireAuth(request);
+  if (user instanceof NextResponse) return user;
+
   try {
-    const userId = request.headers.get('x-user-id') || 'u1'; // Mock for now
+    const supabase = createServerSupabaseClient();
 
     const { error } = await supabase
       .from('bots')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', params.id)
-      .eq('user_id', userId);
+      .eq('user_id', user.id);
 
     if (error) {
       return NextResponse.json(
