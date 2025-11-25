@@ -125,9 +125,41 @@ export async function POST(
       .order('created_at', { ascending: true })
       .limit(20);
 
-    // 7. Prepare messages for OpenAI
+    // 7. Search knowledge base for relevant context (RAG)
+    let knowledgeContext = '';
+    try {
+      const ragResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/knowledge-base/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: message,
+          botId: params.botId,
+          limit: 3,
+        }),
+      });
+
+      if (ragResponse.ok) {
+        const { results, method } = await ragResponse.json();
+
+        if (results && results.length > 0) {
+          knowledgeContext = '\n\nRelevant information from your knowledge base:\n\n';
+
+          results.forEach((chunk: any, index: number) => {
+            const fileName = chunk.file?.file_name || chunk.file_name || 'Unknown source';
+            knowledgeContext += `[Source ${index + 1}: ${fileName}]\n${chunk.content}\n\n`;
+          });
+
+          knowledgeContext += 'Please use this information to provide accurate answers. If the information is relevant, cite the source in your response.';
+        }
+      }
+    } catch (error) {
+      console.error('RAG search error:', error);
+      // Continue without RAG if search fails
+    }
+
+    // 8. Prepare messages for OpenAI
     const aiMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-      { role: 'system', content: bot.system_prompt },
+      { role: 'system', content: bot.system_prompt + knowledgeContext },
     ];
 
     // Add lead capture prompt if configured
@@ -146,24 +178,24 @@ export async function POST(
       });
     });
 
-    // 8. Generate AI response
+    // 9. Generate AI response
     const aiResponse = await generateChatResponse(
       aiMessages,
       bot.model,
       bot.temperature
     );
 
-    // 9. Save AI message
+    // 10. Save AI message
     await supabase.from('messages').insert({
       conversation_id: conversation.id,
       role: 'assistant',
       content: aiResponse,
     });
 
-    // 10. Calculate sentiment score (basic implementation)
+    // 11. Calculate sentiment score (basic implementation)
     const sentimentScore = calculateSentiment(message, aiResponse);
 
-    // 11. Update conversation stats
+    // 12. Update conversation stats
     await supabase
       .from('conversations')
       .update({
@@ -173,7 +205,7 @@ export async function POST(
       })
       .eq('id', conversation.id);
 
-    // 12. Check for hot lead and trigger webhook + email
+    // 13. Check for hot lead and trigger webhook + email
     if (leadInfo.email || leadInfo.phone) {
       const leadScore = calculateLeadScore(messageHistory || [], leadInfo, sentimentScore);
 
@@ -211,7 +243,7 @@ export async function POST(
       }
     }
 
-    // 13. Log API usage for billing
+    // 14. Log API usage for billing
     await logApiUsage(supabase, bot.user_id, params.botId, 'conversation');
 
     return NextResponse.json({
