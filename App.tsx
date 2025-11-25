@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from './components/Layout/Sidebar';
 import { BotBuilder } from './components/BotBuilder/BotBuilder';
 import { ResellerDashboard } from './components/Reseller/ResellerDashboard';
@@ -14,10 +14,10 @@ import { Settings } from './components/Settings/Settings';
 import { LandingPage } from './components/Landing/LandingPage';
 import { PartnerProgramPage } from './components/Landing/PartnerProgramPage';
 import { PartnerSignup } from './components/Auth/PartnerSignup';
-import { User, UserRole, PlanType, Bot as BotType, ResellerStats } from './types';
+import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation } from './types';
 import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu } from 'lucide-react';
+import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame } from 'lucide-react';
 
 const MOCK_USER: User = {
   id: 'u1',
@@ -61,6 +61,50 @@ const MOCK_BOTS: BotType[] = [
   },
 ];
 
+const MOCK_LEADS: Lead[] = [
+    { id: '1', name: 'Sarah Connor', email: 'sarah@skynet.com', phone: '+1 555-0123', score: 95, status: 'New', sourceBotId: 'b1', createdAt: '2024-05-15T10:00:00Z' },
+    { id: '2', name: 'John Doe', email: 'john.doe@example.com', phone: '+1 555-0199', score: 45, status: 'Contacted', sourceBotId: 'b2', createdAt: '2024-05-14T08:30:00Z' },
+    { id: '3', name: 'Emily Blunt', email: 'emily@hollywood.com', phone: '', score: 82, status: 'Qualified', sourceBotId: 'b1', createdAt: '2024-05-12T14:20:00Z' },
+    { id: '4', name: 'Michael Scott', email: 'michael@dunder.com', phone: '+1 555-9999', score: 10, status: 'Closed', sourceBotId: 'b1', createdAt: '2024-05-10T09:00:00Z' },
+    { id: '5', name: 'Dwight Schrute', email: 'beetfarmer@farms.com', phone: '+1 555-2342', score: 65, status: 'New', sourceBotId: 'b2', createdAt: '2024-05-16T11:45:00Z' },
+];
+
+const INITIAL_CHAT_LOGS: Conversation[] = [
+    {
+      id: 'c1',
+      botId: 'b1',
+      sentiment: 'Positive',
+      timestamp: Date.now() - 1000 * 60 * 5,
+      messages: [
+        { role: 'user', text: 'Hi, I need help with pricing.', timestamp: Date.now() - 1000 * 60 * 5 },
+        { role: 'model', text: 'Sure! Our Enterprise plan is $399/mo and includes unlimited bots. Would you like to know more?', timestamp: Date.now() - 1000 * 60 * 4 },
+        { role: 'user', text: 'That sounds perfect. Does it include SLA?', timestamp: Date.now() - 1000 * 60 * 3 },
+        { role: 'model', text: 'Yes, the Enterprise plan includes Priority SLA support and a dedicated account manager.', timestamp: Date.now() - 1000 * 60 * 2 },
+      ]
+    },
+    {
+      id: 'c2',
+      botId: 'b1',
+      sentiment: 'Neutral',
+      timestamp: Date.now() - 1000 * 60 * 60,
+      messages: [
+        { role: 'user', text: 'Where are you located?', timestamp: Date.now() - 1000 * 60 * 60 },
+        { role: 'model', text: 'We are a digital-first company with headquarters in San Francisco.', timestamp: Date.now() - 1000 * 60 * 59 },
+      ]
+    },
+    {
+      id: 'c3',
+      botId: 'b2',
+      sentiment: 'Negative',
+      timestamp: Date.now() - 1000 * 60 * 60 * 24,
+      messages: [
+        { role: 'user', text: 'My login is not working.', timestamp: Date.now() - 1000 * 60 * 60 * 24 },
+        { role: 'model', text: 'I apologize. Have you tried resetting your password?', timestamp: Date.now() - 1000 * 60 * 60 * 24 },
+        { role: 'user', text: 'Yes, it is still broken. This sucks.', timestamp: Date.now() - 1000 * 60 * 60 * 24 },
+      ]
+    }
+];
+
 const MOCK_RESELLER_STATS: ResellerStats = {
   totalClients: 64,
   totalRevenue: 5200,
@@ -75,9 +119,15 @@ function App() {
   const [showPartnerSignup, setShowPartnerSignup] = useState(false);
   const [user, setUser] = useState<User>(MOCK_USER);
   const [bots, setBots] = useState<BotType[]>(MOCK_BOTS);
+  const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS);
+  const [chatLogs, setChatLogs] = useState<Conversation[]>(INITIAL_CHAT_LOGS);
+  const [notification, setNotification] = useState<string | null>(null);
   
   // Mobile Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Calculated Stats
+  const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
 
   // Handle Admin Portal Access
   const handleAdminLogin = () => {
@@ -92,6 +142,49 @@ function App() {
     setCurrentView('reseller');
     setShowPartnerSignup(false);
     setShowPartnerPage(false);
+  };
+
+  const handleInstallTemplate = (template: any) => {
+    const newBot: BotType = {
+      id: `b${Date.now()}`,
+      name: template.name,
+      type: template.category === 'All' ? 'Custom' : template.category,
+      systemPrompt: `You are a helpful assistant specialized in ${template.category}. ${template.description}. Act professionally and help the user achieve their goals.`,
+      model: 'gpt-4o-mini',
+      temperature: 0.7,
+      knowledgeBase: [],
+      active: true,
+      conversationsCount: 0,
+      themeColor: ['#1e3a8a', '#be123c', '#047857', '#d97706'][Math.floor(Math.random() * 4)],
+      maxMessages: 20,
+      randomizeIdentity: true
+    };
+    setBots([...bots, newBot]);
+    setNotification(`Installed "${template.name}" successfully!`);
+    setTimeout(() => setNotification(null), 3000);
+    setCurrentView('bots');
+  };
+
+  const handleUpdateLead = (updatedLead: Lead) => {
+    setLeads(leads.map(l => l.id === updatedLead.id ? updatedLead : l));
+  };
+
+  const handleLeadDetected = (email: string) => {
+    const existing = leads.find(l => l.email === email);
+    if (!existing) {
+      const newLead: Lead = {
+        id: Date.now().toString(),
+        name: 'Website Visitor', // In a real app, we'd extract this too
+        email: email,
+        score: 85, // High score for direct entry
+        status: 'New',
+        sourceBotId: 'test-bot',
+        createdAt: new Date().toISOString()
+      };
+      setLeads(prev => [newLead, ...prev]);
+      setNotification("New Hot Lead Detected from Chat! 🔥");
+      setTimeout(() => setNotification(null), 4000);
+    }
   };
 
   // If not logged in, show Public Landing Page or Partner Page
@@ -131,8 +224,8 @@ function App() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
          {[
-           { label: 'Conversations (Session)', val: '652', icon: MessageSquare, color: 'blue', change: '+12%' },
-           { label: 'Leads Captured', val: '142', icon: Users, color: 'sky', change: '+8%' },
+           { label: 'Conversations (Session)', val: totalConversations.toString(), icon: MessageSquare, color: 'blue', change: '+12%' },
+           { label: 'Leads Captured', val: leads.length.toString(), icon: Users, color: 'sky', change: '+8%' },
            { label: 'Avg. Response Time', val: '1.2s', icon: TrendingUp, color: 'emerald', change: '-5%' },
            { label: 'Est. Savings', val: '$3,200', icon: DollarSign, color: 'slate', change: '+22%' },
          ].map((stat, i) => (
@@ -195,6 +288,58 @@ function App() {
            </button>
         </div>
       </div>
+    </div>
+  );
+
+  return (
+    <div className="flex h-screen bg-slate-50 relative">
+      <Sidebar 
+        currentView={currentView} 
+        setView={setCurrentView} 
+        role={user.role} 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+        user={user}
+        usage={totalConversations}
+      />
+      
+      {/* Toast Notification */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 bg-slate-900 text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3 animate-fade-in border border-slate-700">
+           {notification.includes('Lead') ? <Flame className="text-orange-500" size={20} /> : <CheckCircle className="text-emerald-400" size={20} />}
+           <span className="font-medium text-sm">{notification}</span>
+        </div>
+      )}
+
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 w-full bg-slate-900 text-white p-4 flex items-center justify-between z-30 shadow-md">
+         <div className="flex items-center gap-2 font-bold">
+            <BotIcon size={20} /> BuildMyBot
+         </div>
+         <button onClick={() => setIsSidebarOpen(true)}><Menu size={24} /></button>
+      </div>
+
+      <main className="flex-1 overflow-y-auto pt-16 md:pt-0 p-4 md:p-8 relative">
+        {currentView === 'dashboard' && <Dashboard />}
+        {currentView === 'bots' && (
+           <BotBuilder 
+             bots={bots} 
+             onSave={(updatedBot) => setBots(bots.map(b => b.id === updatedBot.id ? updatedBot : b))} 
+             customDomain={user.customDomain} 
+             onLeadDetected={handleLeadDetected}
+           />
+        )}
+        {currentView === 'reseller' && <ResellerDashboard user={user} stats={MOCK_RESELLER_STATS} />}
+        {currentView === 'marketing' && <MarketingTools />}
+        {currentView === 'leads' && <LeadsCRM leads={leads} onUpdateLead={handleUpdateLead} />}
+        {currentView === 'website' && <WebsiteBuilder />}
+        {currentView === 'marketplace' && <Marketplace onInstall={handleInstallTemplate} />}
+        {currentView === 'phone' && <PhoneAgent />}
+        {currentView === 'chat-logs' && <ChatLogs conversations={chatLogs} />}
+        {currentView === 'billing' && <Billing />}
+        {currentView === 'admin' && <AdminDashboard />}
+        {currentView === 'settings' && <Settings user={user} onUpdateUser={(u) => setUser(u)} />}
+      </main>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ShoppingBag, Star, Download, Eye, Tag } from 'lucide-react';
-import { Bot } from '../../types';
+import { Search, ShoppingBag, Star, Download, Eye, Tag, Zap } from 'lucide-react';
 
 interface Template {
   id: string;
@@ -11,6 +10,10 @@ interface Template {
   installs: number;
   rating: number;
   tags: string[];
+}
+
+interface MarketplaceProps {
+  onInstall?: (template: Template) => void;
 }
 
 const TEMPLATES: Template[] = [
@@ -38,7 +41,7 @@ const TEMPLATES: Template[] = [
     id: 't3',
     name: 'Dental Clinic Front Desk',
     category: 'Healthcare',
-    description: ' compassionate receptionist that handles emergencies, bookings, and insurance FAQs.',
+    description: 'Compassionate receptionist that handles emergencies, bookings, and insurance FAQs.',
     price: 29,
     installs: 2100,
     rating: 4.7,
@@ -57,7 +60,7 @@ const TEMPLATES: Template[] = [
   {
     id: 't5',
     name: 'Gym Membership Closer',
-    category: 'Health & Fitness',
+    category: 'Fitness',
     description: 'High-energy sales agent designed to book trial sessions and overcome pricing objections.',
     price: 19,
     installs: 520,
@@ -73,10 +76,70 @@ const TEMPLATES: Template[] = [
     installs: 1800,
     rating: 4.8,
     tags: ['Booking', 'Food']
+  },
+  {
+    id: 't7',
+    name: 'Auto Service Scheduler',
+    category: 'Automotive',
+    description: 'Books service appointments, provides maintenance quotes, and handles inventory queries.',
+    price: 39,
+    installs: 410,
+    rating: 4.7,
+    tags: ['Booking', 'Service']
+  },
+  {
+    id: 't8',
+    name: 'Campaign Connector',
+    category: 'Politicians',
+    description: 'Engages constituents, explains policy positions, and collects donation pledges 24/7.',
+    price: 99,
+    installs: 150,
+    rating: 4.9,
+    tags: ['Engagement', 'Donations']
+  },
+  {
+    id: 't9',
+    name: 'Course Enrollment Bot',
+    category: 'Education',
+    description: 'Helps students find the right course, answers curriculum questions, and assists with enrollment.',
+    price: 29,
+    installs: 630,
+    rating: 4.6,
+    tags: ['Education', 'Sales']
+  },
+  {
+    id: 't10',
+    name: 'Legal Intake Specialist',
+    category: 'Legal',
+    description: 'Securely screens potential clients for case viability and schedules consultations.',
+    price: 79,
+    installs: 320,
+    rating: 4.8,
+    tags: ['Legal', 'Intake']
+  },
+  {
+    id: 't11',
+    name: 'Fan Engagement Bot',
+    category: 'Influencer',
+    description: 'Replies to fans, promotes merchandise drops, and collects email subscribers automatically.',
+    price: 19,
+    installs: 1100,
+    rating: 4.7,
+    tags: ['Social', 'Engagement']
+  },
+  {
+    id: 't12',
+    name: 'Emergency Dispatch Bot',
+    category: 'Home Services',
+    description: 'Immediate response for plumbers and HVAC. Triage emergencies and dispatch technicians.',
+    price: 49,
+    installs: 890,
+    rating: 4.9,
+    tags: ['Service', 'Urgent']
   }
 ];
 
-export const Marketplace: React.FC = () => {
+export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
   const [filter, setFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -96,8 +159,8 @@ export const Marketplace: React.FC = () => {
           <p className="text-slate-500">Jumpstart your bot with pre-trained industry templates.</p>
         </div>
         <div className="flex gap-2">
-           <button className="px-4 py-2 bg-blue-900 text-white rounded-lg font-medium hover:bg-blue-950 shadow-sm transition">
-             Upload Template
+           <button className="px-4 py-2 bg-blue-900 text-white rounded-lg font-medium hover:bg-blue-950 shadow-sm transition flex items-center gap-2">
+             <Zap size={16} /> Request Custom Template
            </button>
         </div>
       </div>
@@ -114,7 +177,7 @@ export const Marketplace: React.FC = () => {
             className="w-full pl-10 pr-4 py-2 rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900"
           />
         </div>
-        <div className="flex gap-2 w-full md:w-auto overflow-x-auto no-scrollbar">
+        <div className="flex gap-2 w-full md:w-auto overflow-x-auto no-scrollbar pb-2 md:pb-0">
            {categories.map(cat => (
              <button
                key={cat}
@@ -163,7 +226,10 @@ export const Marketplace: React.FC = () => {
                    <button className="p-2 text-slate-500 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition">
                      <Eye size={18} />
                    </button>
-                   <button className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-800 hover:text-white transition shadow-sm">
+                   <button 
+                     onClick={() => onInstall && onInstall(template)}
+                     className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-800 hover:text-white transition shadow-sm"
+                   >
                      <Download size={16} /> Clone
                    </button>
                 </div>

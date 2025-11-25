@@ -7,14 +7,21 @@ export const generateBotResponse = async (
   systemPrompt: string,
   history: { role: 'user' | 'model'; text: string }[],
   lastMessage: string,
-  modelName: string = 'gpt-4o-mini'
+  modelName: string = 'gpt-4o-mini',
+  context?: string // New: Knowledge Base context
 ): Promise<string> => {
   if (!API_KEY) return "Configuration Error: OPENAI_API_KEY is missing. Please set this in your Vercel environment variables.";
 
   try {
+    // Inject Context into System Prompt if available
+    let finalSystemPrompt = systemPrompt;
+    if (context && context.trim().length > 0) {
+      finalSystemPrompt += `\n\n[CONTEXT / KNOWLEDGE BASE]\nUse the following information to answer user questions. If the answer is not in this context, say you don't know, but offer to take their contact info.\n\n${context}`;
+    }
+
     // Map internal roles to OpenAI roles
     const messages = [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: finalSystemPrompt },
       ...history.map(h => ({
         role: h.role === 'model' ? 'assistant' : 'user',
         content: h.text
