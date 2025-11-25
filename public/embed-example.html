@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BuildMyBot - Embed Widget Example</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: #f9fafb;
+    }
+
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      font-size: 18px;
+      margin-bottom: 32px;
+    }
+
+    .code-block {
+      background: #1f2937;
+      color: #f9fafb;
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 20px 0;
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .code-block code {
+      color: #10b981;
+    }
+
+    .section {
+      margin: 40px 0;
+    }
+
+    .section h2 {
+      color: #1f2937;
+      margin-bottom: 16px;
+    }
+
+    .section p {
+      color: #6b7280;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .warning {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 16px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+
+    .warning strong {
+      color: #92400e;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .warning p {
+      color: #78350f;
+      margin: 0;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .feature {
+      background: #f3f4f6;
+      padding: 16px;
+      border-radius: 8px;
+    }
+
+    .feature h3 {
+      color: #1f2937;
+      font-size: 16px;
+      margin: 0 0 8px 0;
+    }
+
+    .feature p {
+      color: #6b7280;
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .button {
+      display: inline-block;
+      background: #1e3a8a;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .button:hover {
+      background: #1e40af;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 BuildMyBot Embed Widget</h1>
+    <p class="subtitle">Add an AI chatbot to your website in 2 minutes</p>
+
+    <div class="section">
+      <h2>Quick Start</h2>
+      <p>Add this code snippet to your website, just before the closing <code>&lt;/body&gt;</code> tag:</p>
+
+      <div class="code-block">
+<span style="color: #9ca3af;">&lt;!-- BuildMyBot Widget --&gt;</span>
+<span style="color: #60a5fa;">&lt;script&gt;</span>
+  window.buildMyBotConfig = {
+    <span style="color: #10b981;">botId</span>: <code>'YOUR_BOT_ID_HERE'</code>,
+    <span style="color: #9ca3af;">// Optional: custom API URL</span>
+    <span style="color: #9ca3af;">// apiUrl: 'https://yourdomain.com'</span>
+  };
+<span style="color: #60a5fa;">&lt;/script&gt;</span>
+<span style="color: #60a5fa;">&lt;script</span> <span style="color: #10b981;">src</span>=<code>"https://buildmybot.app/embed.js"</code><span style="color: #60a5fa;">&gt;&lt;/script&gt;</span>
+      </div>
+
+      <div class="warning">
+        <strong>⚠️ Important:</strong>
+        <p>Replace <code>YOUR_BOT_ID_HERE</code> with your actual bot ID from the BuildMyBot dashboard.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Features</h2>
+      <div class="features">
+        <div class="feature">
+          <h3>🎨 Customizable</h3>
+          <p>Matches your brand colors and style</p>
+        </div>
+        <div class="feature">
+          <h3>📱 Mobile-Friendly</h3>
+          <p>Works perfectly on all devices</p>
+        </div>
+        <div class="feature">
+          <h3>💬 Persistent Chats</h3>
+          <p>Conversations saved across visits</p>
+        </div>
+        <div class="feature">
+          <h3>🚀 Fast & Lightweight</h3>
+          <p>Under 10KB, loads instantly</p>
+        </div>
+        <div class="feature">
+          <h3>📊 Lead Capture</h3>
+          <p>Automatically extracts emails & phones</p>
+        </div>
+        <div class="feature">
+          <h3>🔔 Real-Time Alerts</h3>
+          <p>Get notified of hot leads instantly</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Advanced Configuration</h2>
+      <p>You can customize the widget behavior with additional options:</p>
+
+      <div class="code-block">
+<span style="color: #60a5fa;">&lt;script&gt;</span>
+  window.buildMyBotConfig = {
+    <span style="color: #10b981;">botId</span>: <code>'YOUR_BOT_ID_HERE'</code>,
+    <span style="color: #10b981;">apiUrl</span>: <code>'https://yourdomain.com'</code>,
+    <span style="color: #9ca3af;">// More options coming soon...</span>
+  };
+<span style="color: #60a5fa;">&lt;/script&gt;</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Example</h2>
+      <p>This page has a live chatbot widget! Look for the blue chat button in the bottom-right corner. Click it to see the widget in action.</p>
+    </div>
+
+    <div class="section">
+      <h2>Browser Support</h2>
+      <p>The widget works on all modern browsers:</p>
+      <ul>
+        <li>Chrome (latest)</li>
+        <li>Firefox (latest)</li>
+        <li>Safari (latest)</li>
+        <li>Edge (latest)</li>
+        <li>Mobile browsers (iOS Safari, Chrome Mobile)</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Need Help?</h2>
+      <p>Check out our documentation or contact support:</p>
+      <a href="https://buildmybot.app/docs" class="button">View Documentation</a>
+    </div>
+  </div>
+
+  <!-- BuildMyBot Widget - Example Implementation -->
+  <script>
+    window.buildMyBotConfig = {
+      botId: 'demo-bot-id', // Replace with your actual bot ID
+      apiUrl: 'http://localhost:3000' // Update for production
+    };
+  </script>
+  <script src="/embed.js"></script>
+</body>
+</html>
