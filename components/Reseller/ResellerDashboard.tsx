@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DollarSign, Users, TrendingUp, Copy, CheckCircle, Shield, Lock, CreditCard, ChevronRight, AlertTriangle, Building } from 'lucide-react';
+import { DollarSign, Users, TrendingUp, Copy, CheckCircle, Shield, Lock, CreditCard, ChevronRight, AlertTriangle, Building, LayoutDashboard } from 'lucide-react';
 import { ResellerStats, User } from '../../types';
 import { RESELLER_TIERS } from '../../constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -132,6 +132,7 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats }) => {
                          <th className="px-6 py-4">Joined</th>
                          <th className="px-6 py-4">Status</th>
                          <th className="px-6 py-4">Your Commission</th>
+                         <th className="px-6 py-4 text-right">Actions</th>
                      </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-100 text-sm">
@@ -159,6 +160,11 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats }) => {
                                 </span>
                              </td>
                              <td className="px-6 py-4 font-mono font-medium text-slate-700">{client.commission}</td>
+                             <td className="px-6 py-4 text-right">
+                                <button className="text-xs flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md transition ml-auto font-medium">
+                                  <LayoutDashboard size={14} /> Manage
+                                </button>
+                             </td>
                          </tr>
                      ))}
                  </tbody>

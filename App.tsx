@@ -128,6 +128,11 @@ function App() {
 
   // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
+  const totalLeads = leads.length;
+  // Estimate savings: $5 per conversation (support cost)
+  const estSavings = totalConversations * 5; 
+  // Avg Response Time (Mocked but variable)
+  const avgResponseTime = "1.2s";
 
   // Handle Admin Portal Access
   const handleAdminLogin = () => {
@@ -224,10 +229,10 @@ function App() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
          {[
-           { label: 'Conversations (Session)', val: totalConversations.toString(), icon: MessageSquare, color: 'blue', change: '+12%' },
-           { label: 'Leads Captured', val: leads.length.toString(), icon: Users, color: 'sky', change: '+8%' },
-           { label: 'Avg. Response Time', val: '1.2s', icon: TrendingUp, color: 'emerald', change: '-5%' },
-           { label: 'Est. Savings', val: '$3,200', icon: DollarSign, color: 'slate', change: '+22%' },
+           { label: 'Conversations', val: totalConversations.toLocaleString(), icon: MessageSquare, color: 'blue', change: '+12%' },
+           { label: 'Leads Captured', val: totalLeads.toLocaleString(), icon: Users, color: 'sky', change: '+8%' },
+           { label: 'Avg. Response Time', val: avgResponseTime, icon: TrendingUp, color: 'emerald', change: '-5%' },
+           { label: 'Est. Savings', val: `$${estSavings.toLocaleString()}`, icon: DollarSign, color: 'slate', change: '+22%' },
          ].map((stat, i) => (
            <div key={i} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
               <div className="flex justify-between items-start mb-4">
@@ -270,7 +275,7 @@ function App() {
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
           <h3 className="font-semibold text-slate-800 mb-4">Active Bots</h3>
           <div className="space-y-4 flex-1">
-             {bots.map(bot => (
+             {bots.slice(0, 4).map(bot => (
                <div key={bot.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100 hover:border-blue-200 transition cursor-pointer" onClick={() => setCurrentView('bots')}>
                   <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-sm" style={{backgroundColor: bot.themeColor}}>
                     {bot.name.charAt(0)}
@@ -279,12 +284,12 @@ function App() {
                     <p className="font-medium text-sm text-slate-800">{bot.name}</p>
                     <p className="text-xs text-slate-500">{bot.conversationsCount} conversations</p>
                   </div>
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-emerald-100"></div>
+                  <div className={`w-2 h-2 rounded-full ring-2 ${bot.active ? 'bg-emerald-500 ring-emerald-100' : 'bg-slate-300 ring-slate-100'}`}></div>
                </div>
              ))}
           </div>
            <button onClick={() => setCurrentView('bots')} className="w-full mt-4 py-2 text-sm text-blue-900 font-medium hover:bg-blue-50 rounded-lg transition flex items-center justify-center gap-1">
-             View All Bots <ArrowRight size={14} />
+             View All {bots.length} Bots <ArrowRight size={14} />
            </button>
         </div>
       </div>
