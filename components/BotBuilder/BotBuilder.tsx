@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus } from 'lucide-react';
+import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link } from 'lucide-react';
 import { Bot as BotType } from '../../types';
 import { generateBotResponse } from '../../services/geminiService';
 import { AVAILABLE_MODELS } from '../../constants';
@@ -13,6 +13,14 @@ interface BotBuilderProps {
 
 const HUMAN_NAMES = ['Sarah', 'Michael', 'Jessica', 'David', 'Emma', 'James', 'Emily', 'Robert'];
 const AVATAR_COLORS = ['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed', '#db2777'];
+
+const PERSONAS = [
+  { id: 'support', name: 'Customer Support Agent', prompt: 'You are a helpful customer support agent for {company}. Be polite, patient, and concise. Your goal is to resolve issues quickly. If you do not know the answer, ask for their contact info.' },
+  { id: 'sales', name: 'Sales Representative', prompt: 'You are a top-performing sales representative for {company}. Your goal is to qualify leads and close deals. Be persuasive but not pushy. Focus on value and benefits. Always try to get a meeting booked.' },
+  { id: 'receptionist', name: 'AI Receptionist', prompt: 'You are the front desk receptionist for {company}. Be warm and welcoming. Help schedule appointments and route calls. Keep responses short and professional.' },
+  { id: 'hr', name: 'HR Assistant', prompt: 'You are a Human Resources assistant. Answer employee questions about benefits, holidays, and company policy. Maintain strict confidentiality and professionalism.' },
+  { id: 'tech', name: 'Technical Support', prompt: 'You are a Tier 1 Technical Support agent. Walk users through troubleshooting steps logically. Ask clarifying questions to diagnose the issue.' },
+];
 
 export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDomain, onLeadDetected }) => {
   const [selectedBotId, setSelectedBotId] = useState<string>(bots[0]?.id || 'new');
@@ -40,6 +48,8 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   
   // Knowledge Base State
   const [kbInput, setKbInput] = useState('');
+  const [urlInput, setUrlInput] = useState('');
+  const [isScraping, setIsScraping] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -72,6 +82,17 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     }
   }, [testHistory, isTesting]);
 
+  const handleApplyPersona = (personaId: string) => {
+    const persona = PERSONAS.find(p => p.id === personaId);
+    if (persona) {
+      setActiveBot({
+        ...activeBot,
+        systemPrompt: persona.prompt.replace('{company}', 'our company'),
+        type: persona.name as any
+      });
+    }
+  };
+
   const handleAddKnowledge = () => {
     if (!kbInput.trim()) return;
     setActiveBot({
@@ -79,6 +100,21 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
       knowledgeBase: [...(activeBot.knowledgeBase || []), kbInput]
     });
     setKbInput('');
+  };
+
+  const handleScrapeUrl = () => {
+    if (!urlInput.trim()) return;
+    setIsScraping(true);
+    // Simulate scraping delay
+    setTimeout(() => {
+      const simulatedContent = `[Scraped from ${urlInput}]: \n- Pricing: Starter $29, Pro $99, Executive $199.\n- Contact: support@${urlInput.replace('https://', '').split('/')[0]}\n- Hours: Mon-Fri 9am-5pm EST.`;
+      setActiveBot({
+        ...activeBot,
+        knowledgeBase: [...(activeBot.knowledgeBase || []), simulatedContent]
+      });
+      setUrlInput('');
+      setIsScraping(false);
+    }, 1500);
   };
 
   const removeKnowledge = (index: number) => {
@@ -160,7 +196,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   };
 
   return (
-    <div className="flex h-[calc(100vh-2rem)] gap-6">
+    <div className="flex h-[calc(100vh-6rem)] gap-6">
       {/* Bot List Side */}
       <div className="w-64 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
@@ -263,12 +299,19 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                   </div>
                 </div>
                 
-                <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-lg flex items-start gap-2">
-                  <div className="mt-0.5 text-emerald-600"><Zap size={14} /></div>
-                  <div>
-                    <p className="text-xs font-bold text-emerald-900">Active Engine: {AVAILABLE_MODELS.find(m => m.id === activeBot.model)?.name}</p>
-                    <p className="text-[10px] text-emerald-700">{AVAILABLE_MODELS.find(m => m.id === activeBot.model)?.description}</p>
-                  </div>
+                <div className="mb-6">
+                   <label className="block text-sm font-medium text-slate-700 mb-2">Staff Role Template</label>
+                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {PERSONAS.map(p => (
+                        <button
+                          key={p.id}
+                          onClick={() => handleApplyPersona(p.id)}
+                          className="px-3 py-2 text-xs border border-slate-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 hover:text-blue-900 transition text-left"
+                        >
+                          {p.name}
+                        </button>
+                      ))}
+                   </div>
                 </div>
 
                 <label className="block text-sm font-medium text-slate-700 mb-2">System Instructions</label>
@@ -529,9 +572,37 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                       <h4 className="font-bold text-slate-800">Knowledge Base & Training</h4>
                     </div>
                     
-                    <div className="space-y-4">
+                    <div className="space-y-6">
+                       {/* Web Scraper */}
                        <div>
-                         <label className="block text-sm font-medium text-slate-700 mb-2">Add Content</label>
+                         <label className="block text-sm font-medium text-slate-700 mb-2">Train from Website (URL)</label>
+                         <div className="flex gap-2">
+                           <div className="relative flex-1">
+                             <Link className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                             <input 
+                               type="url"
+                               value={urlInput}
+                               onChange={(e) => setUrlInput(e.target.value)}
+                               placeholder="https://yourwebsite.com/pricing"
+                               className="w-full pl-9 pr-4 py-2 rounded-lg border-slate-200 text-sm focus:ring-blue-900 focus:border-blue-900"
+                             />
+                           </div>
+                           <button 
+                             onClick={handleScrapeUrl}
+                             disabled={!urlInput.trim() || isScraping}
+                             className="px-4 bg-blue-900 text-white rounded-lg hover:bg-blue-950 disabled:opacity-50 transition flex items-center gap-2 text-sm font-medium"
+                           >
+                             {isScraping ? <RefreshCcw className="animate-spin" size={16} /> : <Globe size={16} />}
+                             Import
+                           </button>
+                         </div>
+                         <p className="text-xs text-slate-500 mt-1">We'll scan the page and add the content to the knowledge base automatically.</p>
+                       </div>
+
+                       <hr className="border-slate-100" />
+
+                       <div>
+                         <label className="block text-sm font-medium text-slate-700 mb-2">Add Manual Content</label>
                          <div className="flex gap-2">
                            <textarea 
                              value={kbInput}
@@ -555,8 +626,10 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                            <ul className="space-y-2">
                              {activeBot.knowledgeBase.map((item, idx) => (
                                <li key={idx} className="flex justify-between items-start bg-white p-2 rounded border border-slate-200 text-sm">
-                                  <p className="text-slate-600 line-clamp-1 flex-1">{item}</p>
-                                  <button onClick={() => removeKnowledge(idx)} className="text-slate-400 hover:text-red-500 ml-2">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-slate-600 line-clamp-2">{item}</p>
+                                  </div>
+                                  <button onClick={() => removeKnowledge(idx)} className="text-slate-400 hover:text-red-500 ml-2 shrink-0">
                                     <Trash2 size={14} />
                                   </button>
                                </li>
@@ -569,8 +642,8 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                        
                        <div className="border-t border-slate-100 pt-4 mt-4">
                           <label className="block text-sm font-medium text-slate-700 mb-2">Upload Documents</label>
-                          <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 transition cursor-pointer">
-                            <Upload size={32} className="mb-2 opacity-50" />
+                          <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 transition cursor-pointer group">
+                            <Upload size={32} className="mb-2 opacity-50 group-hover:scale-110 transition" />
                             <p className="text-xs">Drag and drop PDF, TXT, or CSV files here.</p>
                           </div>
                        </div>
