@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap } from 'lucide-react';
+import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
 import { generateBotResponse } from '../../services/geminiService';
@@ -153,14 +153,39 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
             );
             break;
         case 'features':
-            title = 'Platform Features';
+            title = 'Full Feature List';
             content = (
-                <ul className="space-y-3">
-                    <li className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-1"/> <strong>GPT-4o Mini Intelligence:</strong> Understands nuance, sarcasm, and intent better than any other model.</li>
-                    <li className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-1"/> <strong>Hot Lead Detection:</strong> Automatically scores leads based on conversation quality.</li>
-                    <li className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-1"/> <strong>Instant Alerts:</strong> Get an SMS or Email the second a lead is qualified.</li>
-                    <li className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-1"/> <strong>Visual Builder:</strong> Drag-and-drop customization. No coding required.</li>
-                </ul>
+                <div className="space-y-6">
+                    <div>
+                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Bot size={18}/> AI Chatbots</h4>
+                        <ul className="space-y-2 text-sm text-slate-600">
+                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>GPT-4o Intelligence:</strong> Powered by the world's smartest AI model.</li>
+                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>RAG Knowledge Base:</strong> Train on your website, PDFs, and docs.</li>
+                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>Multi-Persona:</strong> Switch between Sales, Support, and HR modes instantly.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Phone size={18}/> AI Phone Agent</h4>
+                        <ul className="space-y-2 text-sm text-slate-600">
+                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>24/7 Receptionist:</strong> Answers calls, takes messages, and routes urgencies.</li>
+                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>Human-like Voice:</strong> Uses advanced neural speech for natural conversations.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Layout size={18}/> Website & Marketing</h4>
+                        <ul className="space-y-2 text-sm text-slate-600">
+                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>Instant Site Builder:</strong> Generate a full landing page in 30 seconds.</li>
+                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>Viral Content:</strong> Auto-generate social posts, emails, and ad copy.</li>
+                        </ul>
+                    </div>
+                     <div>
+                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Flame size={18}/> Lead Growth</h4>
+                        <ul className="space-y-2 text-sm text-slate-600">
+                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>Hot Lead Detection:</strong> Scores leads and alerts you via SMS instantly.</li>
+                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>Built-in CRM:</strong> Track, tag, and export your leads.</li>
+                        </ul>
+                    </div>
+                </div>
             );
             break;
         default:
@@ -169,7 +194,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
     return (
       <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col animate-fade-in">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col animate-fade-in">
           <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-white rounded-t-xl sticky top-0 z-10">
             <h3 className="text-xl font-bold text-slate-800">{title}</h3>
             <button onClick={closeModal} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition"><X size={20} /></button>
@@ -257,6 +282,45 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       icon: Briefcase,
       color: 'sky',
       desc: 'White-label our platform. Sell AI chatbots to your own clients under your brand and create a new recurring revenue stream.'
+    }
+  ];
+
+  const featureCards = [
+    {
+        title: "AI Chatbots",
+        desc: "Custom trained on your website data. Handles sales, support, and bookings 24/7.",
+        icon: Bot,
+        color: "blue"
+    },
+    {
+        title: "AI Phone Agent",
+        desc: "A voice assistant that answers calls, takes messages, and routes urgent issues.",
+        icon: Phone,
+        color: "emerald"
+    },
+    {
+        title: "Website Builder",
+        desc: "Generate a high-converting landing page with built-in chat in under 30 seconds.",
+        icon: Layout,
+        color: "purple"
+    },
+    {
+        title: "Viral Marketing",
+        desc: "Auto-generate social posts, email campaigns, and ad copy that converts.",
+        icon: Megaphone,
+        color: "pink"
+    },
+    {
+        title: "Lead CRM",
+        desc: "Track every lead. Identify 'Hot Leads' automatically based on conversation score.",
+        icon: Users,
+        color: "orange"
+    },
+    {
+        title: "Reseller Platform",
+        desc: "White-label the entire system. Sell AI services to your clients under your brand.",
+        icon: Briefcase,
+        color: "slate"
     }
   ];
 
@@ -357,7 +421,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
           
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-            <button onClick={() => openModal('features')} className="hover:text-blue-900 transition">Features</button>
+            <button onClick={() => openModal('features')} className="hover:text-blue-900 transition font-semibold">Platform Features</button>
             <a href="#industries" className="hover:text-blue-900 transition">Who is this for?</a>
             <a href="#pricing" className="hover:text-blue-900 transition">Pricing</a>
             {onNavigateToPartner && (
@@ -382,7 +446,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         {/* Mobile Menu Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-slate-100 absolute w-full px-6 py-4 flex flex-col gap-4 shadow-xl">
-             <button onClick={() => {openModal('features'); setMobileMenuOpen(false);}} className="text-left font-medium text-slate-600 py-2">Features</button>
+             <button onClick={() => {openModal('features'); setMobileMenuOpen(false);}} className="text-left font-medium text-slate-600 py-2">Platform Features</button>
              <a href="#industries" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-600 py-2">Who is this for?</a>
              <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-600 py-2">Pricing</a>
              {onNavigateToPartner && (
@@ -415,7 +479,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
            </h1>
            
            <h2 className="text-xl md:text-2xl font-semibold text-slate-500 tracking-wide mb-10 max-w-3xl mx-auto">
-             Stop trading time for money. The ultimate AI workforce that answers questions, books appointments, and identifies hot leads 24/7.
+             Stop trading time for money. The ultimate AI workforce including <strong>Chatbots</strong>, <strong>Phone Agents</strong>, and <strong>Websites</strong>.
            </h2>
 
            <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-20">
@@ -453,8 +517,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                       <div className="space-y-1">
                          <div className="bg-blue-900 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-3"><LayoutDashboard size={16}/> Dashboard</div>
                          <div className="text-slate-400 px-3 py-2 rounded-lg text-sm flex items-center gap-3"><Bot size={16}/> My Bots</div>
-                         <div className="text-slate-400 px-3 py-2 rounded-lg text-sm flex items-center gap-3"><MessageSquare size={16}/> Conversations</div>
+                         <div className="text-slate-400 px-3 py-2 rounded-lg text-sm flex items-center gap-3"><Phone size={16}/> Phone Agent</div>
                          <div className="text-slate-400 px-3 py-2 rounded-lg text-sm flex items-center gap-3"><Users size={16}/> Lead CRM</div>
+                         <div className="text-slate-400 px-3 py-2 rounded-lg text-sm flex items-center gap-3"><Megaphone size={16}/> Marketing</div>
                       </div>
                    </div>
                    
@@ -501,30 +566,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         </div>
       </section>
 
-      {/* Value Prop: Industries */}
-      <section id="industries" className="py-24 bg-white border-y border-slate-100">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Who is this for?</h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">BuildMyBot powers the immediate response engine for thousands of industries.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {industries.map((ind, i) => (
-              <div key={i} className="p-8 rounded-2xl bg-slate-50 hover:bg-white hover:shadow-xl transition-all duration-300 border border-slate-100 group">
-                <div className={`w-12 h-12 bg-${ind.color}-100 text-${ind.color}-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                  <ind.icon size={24} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">{ind.title}</h3>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  {ind.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Feature Highlight: Hot Leads */}
       <section className="py-24 bg-slate-900 text-white overflow-hidden relative">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-blue-900/10 rounded-l-full blur-3xl"></div>
@@ -553,8 +594,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                  <div className="flex gap-4">
                    <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 font-bold text-xl">2</div>
                    <div>
-                    <h4 className="font-bold text-lg">Triggers "Hot Lead" Status</h4>
-                    <p className="text-slate-400 text-sm">When score &gt; 80, the bot asks for name & phone number.</p>
+                     <h4 className="font-bold text-lg">Triggers "Hot Lead" Status</h4>
+                     <p className="text-slate-400 text-sm">When score > 80, the bot asks for name & phone number.</p>
                    </div>
                  </div>
                  <div className="flex gap-4">
@@ -601,8 +642,56 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         </div>
       </section>
 
+       {/* All-In-One Feature Grid */}
+       <section className="py-24 px-6 bg-white">
+          <div className="max-w-7xl mx-auto">
+             <div className="text-center mb-16">
+               <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">The All-In-One AI Operating System</h2>
+               <p className="text-lg text-slate-600 max-w-2xl mx-auto">Replace 5 different tools with one platform.</p>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {featureCards.map((feat, idx) => (
+                   <div key={idx} className="p-8 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-xl hover:border-blue-200 transition duration-300 group">
+                      <div className={`w-14 h-14 rounded-2xl bg-${feat.color}-50 text-${feat.color}-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                         <feat.icon size={28} />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-3">{feat.title}</h3>
+                      <p className="text-slate-600 leading-relaxed">
+                         {feat.desc}
+                      </p>
+                   </div>
+                ))}
+             </div>
+          </div>
+       </section>
+
+      {/* Value Prop: Industries */}
+      <section id="industries" className="py-24 bg-slate-50 border-y border-slate-200">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Who is this for?</h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">BuildMyBot powers the immediate response engine for thousands of industries.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {industries.map((ind, i) => (
+              <div key={i} className="p-8 rounded-2xl bg-white hover:shadow-xl transition-all duration-300 border border-slate-200 group">
+                <div className={`w-12 h-12 bg-${ind.color}-100 text-${ind.color}-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                  <ind.icon size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">{ind.title}</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  {ind.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Pricing */}
-      <section id="pricing" className="py-24 px-6 bg-slate-50">
+      <section id="pricing" className="py-24 px-6 bg-white">
         <div className="max-w-[90rem] mx-auto">
            <div className="text-center mb-16">
              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Pricing that Scales with You</h2>

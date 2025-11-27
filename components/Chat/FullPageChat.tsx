@@ -1,43 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, AlertCircle, Loader } from 'lucide-react';
 import { generateBotResponse } from '../../services/geminiService';
+import { dbService } from '../../services/dbService';
 import { Bot as BotType } from '../../types';
 
 interface FullPageChatProps {
   botId: string;
 }
 
-// Mock bot for fallback if database fetch fails (or for demo)
-const MOCK_BOT: BotType = {
-    id: 'b1', 
-    name: 'Assistant', 
-    type: 'Customer Support', 
-    systemPrompt: 'You are a helpful assistant.', 
-    model: 'gpt-4o-mini', 
-    temperature: 0.7, 
-    knowledgeBase: [], 
-    active: true, 
-    conversationsCount: 0, 
-    themeColor: '#1e3a8a',
-    maxMessages: 20,
-    randomizeIdentity: false
-};
-
 export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
   const [messages, setMessages] = useState<{role: 'user'|'model', text: string}[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [bot, setBot] = useState<BotType | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   
-  // In a real app, you would fetch the bot config from Firebase here using botId
-  const bot = MOCK_BOT; 
-
   useEffect(() => {
-    // Initial Greeting
-    setTimeout(() => {
-       setMessages([{ role: 'model', text: "Hello! How can I help you today?" }]);
-    }, 500);
-  }, []);
+    const fetchBot = async () => {
+      if (!botId) return;
+      try {
+        const foundBot = await dbService.getBotById(botId);
+        if (foundBot) {
+          setBot(foundBot);
+          setTimeout(() => {
+             setMessages([{ role: 'model', text: "Hello! How can I help you today?" }]);
+          }, 500);
+        }
+      } catch (e) {
+        console.error("Failed to fetch bot", e);
+      }
+    };
+    fetchBot();
+  }, [botId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -46,7 +40,7 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
   }, [messages, isTyping]);
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !bot) return;
 
     const userMsg = { role: 'user' as const, text: input };
     setMessages(prev => [...prev, userMsg]);
@@ -58,17 +52,29 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
             bot.systemPrompt, 
             messages, 
             userMsg.text, 
-            bot.model
+            bot.model,
+            bot.knowledgeBase ? bot.knowledgeBase.join('\n') : ''
         );
+        
+        // Simulating network delay based on bot config if available, else 1s
+        const delay = bot.responseDelay || 1000;
         
         setTimeout(() => {
             setMessages(prev => [...prev, { role: 'model', text: response }]);
             setIsTyping(false);
-        }, 1000);
+        }, delay);
     } catch (e) {
         setIsTyping(false);
     }
   };
+
+  if (!bot) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader className="animate-spin text-blue-900" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">

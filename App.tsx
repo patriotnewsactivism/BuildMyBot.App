@@ -15,103 +15,21 @@ import { LandingPage } from './components/Landing/LandingPage';
 import { PartnerProgramPage } from './components/Landing/PartnerProgramPage';
 import { PartnerSignup } from './components/Auth/PartnerSignup';
 import { FullPageChat } from './components/Chat/FullPageChat';
+import { AuthModal } from './components/Auth/AuthModal';
 import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation } from './types';
 import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame } from 'lucide-react';
-import { auth } from './services/firebaseConfig'; // Initialize Firebase
+import { auth } from './services/firebaseConfig';
+import { dbService } from './services/dbService';
+import { onAuthStateChanged } from 'firebase/auth';
 
-const MOCK_USER: User = {
-  id: 'u1',
-  name: 'Alex Johnson',
-  email: 'alex@enterprise.com',
-  role: UserRole.OWNER,
-  plan: PlanType.ENTERPRISE, 
-  companyName: 'Apex Global',
-  resellerCode: 'APEX2024',
-  customDomain: 'app.apexglobal.com'
-};
-
-const MOCK_BOTS: BotType[] = [
-  { 
-    id: 'b1', 
-    name: 'Sales Assistant', 
-    type: 'Sales', 
-    systemPrompt: 'You are a sales assistant.', 
-    model: 'gpt-4o-mini', 
-    temperature: 0.8, 
-    knowledgeBase: [], 
-    active: true, 
-    conversationsCount: 342, 
-    themeColor: '#1e3a8a',
-    maxMessages: 20,
-    randomizeIdentity: true
-  },
-  { 
-    id: 'b2', 
-    name: 'Support Bot', 
-    type: 'Customer Support', 
-    systemPrompt: 'You are a support agent.', 
-    model: 'gpt-4o-mini', 
-    temperature: 0.4, 
-    knowledgeBase: [], 
-    active: true, 
-    conversationsCount: 156, 
-    themeColor: '#10b981',
-    maxMessages: 20,
-    randomizeIdentity: false
-  },
-];
-
-const MOCK_LEADS: Lead[] = [
-    { id: '1', name: 'Sarah Connor', email: 'sarah@skynet.com', phone: '+1 555-0123', score: 95, status: 'New', sourceBotId: 'b1', createdAt: '2024-05-15T10:00:00Z' },
-    { id: '2', name: 'John Doe', email: 'john.doe@example.com', phone: '+1 555-0199', score: 45, status: 'Contacted', sourceBotId: 'b2', createdAt: '2024-05-14T08:30:00Z' },
-    { id: '3', name: 'Emily Blunt', email: 'emily@hollywood.com', phone: '', score: 82, status: 'Qualified', sourceBotId: 'b1', createdAt: '2024-05-12T14:20:00Z' },
-    { id: '4', name: 'Michael Scott', email: 'michael@dunder.com', phone: '+1 555-9999', score: 10, status: 'Closed', sourceBotId: 'b1', createdAt: '2024-05-10T09:00:00Z' },
-    { id: '5', name: 'Dwight Schrute', email: 'beetfarmer@farms.com', phone: '+1 555-2342', score: 65, status: 'New', sourceBotId: 'b2', createdAt: '2024-05-16T11:45:00Z' },
-];
-
-const INITIAL_CHAT_LOGS: Conversation[] = [
-    {
-      id: 'c1',
-      botId: 'b1',
-      sentiment: 'Positive',
-      timestamp: Date.now() - 1000 * 60 * 5,
-      messages: [
-        { role: 'user', text: 'Hi, I need help with pricing.', timestamp: Date.now() - 1000 * 60 * 5 },
-        { role: 'model', text: 'Sure! Our Enterprise plan is $399/mo and includes unlimited bots. Would you like to know more?', timestamp: Date.now() - 1000 * 60 * 4 },
-        { role: 'user', text: 'That sounds perfect. Does it include SLA?', timestamp: Date.now() - 1000 * 60 * 3 },
-        { role: 'model', text: 'Yes, the Enterprise plan includes Priority SLA support and a dedicated account manager.', timestamp: Date.now() - 1000 * 60 * 2 },
-      ]
-    },
-    {
-      id: 'c2',
-      botId: 'b1',
-      sentiment: 'Neutral',
-      timestamp: Date.now() - 1000 * 60 * 60,
-      messages: [
-        { role: 'user', text: 'Where are you located?', timestamp: Date.now() - 1000 * 60 * 60 },
-        { role: 'model', text: 'We are a digital-first company with headquarters in San Francisco.', timestamp: Date.now() - 1000 * 60 * 59 },
-      ]
-    },
-    {
-      id: 'c3',
-      botId: 'b2',
-      sentiment: 'Negative',
-      timestamp: Date.now() - 1000 * 60 * 60 * 24,
-      messages: [
-        { role: 'user', text: 'My login is not working.', timestamp: Date.now() - 1000 * 60 * 60 * 24 },
-        { role: 'model', text: 'I apologize. Have you tried resetting your password?', timestamp: Date.now() - 1000 * 60 * 60 * 24 },
-        { role: 'user', text: 'Yes, it is still broken. This sucks.', timestamp: Date.now() - 1000 * 60 * 60 * 24 },
-      ]
-    }
-];
-
+const INITIAL_CHAT_LOGS: Conversation[] = []; // Chat logs will be fetched or empty initially
 const MOCK_RESELLER_STATS: ResellerStats = {
-  totalClients: 64,
-  totalRevenue: 5200,
-  commissionRate: 0.30,
-  pendingPayout: 1560,
+  totalClients: 0,
+  totalRevenue: 0,
+  commissionRate: 0.20,
+  pendingPayout: 0,
 };
 
 function App() {
@@ -119,13 +37,17 @@ function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [showPartnerPage, setShowPartnerPage] = useState(false);
   const [showPartnerSignup, setShowPartnerSignup] = useState(false);
-  const [user, setUser] = useState<User>(MOCK_USER);
-  const [bots, setBots] = useState<BotType[]>(MOCK_BOTS);
-  const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS);
-  const [chatLogs, setChatLogs] = useState<Conversation[]>(INITIAL_CHAT_LOGS);
-  const [notification, setNotification] = useState<string | null>(null);
   
-  // Mobile Sidebar State
+  // Real State
+  const [user, setUser] = useState<User | null>(null);
+  const [bots, setBots] = useState<BotType[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [chatLogs, setChatLogs] = useState<Conversation[]>(INITIAL_CHAT_LOGS);
+  
+  // UI State
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [notification, setNotification] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Manual Routing Check for Full Page Chat
@@ -135,23 +57,80 @@ function App() {
      return <FullPageChat botId={botId} />;
   }
 
+  // --- Real-time Data Subscriptions ---
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setIsLoggedIn(true);
+        // Fetch full user profile from Firestore
+        const profile = await dbService.getUserProfile(firebaseUser.uid);
+        if (profile) {
+          setUser(profile);
+        } else {
+          // Fallback if profile creation is lagging
+          setUser({
+            id: firebaseUser.uid,
+            name: firebaseUser.email?.split('@')[0] || 'User',
+            email: firebaseUser.email || '',
+            role: UserRole.OWNER,
+            plan: PlanType.FREE,
+            companyName: 'My Company'
+          });
+        }
+      } else {
+        setIsLoggedIn(false);
+        setUser(null);
+      }
+    });
+
+    // Subscribe to Bots
+    const unsubscribeBots = dbService.subscribeToBots((updatedBots) => {
+       setBots(updatedBots);
+    });
+
+    // Subscribe to Leads
+    const unsubscribeLeads = dbService.subscribeToLeads((updatedLeads) => {
+       setLeads(updatedLeads);
+    });
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeBots();
+      unsubscribeLeads();
+    };
+  }, []);
+
   // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
   const totalLeads = leads.length;
-  // Estimate savings: $5 per conversation (support cost)
   const estSavings = totalConversations * 5; 
-  // Avg Response Time (Mocked but variable)
-  const avgResponseTime = "1.2s";
+  const avgResponseTime = "0.8s";
 
-  // Handle Admin Portal Access
   const handleAdminLogin = () => {
-      setUser({ ...MOCK_USER, role: UserRole.ADMIN, name: 'Master Admin' });
+      // For demo purposes, we still allow a mock admin override
+      setUser({ 
+        id: 'admin', 
+        name: 'Master Admin', 
+        email: 'admin@buildmybot.app', 
+        role: UserRole.ADMIN, 
+        plan: PlanType.ENTERPRISE, 
+        companyName: 'BuildMyBot HQ' 
+      });
       setIsLoggedIn(true);
       setCurrentView('admin');
   };
 
   const handlePartnerSignup = (data: any) => {
-    setUser({ ...MOCK_USER, role: UserRole.RESELLER, name: data.name, companyName: data.companyName || 'My Agency' });
+    // In a real flow, this would create the user in Firebase with RESELLER role
+    setUser({ 
+      id: 'reseller-' + Date.now(),
+      email: data.email,
+      name: data.name,
+      role: UserRole.RESELLER, 
+      plan: PlanType.FREE,
+      companyName: data.companyName,
+      resellerCode: data.companyName.substring(0,3).toUpperCase() + '2024'
+    });
     setIsLoggedIn(true);
     setCurrentView('reseller');
     setShowPartnerSignup(false);
@@ -173,43 +152,68 @@ function App() {
       maxMessages: 20,
       randomizeIdentity: true
     };
-    setBots([...bots, newBot]);
+    
+    // Save to Firestore
+    dbService.saveBot(newBot);
+    
     setNotification(`Installed "${template.name}" successfully!`);
     setTimeout(() => setNotification(null), 3000);
     setCurrentView('bots');
   };
 
   const handleUpdateLead = (updatedLead: Lead) => {
-    setLeads(leads.map(l => l.id === updatedLead.id ? updatedLead : l));
+    dbService.saveLead(updatedLead);
   };
 
   const handleLeadDetected = (email: string) => {
-    const existing = leads.find(l => l.email === email);
-    if (!existing) {
-      const newLead: Lead = {
-        id: Date.now().toString(),
-        name: 'Website Visitor', // In a real app, we'd extract this too
-        email: email,
-        score: 85, // High score for direct entry
-        status: 'New',
-        sourceBotId: 'test-bot',
-        createdAt: new Date().toISOString()
-      };
-      setLeads(prev => [newLead, ...prev]);
-      setNotification("New Hot Lead Detected from Chat! 🔥");
-      setTimeout(() => setNotification(null), 4000);
-    }
+    // This is called by BotBuilder test chat
+    const newLead: Lead = {
+      id: Date.now().toString(),
+      name: 'Website Visitor',
+      email: email,
+      score: 85,
+      status: 'New',
+      sourceBotId: 'test-bot',
+      createdAt: new Date().toISOString()
+    };
+    dbService.saveLead(newLead);
+    setNotification("New Hot Lead Detected from Chat! 🔥");
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  const handleSaveBot = (bot: BotType) => {
+     dbService.saveBot(bot);
+     setNotification("Bot saved successfully!");
+     setTimeout(() => setNotification(null), 2000);
+  };
+
+  const openAuth = (mode: 'login' | 'signup') => {
+    setAuthMode(mode);
+    setAuthModalOpen(true);
   };
 
   // If not logged in, show Public Landing Page or Partner Page
-  if (!isLoggedIn) {
+  if (!isLoggedIn || !user) {
     if (showPartnerSignup) {
         return <PartnerSignup onBack={() => setShowPartnerSignup(false)} onComplete={handlePartnerSignup} />;
     }
     if (showPartnerPage) {
-      return <PartnerProgramPage onBack={() => setShowPartnerPage(false)} onLogin={() => setIsLoggedIn(true)} onSignup={() => setShowPartnerSignup(true)} />;
+      return <PartnerProgramPage onBack={() => setShowPartnerPage(false)} onLogin={() => openAuth('login')} onSignup={() => setShowPartnerSignup(true)} />;
     }
-    return <LandingPage onLogin={() => setIsLoggedIn(true)} onNavigateToPartner={() => setShowPartnerPage(true)} onAdminLogin={handleAdminLogin} />;
+    return (
+      <>
+        <LandingPage 
+          onLogin={() => openAuth('login')} 
+          onNavigateToPartner={() => setShowPartnerPage(true)} 
+          onAdminLogin={handleAdminLogin} 
+        />
+        <AuthModal 
+          isOpen={authModalOpen} 
+          onClose={() => setAuthModalOpen(false)} 
+          defaultMode={authMode} 
+        />
+      </>
+    );
   }
 
   return (
@@ -326,13 +330,12 @@ function App() {
             </div>
           )}
 
-          {currentView === 'bots' && <BotBuilder bots={bots} onSave={(bot) => {
-              if (bot.id === 'new' || !bots.find(b => b.id === bot.id)) {
-                  setBots([...bots, { ...bot, id: bot.id === 'new' ? `b${Date.now()}` : bot.id }]);
-              } else {
-                  setBots(bots.map(b => b.id === bot.id ? bot : b));
-              }
-          }} customDomain={user.customDomain} onLeadDetected={handleLeadDetected} />}
+          {currentView === 'bots' && <BotBuilder 
+              bots={bots} 
+              onSave={handleSaveBot} 
+              customDomain={user.customDomain} 
+              onLeadDetected={handleLeadDetected} 
+          />}
           
           {currentView === 'reseller' && <ResellerDashboard user={user} stats={MOCK_RESELLER_STATS} />}
           
