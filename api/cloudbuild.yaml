@@ -1,0 +1,45 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _SERVICE: buildmybot-api
+  _REGION: us-central1
+  _IMAGE: buildmybot-api
+
+steps:
+  # Build Docker image
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag=gcr.io/$PROJECT_ID/${_IMAGE}
+      - --cache-from=gcr.io/$PROJECT_ID/${_IMAGE}:latest
+      - .
+    dir: api
+
+  # Push Docker image
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - gcr.io/$PROJECT_ID/${_IMAGE}
+
+  # Deploy to Cloud Run
+  - name: gcr.io/cloud-builders/gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=gcr.io/$PROJECT_ID/${_IMAGE}
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --memory=512Mi
+      - --cpu=1
+      - --min-instances=0
+      - --max-instances=10
+      - --timeout=300
+      - --set-env-vars=NODE_ENV=production
+      # Add other environment variables via Secret Manager or --set-env-vars
+
+images:
+  - gcr.io/$PROJECT_ID/${_IMAGE}
