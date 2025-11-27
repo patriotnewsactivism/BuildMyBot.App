@@ -1,69 +1,59 @@
-import { Bot, Lead, Conversation, UserRole, PlanType } from '../types';
-
-const STORAGE_KEYS = {
-  BOTS: 'buildmybot_bots',
-  LEADS: 'buildmybot_leads',
-  CHAT_LOGS: 'buildmybot_chat_logs',
-  USER: 'buildmybot_user'
-};
-
-// Default data for first-time load
-const DEFAULT_BOTS: Bot[] = [
-  { 
-    id: 'b1', 
-    name: 'Sales Assistant', 
-    type: 'Sales', 
-    systemPrompt: 'You are a sales assistant. Qualify leads and book meetings.', 
-    model: 'gpt-4o-mini', 
-    temperature: 0.8, 
-    knowledgeBase: [], 
-    active: true, 
-    conversationsCount: 12, 
-    themeColor: '#1e3a8a',
-    maxMessages: 20,
-    randomizeIdentity: true
-  }
-];
+import { db, auth } from './firebaseConfig';
+import { collection, doc, setDoc, getDoc, onSnapshot, query, where, updateDoc } from 'firebase/firestore';
+import { Bot, Lead, Conversation, User, UserRole, PlanType } from '../types';
 
 export const dbService = {
-  getBots: (): Bot[] => {
-    const stored = localStorage.getItem(STORAGE_KEYS.BOTS);
-    return stored ? JSON.parse(stored) : DEFAULT_BOTS;
+  // --- BOTS ---
+  subscribeToBots: (callback: (bots: Bot[]) => void) => {
+    // In a real multi-tenant app, you would filter by ownerId: where('ownerId', '==', auth.currentUser.uid)
+    // For this demo, we'll just listen to the 'bots' collection
+    const q = query(collection(db, 'bots'));
+    return onSnapshot(q, (snapshot) => {
+      const bots = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bot));
+      callback(bots);
+    });
   },
 
-  saveBot: (bot: Bot) => {
-    const bots = dbService.getBots();
-    const existingIndex = bots.findIndex(b => b.id === bot.id);
-    
-    let newBots;
-    if (existingIndex >= 0) {
-      newBots = [...bots];
-      newBots[existingIndex] = bot;
-    } else {
-      newBots = [...bots, bot];
+  saveBot: async (bot: Bot) => {
+    const botRef = doc(collection(db, 'bots'), bot.id);
+    await setDoc(botRef, bot, { merge: true });
+  },
+
+  getBotById: async (id: string): Promise<Bot | undefined> => {
+    const docRef = doc(db, 'bots', id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as Bot;
     }
-    
-    localStorage.setItem(STORAGE_KEYS.BOTS, JSON.stringify(newBots));
-    return newBots;
+    return undefined;
   },
 
-  getBotById: (id: string): Bot | undefined => {
-    const bots = dbService.getBots();
-    return bots.find(b => b.id === id);
+  // --- LEADS ---
+  subscribeToLeads: (callback: (leads: Lead[]) => void) => {
+    const q = query(collection(db, 'leads'));
+    return onSnapshot(q, (snapshot) => {
+      const leads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lead));
+      callback(leads);
+    });
   },
 
-  getLeads: (): Lead[] => {
-    const stored = localStorage.getItem(STORAGE_KEYS.LEADS);
-    return stored ? JSON.parse(stored) : [];
+  saveLead: async (lead: Lead) => {
+    const leadRef = doc(collection(db, 'leads'), lead.id);
+    await setDoc(leadRef, lead, { merge: true });
   },
 
-  saveLead: (lead: Lead) => {
-    const leads = dbService.getLeads();
-    // Avoid duplicates
-    if (leads.some(l => l.email === lead.email)) return leads;
-    
-    const newLeads = [lead, ...leads];
-    localStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(newLeads));
-    return newLeads;
+  // --- USER ---
+  getUserProfile: async (userId: string): Promise<User | null> => {
+    const docRef = doc(db, 'users', userId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as User;
+    }
+    return null;
+  },
+
+  createUserProfile: async (user: User) => {
+    const userRef = doc(db, 'users', user.id);
+    await setDoc(userRef, user, { merge: true });
   }
 };
