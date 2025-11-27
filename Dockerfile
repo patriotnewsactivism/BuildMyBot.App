@@ -6,20 +6,31 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-# Copy source and build
+# Copy source and build Next.js app
 COPY . .
 RUN npm run build
 
-# Runtime stage
-FROM nginx:stable-alpine
-WORKDIR /usr/share/nginx/html
+# Runtime stage - Run Next.js production server
+FROM node:20-alpine AS runner
+WORKDIR /app
 
-# Clean default nginx assets and copy built app
-RUN rm -rf ./*
-COPY --from=builder /app/dist .
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=8080
 
-# Use custom nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy necessary files from builder
+COPY --from=builder /app/next.config.js ./
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs && \
+    chown -R nextjs:nodejs /app
+
+USER nextjs
 
 EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
+
+CMD ["node", "server.js"]
