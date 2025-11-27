@@ -109,17 +109,15 @@ export const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
                 <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mt-6">
                    <div className="flex items-center gap-2 mb-4">
                       <Globe size={18} className="text-blue-900"/>
-                      <h4 className="font-semibold text-slate-800">White-Label Deployment (Vercel)</h4>
+                      <h4 className="font-semibold text-slate-800">White-Label Deployment</h4>
                    </div>
                    <p className="text-sm text-slate-500 mb-4">
-                     This app is designed to be deployed to <strong>Vercel</strong>. To connect your custom domain:
+                     This app supports white-label deployment to your custom domain.
                    </p>
                    <ol className="list-decimal ml-4 text-sm text-slate-600 space-y-2 mb-4">
-                      <li>Deploy this repo to your Vercel account.</li>
-                      <li>Go to <strong>Settings &gt; Domains</strong> in Vercel dashboard.</li>
-                      <li>Add your domain (e.g. <code>app.youragency.com</code>).</li>
-                      <li>Vercel will provide A/CNAME records. Add them to your DNS provider (GoDaddy/Namecheap).</li>
-                      <li>Enter that domain below so the app generates the correct links.</li>
+                      <li>Configure your cloud provider with your custom domain.</li>
+                      <li>Point your DNS records (CNAME/A Record) as instructed by your provider.</li>
+                      <li>Enter that domain below so the app generates the correct white-label links.</li>
                    </ol>
                    <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">Custom Domain URL</label>
@@ -138,7 +136,7 @@ export const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
                    <div>
                       <h5 className="text-sm font-bold text-blue-900">Environment Config</h5>
                       <p className="text-xs text-blue-700 mt-1">
-                        Ensure you have set <code>OPENAI_API_KEY</code> in your Vercel Project Settings for the AI features to work.
+                        Ensure you have set <code>OPENAI_API_KEY</code> in your Environment Variables or Cloud Build Arguments.
                       </p>
                    </div>
                 </div>

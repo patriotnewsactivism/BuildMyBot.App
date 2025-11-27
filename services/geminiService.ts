@@ -10,7 +10,7 @@ export const generateBotResponse = async (
   modelName: string = 'gpt-4o-mini',
   context?: string // New: Knowledge Base context
 ): Promise<string> => {
-  if (!API_KEY) return "Configuration Error: OPENAI_API_KEY is missing. Please set this in your Vercel environment variables.";
+  if (!API_KEY) return "Configuration Error: OPENAI_API_KEY is missing. Please check your cloud deployment settings.";
 
   try {
     // Inject Context into System Prompt if available
@@ -47,7 +47,7 @@ export const generateBotResponse = async (
 
     if (data.error) {
         console.error("OpenAI API Error:", data.error);
-        return "I'm having trouble connecting to OpenAI right now.";
+        return "I'm having trouble connecting to the AI service right now.";
     }
 
     return data.choices[0]?.message?.content || "No response generated.";
@@ -59,15 +59,21 @@ export const generateBotResponse = async (
 };
 
 export const generateMarketingContent = async (
-  type: 'email' | 'social' | 'ad' | 'website',
+  type: 'email' | 'social' | 'ad' | 'website' | 'viral-thread' | 'story',
   topic: string,
   tone: string
 ): Promise<string> => {
   if (!API_KEY) return "Simulated Content: Please add OPENAI_API_KEY to your environment variables.";
 
   try {
-    const prompt = `Act as a world-class marketing copywriter. Write a ${tone} ${type} about ${topic}. Keep it engaging and conversion-focused.`;
+    let prompt = `Act as a world-class marketing copywriter. Write a ${tone} ${type} about ${topic}. Keep it engaging and conversion-focused.`;
     
+    if (type === 'viral-thread') {
+        prompt = `Write a viral Twitter/X thread about ${topic}. Use a hook in the first tweet, short punchy sentences, and a call to action at the end. Tone: ${tone}.`;
+    } else if (type === 'story') {
+        prompt = `Write a script for a 15-second Instagram/TikTok Story about ${topic}. Include visual cues in brackets [like this]. Tone: ${tone}.`;
+    }
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
