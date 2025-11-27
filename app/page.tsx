@@ -1,10 +1,9 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Bot, Zap, CheckCircle, Globe, ArrowRight } from 'lucide-react';
 
 export default function HomePage() {
-  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -16,12 +15,12 @@ export default function HomePage() {
             <span className="text-xl font-bold text-slate-900">BuildMyBot</span>
           </div>
           <div className="flex gap-3">
-            <button className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-blue-900 transition">
+            <Link href="/login" className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-blue-900 transition">
               Sign In
-            </button>
-            <button className="px-4 py-2 bg-blue-900 text-white rounded-lg text-sm font-medium hover:bg-blue-950 shadow-sm shadow-blue-200">
+            </Link>
+            <Link href="/signup" className="px-4 py-2 bg-blue-900 text-white rounded-lg text-sm font-medium hover:bg-blue-950 shadow-sm shadow-blue-200">
               Get Started
-            </button>
+            </Link>
           </div>
         </div>
       </header>
@@ -38,12 +37,12 @@ export default function HomePage() {
             RAG-enabled knowledge base and enterprise features included.
           </p>
           <div className="flex gap-4 justify-center pt-4">
-            <button className="px-8 py-4 bg-blue-900 text-white rounded-lg font-semibold hover:bg-blue-950 shadow-lg shadow-blue-200 flex items-center gap-2">
+            <Link href="/signup" className="px-8 py-4 bg-blue-900 text-white rounded-lg font-semibold hover:bg-blue-950 shadow-lg shadow-blue-200 flex items-center gap-2">
               Start Free Trial <ArrowRight size={20} />
-            </button>
-            <button className="px-8 py-4 bg-white text-slate-900 rounded-lg font-semibold hover:bg-slate-50 shadow-sm border border-slate-200">
+            </Link>
+            <Link href="/dashboard" className="px-8 py-4 bg-white text-slate-900 rounded-lg font-semibold hover:bg-slate-50 shadow-sm border border-slate-200">
               View Demo
-            </button>
+            </Link>
           </div>
         </div>
 
