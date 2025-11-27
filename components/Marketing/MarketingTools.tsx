@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Mail, Instagram, Megaphone, Loader, Copy, Check } from 'lucide-react';
+import { Mail, Instagram, Megaphone, Loader, Copy, Check, Twitter, Smartphone } from 'lucide-react';
 import { generateMarketingContent } from '../../services/geminiService';
 
 export const MarketingTools: React.FC = () => {
   const [topic, setTopic] = useState('');
   const [tone, setTone] = useState('Professional');
-  const [activeType, setActiveType] = useState<'email'|'social'|'ad'>('email');
+  const [activeType, setActiveType] = useState<'email'|'social'|'ad'|'viral-thread'|'story'>('email');
   const [generatedContent, setGeneratedContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -34,6 +34,8 @@ export const MarketingTools: React.FC = () => {
     { id: 'email', label: 'Email Campaign', icon: Mail, desc: 'Cold outreach or newsletters' },
     { id: 'social', label: 'Social Post', icon: Instagram, desc: 'LinkedIn, Twitter, or FB' },
     { id: 'ad', label: 'Ad Copy', icon: Megaphone, desc: 'Google Ads or Facebook Ads' },
+    { id: 'viral-thread', label: 'Viral Thread', icon: Twitter, desc: 'Twitter/X Thread Generator' },
+    { id: 'story', label: 'IG/TikTok Story', icon: Smartphone, desc: '15s Video Script' },
   ];
 
   return (
@@ -43,22 +45,24 @@ export const MarketingTools: React.FC = () => {
          <p className="text-slate-500">Generate high-converting copy in seconds.</p>
        </div>
 
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
          {tools.map(t => (
            <button
              key={t.id}
              onClick={() => setActiveType(t.id as any)}
-             className={`p-4 rounded-xl border text-left transition ${
+             className={`p-3 rounded-xl border text-left transition flex flex-col justify-between min-h-[100px] ${
                activeType === t.id 
                ? 'border-blue-900 bg-blue-50 ring-1 ring-blue-900' 
                : 'border-slate-200 bg-white hover:border-blue-300'
              }`}
            >
-             <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${activeType === t.id ? 'bg-blue-900 text-white' : 'bg-slate-100 text-slate-500'}`}>
-               <t.icon size={20} />
+             <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${activeType === t.id ? 'bg-blue-900 text-white' : 'bg-slate-100 text-slate-500'}`}>
+               <t.icon size={16} />
              </div>
-             <div className="font-semibold text-slate-800">{t.label}</div>
-             <div className="text-xs text-slate-500">{t.desc}</div>
+             <div>
+                <div className="font-semibold text-slate-800 text-xs">{t.label}</div>
+                <div className="text-[10px] text-slate-500 leading-tight mt-1">{t.desc}</div>
+             </div>
            </button>
          ))}
        </div>
@@ -97,7 +101,7 @@ export const MarketingTools: React.FC = () => {
             className="w-full bg-blue-900 text-white py-3 rounded-lg font-medium hover:bg-blue-950 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? <Loader className="animate-spin" size={20} /> : <Megaphone size={20} />}
-            Generate {activeType === 'ad' ? 'Ad Copy' : activeType === 'email' ? 'Email' : 'Post'}
+            Generate Content
           </button>
        </div>
 

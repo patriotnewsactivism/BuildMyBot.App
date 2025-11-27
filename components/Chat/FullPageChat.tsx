@@ -1,0 +1,141 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Send, Bot, User, AlertCircle, Loader } from 'lucide-react';
+import { generateBotResponse } from '../../services/geminiService';
+import { Bot as BotType } from '../../types';
+
+interface FullPageChatProps {
+  botId: string;
+}
+
+// Mock bot for fallback if database fetch fails (or for demo)
+const MOCK_BOT: BotType = {
+    id: 'b1', 
+    name: 'Assistant', 
+    type: 'Customer Support', 
+    systemPrompt: 'You are a helpful assistant.', 
+    model: 'gpt-4o-mini', 
+    temperature: 0.7, 
+    knowledgeBase: [], 
+    active: true, 
+    conversationsCount: 0, 
+    themeColor: '#1e3a8a',
+    maxMessages: 20,
+    randomizeIdentity: false
+};
+
+export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
+  const [messages, setMessages] = useState<{role: 'user'|'model', text: string}[]>([]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // In a real app, you would fetch the bot config from Firebase here using botId
+  const bot = MOCK_BOT; 
+
+  useEffect(() => {
+    // Initial Greeting
+    setTimeout(() => {
+       setMessages([{ role: 'model', text: "Hello! How can I help you today?" }]);
+    }, 500);
+  }, []);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isTyping]);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const userMsg = { role: 'user' as const, text: input };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setIsTyping(true);
+
+    try {
+        const response = await generateBotResponse(
+            bot.systemPrompt, 
+            messages, 
+            userMsg.text, 
+            bot.model
+        );
+        
+        setTimeout(() => {
+            setMessages(prev => [...prev, { role: 'model', text: response }]);
+            setIsTyping(false);
+        }, 1000);
+    } catch (e) {
+        setIsTyping(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+       <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col h-[80vh] border border-slate-200">
+          
+          {/* Header */}
+          <div className="p-4 bg-white border-b border-slate-100 flex items-center gap-3">
+             <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-sm" style={{backgroundColor: bot.themeColor}}>
+               <Bot size={20} />
+             </div>
+             <div>
+               <h1 className="font-bold text-slate-800">{bot.name}</h1>
+               <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                  <span className="text-xs text-slate-500">Online Now</span>
+               </div>
+             </div>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50" ref={scrollRef}>
+             {messages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                   <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm shadow-sm ${
+                      msg.role === 'user' 
+                      ? 'bg-blue-600 text-white rounded-br-sm' 
+                      : 'bg-white text-slate-700 border border-slate-200 rounded-bl-sm'
+                   }`}>
+                     {msg.text}
+                   </div>
+                </div>
+             ))}
+             {isTyping && (
+                <div className="flex justify-start">
+                   <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm flex gap-1 items-center">
+                      <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
+                      <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                   </div>
+                </div>
+             )}
+          </div>
+
+          {/* Input */}
+          <div className="p-4 bg-white border-t border-slate-100">
+             <div className="relative">
+                <input 
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="Type a message..."
+                  className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:ring-blue-900 focus:border-blue-900"
+                />
+                <button 
+                  onClick={handleSend}
+                  disabled={!input.trim() || isTyping}
+                  className="absolute right-2 top-2 p-2 bg-blue-900 text-white rounded-lg hover:bg-blue-950 disabled:opacity-50 transition"
+                >
+                   {isTyping ? <Loader className="animate-spin" size={18} /> : <Send size={18} />}
+                </button>
+             </div>
+             <div className="text-center mt-2">
+               <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Powered by BuildMyBot</span>
+             </div>
+          </div>
+       </div>
+    </div>
+  );
+};

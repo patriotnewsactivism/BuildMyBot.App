@@ -1,11 +1,28 @@
 import React, { useState } from 'react';
-import { Phone, Mic, Settings, PlayCircle, Save, Voicemail } from 'lucide-react';
+import { Phone, Mic, Settings, PlayCircle, Save, Voicemail, Play } from 'lucide-react';
 
 export const PhoneAgent: React.FC = () => {
   const [enabled, setEnabled] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [voice, setVoice] = useState('alloy');
   const [introMessage, setIntroMessage] = useState("Hi! Thanks for calling Apex Digital. How can I help you today?");
+  
+  // Simulation State
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulationStatus, setSimulationStatus] = useState('Ready to call');
+
+  const startSimulation = () => {
+    setIsSimulating(true);
+    setSimulationStatus('Connecting...');
+    setTimeout(() => {
+        setSimulationStatus('AI Agent: "Hello, this is the AI receptionist. How can I help?"');
+    }, 1500);
+  };
+
+  const endSimulation = () => {
+    setIsSimulating(false);
+    setSimulationStatus('Call ended');
+  };
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in space-y-6">
@@ -81,18 +98,22 @@ export const PhoneAgent: React.FC = () => {
 
           {/* Sidebar / Status */}
           <div className="space-y-6">
+             {/* Call Simulator */}
              <div className="bg-slate-900 text-white p-6 rounded-xl shadow-lg relative overflow-hidden">
-                <div className="relative z-10">
-                   <h3 className="font-bold text-lg mb-1">Phone Number</h3>
-                   <div className="flex items-center gap-2 text-blue-300 mb-6">
-                     <Phone size={16} /> 
-                     <span className="font-mono">{phoneNumber || '(555) 123-4567'}</span>
+                <div className="relative z-10 text-center">
+                   <h3 className="font-bold text-lg mb-4">Test Call Simulator</h3>
+                   
+                   <div className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-4 transition-all duration-500 ${isSimulating ? 'bg-red-500 animate-pulse' : 'bg-emerald-500 hover:scale-105 cursor-pointer'}`} onClick={isSimulating ? endSimulation : startSimulation}>
+                      {isSimulating ? <Phone size={32} className="rotate-135" /> : <Phone size={32} />}
                    </div>
-                   <button className="w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition border border-white/20">
-                     Purchase Number ($2/mo)
-                   </button>
+                   
+                   <p className="text-sm font-medium">{simulationStatus}</p>
+                   {isSimulating && (
+                      <div className="mt-4 text-xs text-slate-300">
+                         (Microphone Active)
+                      </div>
+                   )}
                 </div>
-                <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-blue-900 rounded-full blur-2xl opacity-50"></div>
              </div>
 
              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">

@@ -1,25 +1,25 @@
-'use client';
-
-import React, { useState } from 'react';
-import { Sidebar } from '../Layout/Sidebar';
-import { BotBuilder } from '../BotBuilder/BotBuilder';
-import { ResellerDashboard } from '../Reseller/ResellerDashboard';
-import { MarketingTools } from '../Marketing/MarketingTools';
-import { LeadsCRM } from '../CRM/LeadsCRM';
-import { WebsiteBuilder } from '../WebsiteBuilder/WebsiteBuilder';
-import { Marketplace } from '../Marketplace/Marketplace';
-import { PhoneAgent } from '../PhoneAgent/PhoneAgent';
-import { ChatLogs } from '../Chat/ChatLogs';
-import { Billing } from '../Billing/Billing';
-import { AdminDashboard } from '../Admin/AdminDashboard';
-import { Settings } from '../Settings/Settings';
-import { LandingPage } from '../Landing/LandingPage';
-import { PartnerProgramPage } from '../Landing/PartnerProgramPage';
-import { PartnerSignup } from '../Auth/PartnerSignup';
-import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation } from '../../types';
-import { PLANS, MOCK_ANALYTICS_DATA } from '../../constants';
+import React, { useState, useEffect } from 'react';
+import { Sidebar } from './components/Layout/Sidebar';
+import { BotBuilder } from './components/BotBuilder/BotBuilder';
+import { ResellerDashboard } from './components/Reseller/ResellerDashboard';
+import { MarketingTools } from './components/Marketing/MarketingTools';
+import { LeadsCRM } from './components/CRM/LeadsCRM';
+import { WebsiteBuilder } from './components/WebsiteBuilder/WebsiteBuilder';
+import { Marketplace } from './components/Marketplace/Marketplace';
+import { PhoneAgent } from './components/PhoneAgent/PhoneAgent';
+import { ChatLogs } from './components/Chat/ChatLogs';
+import { Billing } from './components/Billing/Billing';
+import { AdminDashboard } from './components/Admin/AdminDashboard';
+import { Settings } from './components/Settings/Settings';
+import { LandingPage } from './components/Landing/LandingPage';
+import { PartnerProgramPage } from './components/Landing/PartnerProgramPage';
+import { PartnerSignup } from './components/Auth/PartnerSignup';
+import { FullPageChat } from './components/Chat/FullPageChat';
+import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation } from './types';
+import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame } from 'lucide-react';
+import { auth } from './services/firebaseConfig'; // Initialize Firebase
 
 const MOCK_USER: User = {
   id: 'u1',
@@ -114,7 +114,7 @@ const MOCK_RESELLER_STATS: ResellerStats = {
   pendingPayout: 1560,
 };
 
-function DashboardApp() {
+function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
   const [showPartnerPage, setShowPartnerPage] = useState(false);
@@ -127,6 +127,13 @@ function DashboardApp() {
   
   // Mobile Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Manual Routing Check for Full Page Chat
+  const currentPath = window.location.pathname;
+  if (currentPath.startsWith('/chat/')) {
+     const botId = currentPath.split('/')[2];
+     return <FullPageChat botId={botId} />;
+  }
 
   // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
@@ -351,4 +358,4 @@ function DashboardApp() {
   );
 }
 
-export default DashboardApp;
+export default App;
