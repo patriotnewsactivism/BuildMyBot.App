@@ -23,5 +23,10 @@ steps:
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
+      - --port=8080
+      - --memory=512Mi
+      - --cpu=1
+      - --max-instances=10
+      - --set-env-vars=NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1
 images:
   - gcr.io/$PROJECT_ID/${_IMAGE}
