@@ -1,69 +1,94 @@
-import { Bot, Lead, Conversation, UserRole, PlanType } from '../types';
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  getDoc, 
+  setDoc, 
+  addDoc, 
+  updateDoc, 
+  query, 
+  where, 
+  onSnapshot,
+  orderBy,
+  limit
+} from 'firebase/firestore';
+import { db } from './firebaseConfig';
+import { Bot, Lead, Conversation, User } from '../types';
 
-const STORAGE_KEYS = {
-  BOTS: 'buildmybot_bots',
-  LEADS: 'buildmybot_leads',
-  CHAT_LOGS: 'buildmybot_chat_logs',
-  USER: 'buildmybot_user'
+const COLLECTIONS = {
+  BOTS: 'bots',
+  LEADS: 'leads',
+  USERS: 'users',
+  CONVERSATIONS: 'conversations'
 };
 
-// Default data for first-time load
-const DEFAULT_BOTS: Bot[] = [
-  { 
-    id: 'b1', 
-    name: 'Sales Assistant', 
-    type: 'Sales', 
-    systemPrompt: 'You are a sales assistant. Qualify leads and book meetings.', 
-    model: 'gpt-4o-mini', 
-    temperature: 0.8, 
-    knowledgeBase: [], 
-    active: true, 
-    conversationsCount: 12, 
-    themeColor: '#1e3a8a',
-    maxMessages: 20,
-    randomizeIdentity: true
-  }
-];
-
 export const dbService = {
-  getBots: (): Bot[] => {
-    const stored = localStorage.getItem(STORAGE_KEYS.BOTS);
-    return stored ? JSON.parse(stored) : DEFAULT_BOTS;
+  // --- BOTS ---
+  
+  // Real-time listener for bots
+  subscribeToBots: (onUpdate: (bots: Bot[]) => void) => {
+    const q = query(collection(db, COLLECTIONS.BOTS));
+    return onSnapshot(q, (snapshot) => {
+      const bots = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bot));
+      onUpdate(bots);
+    });
   },
 
-  saveBot: (bot: Bot) => {
-    const bots = dbService.getBots();
-    const existingIndex = bots.findIndex(b => b.id === bot.id);
-    
-    let newBots;
-    if (existingIndex >= 0) {
-      newBots = [...bots];
-      newBots[existingIndex] = bot;
-    } else {
-      newBots = [...bots, bot];
+  saveBot: async (bot: Bot) => {
+    const botRef = doc(collection(db, COLLECTIONS.BOTS), bot.id);
+    await setDoc(botRef, bot, { merge: true });
+    return bot;
+  },
+
+  getBotById: async (id: string): Promise<Bot | undefined> => {
+    const docRef = doc(db, COLLECTIONS.BOTS, id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as Bot;
     }
+    return undefined;
+  },
+
+  // --- LEADS ---
+
+  subscribeToLeads: (onUpdate: (leads: Lead[]) => void) => {
+    const q = query(collection(db, COLLECTIONS.LEADS), orderBy('createdAt', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+      const leads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lead));
+      onUpdate(leads);
+    });
+  },
+
+  saveLead: async (lead: Lead) => {
+    // Check for duplicate by email to avoid spamming DB
+    const q = query(collection(db, COLLECTIONS.LEADS), where("email", "==", lead.email));
+    const querySnapshot = await getDocs(q);
     
-    localStorage.setItem(STORAGE_KEYS.BOTS, JSON.stringify(newBots));
-    return newBots;
+    if (!querySnapshot.empty) {
+      // Update existing lead
+      const existingDoc = querySnapshot.docs[0];
+      await updateDoc(doc(db, COLLECTIONS.LEADS, existingDoc.id), { ...lead, id: existingDoc.id });
+      return { ...lead, id: existingDoc.id };
+    }
+
+    // Create new
+    const docRef = await addDoc(collection(db, COLLECTIONS.LEADS), lead);
+    return { ...lead, id: docRef.id };
   },
 
-  getBotById: (id: string): Bot | undefined => {
-    const bots = dbService.getBots();
-    return bots.find(b => b.id === id);
+  // --- USER ---
+
+  getUserProfile: async (uid: string): Promise<User | null> => {
+    const docRef = doc(db, COLLECTIONS.USERS, uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as User;
+    }
+    return null;
   },
 
-  getLeads: (): Lead[] => {
-    const stored = localStorage.getItem(STORAGE_KEYS.LEADS);
-    return stored ? JSON.parse(stored) : [];
-  },
-
-  saveLead: (lead: Lead) => {
-    const leads = dbService.getLeads();
-    // Avoid duplicates
-    if (leads.some(l => l.email === lead.email)) return leads;
-    
-    const newLeads = [lead, ...leads];
-    localStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(newLeads));
-    return newLeads;
+  saveUserProfile: async (user: User) => {
+    const userRef = doc(db, COLLECTIONS.USERS, user.id);
+    await setDoc(userRef, user, { merge: true });
   }
 };
