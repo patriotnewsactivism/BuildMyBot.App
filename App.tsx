@@ -15,30 +15,103 @@ import { LandingPage } from './components/Landing/LandingPage';
 import { PartnerProgramPage } from './components/Landing/PartnerProgramPage';
 import { PartnerSignup } from './components/Auth/PartnerSignup';
 import { FullPageChat } from './components/Chat/FullPageChat';
-import { AuthModal } from './components/Auth/AuthModal';
 import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation } from './types';
 import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame } from 'lucide-react';
-import { auth } from './services/firebaseConfig';
-import { dbService } from './services/dbService';
+import { auth } from './services/firebaseConfig'; // Initialize Firebase
 
 const MOCK_USER: User = {
-  id: 'guest',
-  name: 'Guest User',
-  email: 'guest@example.com',
+  id: 'u1',
+  name: 'Alex Johnson',
+  email: 'alex@enterprise.com',
   role: UserRole.OWNER,
-  plan: PlanType.FREE,
-  companyName: 'My Company'
+  plan: PlanType.ENTERPRISE, 
+  companyName: 'Apex Global',
+  resellerCode: 'APEX2024',
+  customDomain: 'app.apexglobal.com'
 };
 
-const INITIAL_CHAT_LOGS: Conversation[] = [];
+const MOCK_BOTS: BotType[] = [
+  { 
+    id: 'b1', 
+    name: 'Sales Assistant', 
+    type: 'Sales', 
+    systemPrompt: 'You are a sales assistant.', 
+    model: 'gpt-4o-mini', 
+    temperature: 0.8, 
+    knowledgeBase: [], 
+    active: true, 
+    conversationsCount: 342, 
+    themeColor: '#1e3a8a',
+    maxMessages: 20,
+    randomizeIdentity: true
+  },
+  { 
+    id: 'b2', 
+    name: 'Support Bot', 
+    type: 'Customer Support', 
+    systemPrompt: 'You are a support agent.', 
+    model: 'gpt-4o-mini', 
+    temperature: 0.4, 
+    knowledgeBase: [], 
+    active: true, 
+    conversationsCount: 156, 
+    themeColor: '#10b981',
+    maxMessages: 20,
+    randomizeIdentity: false
+  },
+];
+
+const MOCK_LEADS: Lead[] = [
+    { id: '1', name: 'Sarah Connor', email: 'sarah@skynet.com', phone: '+1 555-0123', score: 95, status: 'New', sourceBotId: 'b1', createdAt: '2024-05-15T10:00:00Z' },
+    { id: '2', name: 'John Doe', email: 'john.doe@example.com', phone: '+1 555-0199', score: 45, status: 'Contacted', sourceBotId: 'b2', createdAt: '2024-05-14T08:30:00Z' },
+    { id: '3', name: 'Emily Blunt', email: 'emily@hollywood.com', phone: '', score: 82, status: 'Qualified', sourceBotId: 'b1', createdAt: '2024-05-12T14:20:00Z' },
+    { id: '4', name: 'Michael Scott', email: 'michael@dunder.com', phone: '+1 555-9999', score: 10, status: 'Closed', sourceBotId: 'b1', createdAt: '2024-05-10T09:00:00Z' },
+    { id: '5', name: 'Dwight Schrute', email: 'beetfarmer@farms.com', phone: '+1 555-2342', score: 65, status: 'New', sourceBotId: 'b2', createdAt: '2024-05-16T11:45:00Z' },
+];
+
+const INITIAL_CHAT_LOGS: Conversation[] = [
+    {
+      id: 'c1',
+      botId: 'b1',
+      sentiment: 'Positive',
+      timestamp: Date.now() - 1000 * 60 * 5,
+      messages: [
+        { role: 'user', text: 'Hi, I need help with pricing.', timestamp: Date.now() - 1000 * 60 * 5 },
+        { role: 'model', text: 'Sure! Our Enterprise plan is $399/mo and includes unlimited bots. Would you like to know more?', timestamp: Date.now() - 1000 * 60 * 4 },
+        { role: 'user', text: 'That sounds perfect. Does it include SLA?', timestamp: Date.now() - 1000 * 60 * 3 },
+        { role: 'model', text: 'Yes, the Enterprise plan includes Priority SLA support and a dedicated account manager.', timestamp: Date.now() - 1000 * 60 * 2 },
+      ]
+    },
+    {
+      id: 'c2',
+      botId: 'b1',
+      sentiment: 'Neutral',
+      timestamp: Date.now() - 1000 * 60 * 60,
+      messages: [
+        { role: 'user', text: 'Where are you located?', timestamp: Date.now() - 1000 * 60 * 60 },
+        { role: 'model', text: 'We are a digital-first company with headquarters in San Francisco.', timestamp: Date.now() - 1000 * 60 * 59 },
+      ]
+    },
+    {
+      id: 'c3',
+      botId: 'b2',
+      sentiment: 'Negative',
+      timestamp: Date.now() - 1000 * 60 * 60 * 24,
+      messages: [
+        { role: 'user', text: 'My login is not working.', timestamp: Date.now() - 1000 * 60 * 60 * 24 },
+        { role: 'model', text: 'I apologize. Have you tried resetting your password?', timestamp: Date.now() - 1000 * 60 * 60 * 24 },
+        { role: 'user', text: 'Yes, it is still broken. This sucks.', timestamp: Date.now() - 1000 * 60 * 60 * 24 },
+      ]
+    }
+];
 
 const MOCK_RESELLER_STATS: ResellerStats = {
-  totalClients: 0,
-  totalRevenue: 0,
-  commissionRate: 0.20,
-  pendingPayout: 0,
+  totalClients: 64,
+  totalRevenue: 5200,
+  commissionRate: 0.30,
+  pendingPayout: 1560,
 };
 
 function App() {
@@ -46,86 +119,39 @@ function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [showPartnerPage, setShowPartnerPage] = useState(false);
   const [showPartnerSignup, setShowPartnerSignup] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  
   const [user, setUser] = useState<User>(MOCK_USER);
-  const [bots, setBots] = useState<BotType[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [bots, setBots] = useState<BotType[]>(MOCK_BOTS);
+  const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS);
   const [chatLogs, setChatLogs] = useState<Conversation[]>(INITIAL_CHAT_LOGS);
   const [notification, setNotification] = useState<string | null>(null);
   
+  // Mobile Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Auth Listener
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      if (firebaseUser) {
-        // Fetch or create user profile
-        const profile = await dbService.getUserProfile(firebaseUser.uid);
-        if (profile) {
-           setUser(profile);
-        } else {
-           // Fallback if profile missing
-           setUser({
-              id: firebaseUser.uid,
-              name: firebaseUser.displayName || 'User',
-              email: firebaseUser.email || '',
-              role: UserRole.OWNER,
-              plan: PlanType.FREE,
-              companyName: 'New Company'
-           });
-        }
-        setIsLoggedIn(true);
-      } else {
-        setIsLoggedIn(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Firestore Data Listeners
-  useEffect(() => {
-    if (!isLoggedIn) return;
-
-    // Real-time Bots
-    const unsubBots = dbService.subscribeToBots((fetchedBots) => {
-      setBots(fetchedBots);
-    });
-
-    // Real-time Leads
-    const unsubLeads = dbService.subscribeToLeads((fetchedLeads) => {
-      setLeads(fetchedLeads);
-    });
-
-    return () => {
-      unsubBots();
-      unsubLeads();
-    };
-  }, [isLoggedIn]);
-
-  // Handle Full Page Chat Route
+  // Manual Routing Check for Full Page Chat
   const currentPath = window.location.pathname;
   if (currentPath.startsWith('/chat/')) {
      const botId = currentPath.split('/')[2];
      return <FullPageChat botId={botId} />;
   }
 
+  // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
   const totalLeads = leads.length;
+  // Estimate savings: $5 per conversation (support cost)
   const estSavings = totalConversations * 5; 
+  // Avg Response Time (Mocked but variable)
   const avgResponseTime = "1.2s";
 
+  // Handle Admin Portal Access
   const handleAdminLogin = () => {
-      // For demo purposes, we simulate admin access. 
-      // In real app, this would check Firebase claims or DB role.
-      setUser({ ...user, role: UserRole.ADMIN, name: 'Master Admin' });
+      setUser({ ...MOCK_USER, role: UserRole.ADMIN, name: 'Master Admin' });
       setIsLoggedIn(true);
       setCurrentView('admin');
   };
 
   const handlePartnerSignup = (data: any) => {
-    // In real app, create reseller profile in DB
-    setUser({ ...user, role: UserRole.RESELLER, name: data.name, companyName: data.companyName || 'My Agency' });
+    setUser({ ...MOCK_USER, role: UserRole.RESELLER, name: data.name, companyName: data.companyName || 'My Agency' });
     setIsLoggedIn(true);
     setCurrentView('reseller');
     setShowPartnerSignup(false);
@@ -147,194 +173,188 @@ function App() {
       maxMessages: 20,
       randomizeIdentity: true
     };
-    dbService.saveBot(newBot); // Save to Firestore
+    setBots([...bots, newBot]);
     setNotification(`Installed "${template.name}" successfully!`);
     setTimeout(() => setNotification(null), 3000);
     setCurrentView('bots');
   };
 
   const handleUpdateLead = (updatedLead: Lead) => {
-    dbService.saveLead(updatedLead); // Update in Firestore
+    setLeads(leads.map(l => l.id === updatedLead.id ? updatedLead : l));
   };
 
   const handleLeadDetected = (email: string) => {
-    // Check if email already exists in local state (listener will handle sync but this prevents instant duplicate visual)
-    if (leads.some(l => l.email === email)) return;
-
-    const newLead: Lead = {
+    const existing = leads.find(l => l.email === email);
+    if (!existing) {
+      const newLead: Lead = {
         id: Date.now().toString(),
-        name: 'Website Visitor', 
+        name: 'Website Visitor', // In a real app, we'd extract this too
         email: email,
-        score: 85,
+        score: 85, // High score for direct entry
         status: 'New',
-        sourceBotId: 'web-chat',
+        sourceBotId: 'test-bot',
         createdAt: new Date().toISOString()
-    };
-    dbService.saveLead(newLead); // Save to Firestore
-    setNotification("New Hot Lead Detected from Chat! 🔥");
-    setTimeout(() => setNotification(null), 4000);
+      };
+      setLeads(prev => [newLead, ...prev]);
+      setNotification("New Hot Lead Detected from Chat! 🔥");
+      setTimeout(() => setNotification(null), 4000);
+    }
   };
 
-  const handleSaveBot = async (bot: BotType) => {
-     await dbService.saveBot(bot);
-     setNotification("Bot saved successfully!");
-     setTimeout(() => setNotification(null), 2000);
-  };
-
+  // If not logged in, show Public Landing Page or Partner Page
   if (!isLoggedIn) {
     if (showPartnerSignup) {
         return <PartnerSignup onBack={() => setShowPartnerSignup(false)} onComplete={handlePartnerSignup} />;
     }
     if (showPartnerPage) {
-      return <PartnerProgramPage onBack={() => setShowPartnerPage(false)} onLogin={() => setShowAuthModal(true)} onSignup={() => setShowPartnerSignup(true)} />;
+      return <PartnerProgramPage onBack={() => setShowPartnerPage(false)} onLogin={() => setIsLoggedIn(true)} onSignup={() => setShowPartnerSignup(true)} />;
     }
-    return (
-      <>
-        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onLoginSuccess={() => {}} />
-        <LandingPage onLogin={() => setShowAuthModal(true)} onNavigateToPartner={() => setShowPartnerPage(true)} onAdminLogin={handleAdminLogin} />
-      </>
-    );
+    return <LandingPage onLogin={() => setIsLoggedIn(true)} onNavigateToPartner={() => setShowPartnerPage(true)} onAdminLogin={handleAdminLogin} />;
   }
 
-  // Dashboard Component (Internal)
-  const Dashboard = () => (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-           <div className="flex items-center gap-2">
-             <h2 className="text-2xl font-bold text-slate-800">Welcome back, {user.name.split(' ')[0]}</h2>
-             {user.plan === PlanType.ENTERPRISE && (
-               <span className="bg-slate-900 text-white text-[10px] px-2 py-0.5 rounded-full uppercase font-bold tracking-wide border border-slate-700">Enterprise</span>
-             )}
-           </div>
-           <p className="text-slate-500">Here's what's happening with your bots today.</p>
-        </div>
-        <div className="flex gap-3">
-          <button className="px-4 py-2 bg-blue-900 text-white rounded-lg text-sm font-medium hover:bg-blue-950 shadow-sm shadow-blue-200 flex items-center gap-2" onClick={() => setCurrentView('bots')}>
-             <BotIcon size={16} /> Create Bot
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-         {[
-           { label: 'Conversations', val: totalConversations.toLocaleString(), icon: MessageSquare, color: 'blue', change: '+12%' },
-           { label: 'Leads Captured', val: totalLeads.toLocaleString(), icon: Users, color: 'sky', change: '+8%' },
-           { label: 'Avg. Response Time', val: avgResponseTime, icon: TrendingUp, color: 'emerald', change: '-5%' },
-           { label: 'Est. Savings', val: `$${estSavings.toLocaleString()}`, icon: DollarSign, color: 'slate', change: '+22%' },
-         ].map((stat, i) => (
-           <div key={i} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
-              <div className="flex justify-between items-start mb-4">
-                 <div className={`p-2 bg-${stat.color}-50 text-${stat.color}-600 rounded-lg`}>
-                   <stat.icon size={20} />
-                 </div>
-                 <span className={`text-xs font-medium px-2 py-1 rounded-full ${stat.change.startsWith('+') ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                   {stat.change}
-                 </span>
-              </div>
-              <p className="text-3xl font-bold text-slate-800">{stat.val}</p>
-              <p className="text-sm text-slate-500 mt-1">{stat.label}</p>
-           </div>
-         ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="font-semibold text-slate-800 mb-6">Conversation Volume</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={MOCK_ANALYTICS_DATA}>
-                <defs>
-                  <linearGradient id="colorConv" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#1e3a8a" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#1e3a8a" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Area type="monotone" dataKey="conversations" stroke="#1e3a8a" strokeWidth={3} fillOpacity={1} fill="url(#colorConv)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-          <h3 className="font-semibold text-slate-800 mb-4">Active Bots</h3>
-          <div className="space-y-4 flex-1">
-             {bots.length === 0 ? (
-               <div className="text-center text-slate-400 py-8">No bots created yet.</div>
-             ) : (
-                bots.slice(0, 4).map(bot => (
-                  <div key={bot.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100 hover:border-blue-200 transition cursor-pointer" onClick={() => setCurrentView('bots')}>
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-sm" style={{backgroundColor: bot.themeColor}}>
-                        {bot.name.charAt(0)}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm text-slate-800">{bot.name}</p>
-                        <p className="text-xs text-slate-500">{bot.conversationsCount} conversations</p>
-                      </div>
-                      <div className={`w-2 h-2 rounded-full ring-2 ${bot.active ? 'bg-emerald-500 ring-emerald-100' : 'bg-slate-300 ring-slate-100'}`}></div>
-                  </div>
-                ))
-             )}
-          </div>
-           <button onClick={() => setCurrentView('bots')} className="w-full mt-4 py-2 text-sm text-blue-900 font-medium hover:bg-blue-50 rounded-lg transition flex items-center justify-center gap-1">
-             View All {bots.length} Bots <ArrowRight size={14} />
-           </button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="flex h-screen bg-slate-50 relative">
+    <div className="flex h-screen bg-slate-50 font-sans text-slate-900">
       <Sidebar 
         currentView={currentView} 
         setView={setCurrentView} 
         role={user.role} 
-        isOpen={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(false)} 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
         user={user}
         usage={totalConversations}
       />
       
-      {notification && (
-        <div className="fixed top-4 right-4 z-50 bg-slate-900 text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3 animate-fade-in border border-slate-700">
-           {notification.includes('Lead') ? <Flame className="text-orange-500" size={20} /> : <CheckCircle className="text-emerald-400" size={20} />}
-           <span className="font-medium text-sm">{notification}</span>
+      <main className="flex-1 overflow-hidden relative flex flex-col h-full">
+        {/* Mobile Header */}
+        <div className="md:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0">
+           <div className="flex items-center gap-2 font-bold text-slate-800">
+              <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center border border-blue-800 shadow-lg shadow-blue-900/50 text-white">
+                <BotIcon size={20} />
+              </div>
+              BuildMyBot
+           </div>
+           <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600">
+              <Menu size={24} />
+           </button>
         </div>
-      )}
 
-      <div className="md:hidden fixed top-0 left-0 w-full bg-slate-900 text-white p-4 flex items-center justify-between z-30 shadow-md">
-         <div className="flex items-center gap-2 font-bold">
-            <BotIcon size={20} /> BuildMyBot
-         </div>
-         <button onClick={() => setIsSidebarOpen(true)}><Menu size={24} /></button>
-      </div>
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          {notification && (
+              <div className="fixed top-6 right-6 z-50 bg-slate-900 text-white px-6 py-3 rounded-lg shadow-xl animate-bounce-slow flex items-center gap-3">
+                 <Bell size={18} className="text-blue-400" /> {notification}
+              </div>
+          )}
 
-      <main className="flex-1 overflow-y-auto pt-16 md:pt-0 p-4 md:p-8 relative">
-        {currentView === 'dashboard' && <Dashboard />}
-        {currentView === 'bots' && (
-           <BotBuilder 
-             bots={bots} 
-             onSave={handleSaveBot} 
-             customDomain={user.customDomain} 
-             onLeadDetected={handleLeadDetected}
-           />
-        )}
-        {currentView === 'reseller' && <ResellerDashboard user={user} stats={MOCK_RESELLER_STATS} />}
-        {currentView === 'marketing' && <MarketingTools />}
-        {currentView === 'leads' && <LeadsCRM leads={leads} onUpdateLead={handleUpdateLead} />}
-        {currentView === 'website' && <WebsiteBuilder />}
-        {currentView === 'marketplace' && <Marketplace onInstall={handleInstallTemplate} />}
-        {currentView === 'phone' && <PhoneAgent />}
-        {currentView === 'chat-logs' && <ChatLogs conversations={chatLogs} />}
-        {currentView === 'billing' && <Billing />}
-        {currentView === 'admin' && <AdminDashboard />}
-        {currentView === 'settings' && <Settings user={user} onUpdateUser={(u) => setUser(u)} />}
+          {currentView === 'dashboard' && (
+            <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-10">
+               {/* Dashboard Content */}
+               <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-800">Dashboard</h2>
+                    <p className="text-slate-500">Welcome back, {user.name.split(' ')[0]}.</p>
+                  </div>
+                  <button onClick={() => setCurrentView('bots')} className="bg-blue-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-blue-950 transition">
+                    + Create New Bot
+                  </button>
+               </div>
+               
+               {/* Stats Cards */}
+               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><MessageSquare size={18}/></div>
+                        <span className="text-sm font-medium text-slate-500">Total Chats</span>
+                      </div>
+                      <p className="text-2xl font-bold text-slate-800">{totalConversations}</p>
+                   </div>
+                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><Users size={18}/></div>
+                        <span className="text-sm font-medium text-slate-500">Leads Captured</span>
+                      </div>
+                      <p className="text-2xl font-bold text-slate-800">{totalLeads}</p>
+                   </div>
+                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-green-50 text-green-600 rounded-lg"><DollarSign size={18}/></div>
+                        <span className="text-sm font-medium text-slate-500">Est. Savings</span>
+                      </div>
+                      <p className="text-2xl font-bold text-slate-800">${estSavings}</p>
+                   </div>
+                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-orange-50 text-orange-600 rounded-lg"><TrendingUp size={18}/></div>
+                        <span className="text-sm font-medium text-slate-500">Avg. Response</span>
+                      </div>
+                      <p className="text-2xl font-bold text-slate-800">{avgResponseTime}</p>
+                   </div>
+               </div>
+               
+               {/* Charts */}
+               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80">
+                     <h3 className="font-bold text-slate-800 mb-4">Conversation Volume</h3>
+                     <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={MOCK_ANALYTICS_DATA}>
+                          <defs>
+                            <linearGradient id="colorConvos" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#1e3a8a" stopOpacity={0.1}/>
+                              <stop offset="95%" stopColor="#1e3a8a" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
+                          <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                          <Tooltip />
+                          <Area type="monotone" dataKey="conversations" stroke="#1e3a8a" strokeWidth={3} fillOpacity={1} fill="url(#colorConvos)" />
+                        </AreaChart>
+                     </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80 flex flex-col">
+                      <h3 className="font-bold text-slate-800 mb-4">Lead Sources</h3>
+                      <div className="flex-1 flex items-center justify-center">
+                         <div className="text-center space-y-2">
+                            <div className="text-4xl font-bold text-blue-900">82%</div>
+                            <p className="text-sm text-slate-500">from Sales Bot</p>
+                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
+                               <div className="bg-blue-900 h-full w-[82%]"></div>
+                            </div>
+                         </div>
+                      </div>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {currentView === 'bots' && <BotBuilder bots={bots} onSave={(bot) => {
+              if (bot.id === 'new' || !bots.find(b => b.id === bot.id)) {
+                  setBots([...bots, { ...bot, id: bot.id === 'new' ? `b${Date.now()}` : bot.id }]);
+              } else {
+                  setBots(bots.map(b => b.id === bot.id ? bot : b));
+              }
+          }} customDomain={user.customDomain} onLeadDetected={handleLeadDetected} />}
+          
+          {currentView === 'reseller' && <ResellerDashboard user={user} stats={MOCK_RESELLER_STATS} />}
+          
+          {currentView === 'marketing' && <MarketingTools />}
+          
+          {currentView === 'leads' && <LeadsCRM leads={leads} onUpdateLead={handleUpdateLead} />}
+          
+          {currentView === 'website' && <WebsiteBuilder />}
+          
+          {currentView === 'marketplace' && <Marketplace onInstall={handleInstallTemplate} />}
+          
+          {currentView === 'phone' && <PhoneAgent />}
+          
+          {currentView === 'chat-logs' && <ChatLogs conversations={chatLogs} />}
+          
+          {currentView === 'billing' && <Billing />}
+          
+          {currentView === 'admin' && <AdminDashboard />}
+          
+          {currentView === 'settings' && <Settings user={user} onUpdateUser={(u) => setUser(u)} />}
+          
+        </div>
       </main>
     </div>
   );

@@ -1,40 +1,43 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, AlertCircle, Loader } from 'lucide-react';
 import { generateBotResponse } from '../../services/geminiService';
-import { dbService } from '../../services/dbService';
 import { Bot as BotType } from '../../types';
 
 interface FullPageChatProps {
   botId: string;
 }
 
+// Mock bot for fallback if database fetch fails (or for demo)
+const MOCK_BOT: BotType = {
+    id: 'b1', 
+    name: 'Assistant', 
+    type: 'Customer Support', 
+    systemPrompt: 'You are a helpful assistant.', 
+    model: 'gpt-4o-mini', 
+    temperature: 0.7, 
+    knowledgeBase: [], 
+    active: true, 
+    conversationsCount: 0, 
+    themeColor: '#1e3a8a',
+    maxMessages: 20,
+    randomizeIdentity: false
+};
+
 export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
-  const [bot, setBot] = useState<BotType | null>(null);
   const [messages, setMessages] = useState<{role: 'user'|'model', text: string}[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // In a real app, you would fetch the bot config from Firebase here using botId
+  const bot = MOCK_BOT; 
 
   useEffect(() => {
-    const fetchBot = async () => {
-      try {
-        const botData = await dbService.getBotById(botId);
-        if (botData) {
-            setBot(botData);
-            // Initial Greeting
-            setTimeout(() => {
-              setMessages([{ role: 'model', text: "Hello! How can I help you today?" }]);
-            }, 500);
-        }
-      } catch (e) {
-        console.error("Failed to load bot", e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBot();
-  }, [botId]);
+    // Initial Greeting
+    setTimeout(() => {
+       setMessages([{ role: 'model', text: "Hello! How can I help you today?" }]);
+    }, 500);
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -43,7 +46,7 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
   }, [messages, isTyping]);
 
   const handleSend = async () => {
-    if (!input.trim() || !bot) return;
+    if (!input.trim()) return;
 
     const userMsg = { role: 'user' as const, text: input };
     setMessages(prev => [...prev, userMsg]);
@@ -51,27 +54,21 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
     setIsTyping(true);
 
     try {
-        const kbContext = bot.knowledgeBase?.join('\n\n') || '';
         const response = await generateBotResponse(
             bot.systemPrompt, 
             messages, 
             userMsg.text, 
-            bot.model,
-            kbContext
+            bot.model
         );
         
         setTimeout(() => {
             setMessages(prev => [...prev, { role: 'model', text: response }]);
             setIsTyping(false);
-        }, bot.responseDelay || 1000);
+        }, 1000);
     } catch (e) {
         setIsTyping(false);
     }
   };
-
-  if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50"><Loader className="animate-spin text-blue-900" size={32}/></div>;
-  
-  if (!bot) return <div className="h-screen flex items-center justify-center bg-slate-50 text-slate-500">Bot not found or deactivated.</div>;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Phone, Mail, MoreHorizontal, User as UserIcon, Flame, Send, X, Check, Download, ArrowUpRight } from 'lucide-react';
+import { Search, Filter, Phone, Mail, MoreHorizontal, User as UserIcon, Flame, Send, X, Check, Download, ArrowUpRight, LayoutGrid, List, GripVertical } from 'lucide-react';
 import { Lead } from '../../types';
 
 interface LeadsCRMProps {
@@ -8,8 +8,12 @@ interface LeadsCRMProps {
 }
 
 export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [filter, setFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Drag and Drop State
+  const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   
   // Modal State
   const [emailModalOpen, setEmailModalOpen] = useState(false);
@@ -19,17 +23,18 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
   const [emailSent, setEmailSent] = useState(false);
 
   const filteredLeads = leads.filter(lead => {
-    const matchesFilter = filter === 'All' || lead.status === filter;
+    // Only apply status filter in List mode. In Kanban, we show all columns.
+    const matchesFilter = viewMode === 'kanban' || filter === 'All' || lead.status === filter;
     const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) || lead.email.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'New': return 'bg-blue-100 text-blue-900';
-      case 'Contacted': return 'bg-yellow-100 text-yellow-700';
-      case 'Qualified': return 'bg-emerald-100 text-emerald-700';
-      case 'Closed': return 'bg-slate-200 text-slate-600';
+      case 'New': return 'bg-blue-100 text-blue-900 border-blue-200';
+      case 'Contacted': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'Qualified': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'Closed': return 'bg-slate-200 text-slate-600 border-slate-300';
       default: return 'bg-slate-100 text-slate-700';
     }
   };
@@ -38,6 +43,25 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
     const leadToUpdate = leads.find(l => l.id === leadId);
     if (leadToUpdate) {
         onUpdateLead({ ...leadToUpdate, status: newStatus });
+    }
+  };
+
+  // Drag and Drop Handlers
+  const handleDragStart = (e: React.DragEvent, leadId: string) => {
+    setDraggedLeadId(leadId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, newStatus: string) => {
+    e.preventDefault();
+    if (draggedLeadId) {
+      handleStatusChange(draggedLeadId, newStatus);
+      setDraggedLeadId(null);
     }
   };
 
@@ -71,6 +95,67 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
     link.click();
     document.body.removeChild(link);
   };
+
+  const KanbanColumn: React.FC<{ status: string; items: Lead[] }> = ({ status, items }) => (
+    <div 
+      onDragOver={handleDragOver}
+      onDrop={(e) => handleDrop(e, status)}
+      className="bg-slate-50 rounded-xl p-4 border border-slate-200 min-h-[500px] flex flex-col"
+    >
+      <div className={`flex justify-between items-center mb-4 pb-2 border-b-2 ${
+         status === 'New' ? 'border-blue-500' : 
+         status === 'Contacted' ? 'border-yellow-500' : 
+         status === 'Qualified' ? 'border-emerald-500' : 'border-slate-400'
+      }`}>
+        <h3 className="font-bold text-slate-700">{status}</h3>
+        <span className="bg-white px-2 py-0.5 rounded text-xs font-bold text-slate-500 shadow-sm border border-slate-200">
+          {items.length}
+        </span>
+      </div>
+      
+      <div className="flex-1 space-y-3">
+        {items.map(lead => (
+          <div 
+            key={lead.id}
+            draggable
+            onDragStart={(e) => handleDragStart(e, lead.id)}
+            className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 cursor-grab hover:shadow-md transition active:cursor-grabbing group relative"
+          >
+            <div className="flex justify-between items-start mb-2">
+               <div className="flex items-center gap-2">
+                 {lead.score > 75 && <Flame size={14} className="text-orange-500 fill-orange-500" />}
+                 <span className="font-bold text-slate-800 text-sm">{lead.name}</span>
+               </div>
+               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${lead.score > 75 ? 'bg-orange-50 text-orange-600' : 'bg-slate-100 text-slate-500'}`}>
+                 {lead.score}
+               </span>
+            </div>
+            
+            <div className="text-xs text-slate-500 space-y-1 mb-3">
+               <div className="flex items-center gap-1.5 truncate">
+                 <Mail size={12}/> {lead.email}
+               </div>
+               <div className="flex items-center gap-1.5">
+                 <UserIcon size={12}/> Bot #{lead.sourceBotId}
+               </div>
+            </div>
+
+            <button 
+              onClick={() => openEmailModal(lead)}
+              className="w-full py-1.5 rounded bg-slate-50 text-blue-900 text-xs font-medium hover:bg-blue-50 border border-slate-100 flex items-center justify-center gap-1.5 transition"
+            >
+              <ArrowUpRight size={12} /> Email Lead
+            </button>
+          </div>
+        ))}
+        {items.length === 0 && (
+          <div className="h-24 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center text-slate-400 text-xs">
+            Drop items here
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6 animate-fade-in relative">
@@ -126,137 +211,177 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
          </div>
       )}
 
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-end gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Lead CRM</h2>
-          <p className="text-slate-500">Manage and track leads captured by your bots.</p>
+          <p className="text-slate-500">Manage pipeline and track leads.</p>
         </div>
         <div className="flex gap-2">
+           <div className="flex bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded ${viewMode === 'list' ? 'bg-blue-100 text-blue-900' : 'text-slate-400 hover:text-slate-600'}`}
+                title="List View"
+              >
+                <List size={18} />
+              </button>
+              <button 
+                onClick={() => setViewMode('kanban')}
+                className={`p-2 rounded ${viewMode === 'kanban' ? 'bg-blue-100 text-blue-900' : 'text-slate-400 hover:text-slate-600'}`}
+                title="Kanban Board"
+              >
+                <LayoutGrid size={18} />
+              </button>
+           </div>
           <button 
             onClick={handleExportCSV}
-            className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 text-sm font-medium flex items-center gap-2"
+            className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 text-sm font-medium flex items-center gap-2 bg-white shadow-sm"
           >
             <Download size={16} /> Export CSV
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {/* Toolbar */}
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row gap-4 justify-between items-center">
-           <div className="relative w-full md:w-96">
-             <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
-             <input 
-               type="text" 
-               placeholder="Search leads..." 
-               value={searchTerm}
-               onChange={(e) => setSearchTerm(e.target.value)}
-               className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-blue-900 focus:border-blue-900" 
-             />
-           </div>
-           
-           <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
-              {['All', 'New', 'Contacted', 'Qualified', 'Closed'].map(status => (
-                <button
-                  key={status}
-                  onClick={() => setFilter(status)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
-                    filter === status 
-                    ? 'bg-blue-900 text-white' 
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {status}
-                </button>
+      {viewMode === 'kanban' ? (
+         <div className="space-y-4">
+            <div className="relative w-full max-w-md">
+                <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="Search leads..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-blue-900 focus:border-blue-900" 
+                />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 overflow-x-auto pb-4">
+              {['New', 'Contacted', 'Qualified', 'Closed'].map(status => (
+                <KanbanColumn 
+                  key={status} 
+                  status={status} 
+                  items={filteredLeads.filter(l => l.status === status)} 
+                />
               ))}
-           </div>
-        </div>
+            </div>
+         </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* Toolbar */}
+          <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row gap-4 justify-between items-center">
+            <div className="relative w-full md:w-96">
+              <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search leads..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-blue-900 focus:border-blue-900" 
+              />
+            </div>
+            
+            <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+                {['All', 'New', 'Contacted', 'Qualified', 'Closed'].map(status => (
+                  <button
+                    key={status}
+                    onClick={() => setFilter(status)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
+                      filter === status 
+                      ? 'bg-blue-900 text-white' 
+                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+            </div>
+          </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-           <table className="w-full text-left">
-             <thead className="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200">
-               <tr>
-                 <th className="px-6 py-3 font-semibold">Lead Name</th>
-                 <th className="px-6 py-3 font-semibold">Score</th>
-                 <th className="px-6 py-3 font-semibold">Contact Info</th>
-                 <th className="px-6 py-3 font-semibold">Status</th>
-                 <th className="px-6 py-3 font-semibold">Source</th>
-                 <th className="px-6 py-3 font-semibold text-right">Actions</th>
-               </tr>
-             </thead>
-             <tbody className="divide-y divide-slate-100 text-sm">
-               {filteredLeads.map(lead => (
-                 <tr key={lead.id} className="hover:bg-slate-50/80 transition">
-                   <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold">
-                           {lead.name.charAt(0)}
-                         </div>
-                         <div>
-                            <p className="font-semibold text-slate-800">{lead.name}</p>
-                            <p className="text-xs text-slate-400">{new Date(lead.createdAt).toLocaleDateString()}</p>
-                         </div>
-                      </div>
-                   </td>
-                   <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {lead.score > 75 && <Flame size={16} className="text-orange-500 fill-orange-500" />}
-                        <span className={`font-bold ${lead.score > 75 ? 'text-orange-600' : 'text-slate-600'}`}>
-                          {lead.score}
-                        </span>
-                      </div>
-                   </td>
-                   <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 text-slate-600">
-                           <Mail size={14} className="text-slate-400"/> {lead.email}
-                        </div>
-                        {lead.phone && (
-                          <div className="flex items-center gap-2 text-slate-600">
-                             <Phone size={14} className="text-slate-400"/> {lead.phone}
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-3 font-semibold">Lead Name</th>
+                  <th className="px-6 py-3 font-semibold">Score</th>
+                  <th className="px-6 py-3 font-semibold">Contact Info</th>
+                  <th className="px-6 py-3 font-semibold">Status</th>
+                  <th className="px-6 py-3 font-semibold">Source</th>
+                  <th className="px-6 py-3 font-semibold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {filteredLeads.map(lead => (
+                  <tr key={lead.id} className="hover:bg-slate-50/80 transition group">
+                    <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-800 font-bold">
+                            {lead.name.charAt(0)}
                           </div>
-                        )}
-                      </div>
-                   </td>
-                   <td className="px-6 py-4">
-                      <select 
-                        value={lead.status}
-                        onChange={(e) => handleStatusChange(lead.id, e.target.value)}
-                        className={`text-xs font-semibold px-2 py-1 rounded-full border-none focus:ring-0 cursor-pointer ${getStatusColor(lead.status)}`}
-                      >
-                        <option value="New">New</option>
-                        <option value="Contacted">Contacted</option>
-                        <option value="Qualified">Qualified</option>
-                        <option value="Closed">Closed</option>
-                      </select>
-                   </td>
-                   <td className="px-6 py-4 text-slate-500">
-                      Bot #{lead.sourceBotId}
-                   </td>
-                   <td className="px-6 py-4 text-right">
-                      <button 
-                        onClick={() => openEmailModal(lead)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" 
-                        title="Send Email"
-                      >
-                         <ArrowUpRight size={18} />
-                      </button>
-                   </td>
-                 </tr>
-               ))}
-               {filteredLeads.length === 0 && (
-                 <tr>
-                   <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
-                     <UserIcon size={48} className="mx-auto mb-3 opacity-20" />
-                     <p>No leads found matching your criteria.</p>
-                   </td>
-                 </tr>
-               )}
-             </tbody>
-           </table>
+                          <div>
+                              <p className="font-semibold text-slate-800">{lead.name}</p>
+                              <p className="text-xs text-slate-400">{new Date(lead.createdAt).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {lead.score > 75 && <Flame size={16} className="text-orange-500 fill-orange-500" />}
+                          <span className={`font-bold ${lead.score > 75 ? 'text-orange-600' : 'text-slate-600'}`}>
+                            {lead.score}
+                          </span>
+                        </div>
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2 text-slate-600">
+                            <Mail size={14} className="text-slate-400"/> {lead.email}
+                          </div>
+                          {lead.phone && (
+                            <div className="flex items-center gap-2 text-slate-600">
+                              <Phone size={14} className="text-slate-400"/> {lead.phone}
+                            </div>
+                          )}
+                        </div>
+                    </td>
+                    <td className="px-6 py-4">
+                        <select 
+                          value={lead.status}
+                          onChange={(e) => handleStatusChange(lead.id, e.target.value)}
+                          className={`text-xs font-semibold px-2 py-1 rounded-full focus:ring-0 cursor-pointer border ${getStatusColor(lead.status)}`}
+                        >
+                          <option value="New">New</option>
+                          <option value="Contacted">Contacted</option>
+                          <option value="Qualified">Qualified</option>
+                          <option value="Closed">Closed</option>
+                        </select>
+                    </td>
+                    <td className="px-6 py-4 text-slate-500">
+                        Bot #{lead.sourceBotId}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                        <button 
+                          onClick={() => openEmailModal(lead)}
+                          className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg transition text-xs font-medium flex items-center gap-1 ml-auto" 
+                          title="Send Email"
+                        >
+                          <Mail size={14} /> Email
+                        </button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredLeads.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                      <UserIcon size={48} className="mx-auto mb-3 opacity-20" />
+                      <p>No leads found matching your criteria.</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
