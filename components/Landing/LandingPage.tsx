@@ -308,6 +308,12 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
   const industries = [
     {
+      title: 'City Government',
+      icon: Landmark,
+      color: 'slate',
+      desc: 'Automate 311 calls. Handle utility payments, permit questions, and community announcements instantly.'
+    },
+    {
       title: 'Home Services',
       icon: Wrench,
       color: 'blue',

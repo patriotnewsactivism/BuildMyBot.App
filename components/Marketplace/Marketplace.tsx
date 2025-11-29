@@ -136,6 +136,16 @@ const TEMPLATES: Template[] = [
     installs: 890,
     rating: 4.9,
     tags: ['Service', 'Urgent']
+  },
+  {
+    id: 't13',
+    name: 'City Hall 311 Agent',
+    category: 'Government',
+    description: 'Handles utility FAQs, payment routing, and general citizen inquiries. Reduces call volume.',
+    price: 99,
+    installs: 45,
+    rating: 5.0,
+    tags: ['Gov', 'Utilities', '311']
   }
 ];
 

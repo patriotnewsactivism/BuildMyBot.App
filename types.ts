@@ -39,7 +39,7 @@ export interface User {
 export interface Bot {
   id: string;
   name: string;
-  type: 'Customer Support' | 'Sales' | 'Booking' | 'Custom';
+  type: string;
   systemPrompt: string;
   model: string;
   temperature: number;
