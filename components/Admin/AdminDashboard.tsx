@@ -63,8 +63,8 @@ export const AdminDashboard: React.FC = () => {
     setPartners(prev => prev.map(p => p.id === id ? { ...p, status: 'Active' } : p));
   };
 
-  const handleToggleBusinessStatus = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'Active' ? 'Suspended' : 'Active';
+  const handleToggleBusinessStatus = async (id: string, currentStatus: User['status']) => {
+    const newStatus: User['status'] = currentStatus === 'Active' ? 'Suspended' : 'Active';
     await dbService.updateUserStatus(id, newStatus);
     setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus } : u));
   };
@@ -269,7 +269,8 @@ export const AdminDashboard: React.FC = () => {
                     const clientCount = partner.resellerClientCount || 0;
                     // Determine Tier
                     const tier = RESELLER_TIERS.find(t => clientCount >= t.min && clientCount <= t.max) || RESELLER_TIERS[0];
-                    
+                    const partnerStatus: User['status'] = partner.status ?? 'Pending';
+
                     return (
                     <tr key={partner.id} className="hover:bg-slate-50">
                         <td className="px-6 py-4 font-medium text-slate-800">{partner.companyName}</td>
@@ -285,10 +286,10 @@ export const AdminDashboard: React.FC = () => {
                         <td className="px-6 py-4">{clientCount}</td>
                         <td className="px-6 py-4 font-mono text-slate-500">{partner.resellerCode}</td>
                         <td className="px-6 py-4">
-                            <span className={`text-xs ${partner.status === 'Active' ? 'text-emerald-600' : 'text-orange-600'}`}>{partner.status || 'Pending'}</span>
+                            <span className={`text-xs ${partnerStatus === 'Active' ? 'text-emerald-600' : 'text-orange-600'}`}>{partnerStatus}</span>
                         </td>
                         <td className="px-6 py-4">
-                        {(partner.status === 'Pending' || !partner.status) ? (
+                        {partnerStatus === 'Pending' ? (
                             <button 
                             onClick={() => handleApprovePartner(partner.id)}
                             className="bg-blue-900 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-950 shadow-sm"

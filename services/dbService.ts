@@ -126,7 +126,7 @@ export const dbService = {
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
   },
 
-  updateUserStatus: async (uid: string, status: 'Active' | 'Suspended') => {
+  updateUserStatus: async (uid: string, status: User['status']) => {
     const userRef = doc(db, COLLECTIONS.USERS, uid);
     await updateDoc(userRef, { status });
   },
