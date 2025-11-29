@@ -9,18 +9,41 @@
     "preview": "vite preview"
   },
   "dependencies": {
+<<<<<<< Updated upstream
     "firebase": "^10.8.1",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^2.12.2"
+=======
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/supabase-js": "^2.39.7",
+    "claude": "^0.1.1",
+    "codex": "^0.2.3",
+    "lucide-react": "^0.344.0",
+    "next": "^14.1.0",
+    "openai": "^4.28.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.12.2",
+    "stripe": "^14.21.0"
+>>>>>>> Stashed changes
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
+<<<<<<< Updated upstream
     "@vitejs/plugin-react": "^4.2.1",
     "typescript": "^5.4.2",
     "vite": "^5.1.5"
+=======
+    "autoprefixer": "^10.4.17",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.1.0",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.4.2"
+>>>>>>> Stashed changes
   }
 }
