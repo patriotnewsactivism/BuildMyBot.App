@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield } from 'lucide-react';
+import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
 import { generateBotResponse } from '../../services/geminiService';
@@ -26,6 +26,28 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   const hasGreeted = useRef(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Live Demos State
+  const [activeDemo, setActiveDemo] = useState<'training' | 'phone' | 'viral' | 'site'>('training');
+  
+  // Training Demo State
+  const [trainingStep, setTrainingStep] = useState(0); // 0: Input, 1: Scanning, 2: Ready/Chat
+  const [trainingType, setTrainingType] = useState<'pdf' | 'url'>('pdf');
+
+  // Phone Demo State
+  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'calling' | 'connected'>('idle');
+  const [phoneTranscript, setPhoneTranscript] = useState<string[]>([]);
+
+  // Viral Demo State
+  const [viralTopic, setViralTopic] = useState('');
+  const [viralResult, setViralResult] = useState<any>(null);
+  const [isGeneratingViral, setIsGeneratingViral] = useState(false);
+
+  // Site Demo State
+  const [siteName, setSiteName] = useState('');
+  const [siteIndustry, setSiteIndustry] = useState('Coffee Shop');
+  const [generatedSite, setGeneratedSite] = useState<any>(null);
+  const [isBuildingSite, setIsBuildingSite] = useState(false);
+
   // Initialize random identity on mount
   useEffect(() => {
     const randomName = HUMAN_NAMES[Math.floor(Math.random() * HUMAN_NAMES.length)];
@@ -50,6 +72,80 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         }, 1500);
     }
   }, [isChatOpen, demoIdentity]);
+
+  // --- DEMO HANDLERS ---
+
+  const handleTrainingDemo = () => {
+    setTrainingStep(1);
+    setTimeout(() => {
+        setTrainingStep(2);
+    }, 2500);
+  };
+
+  const handlePhoneDemoCall = () => {
+    setPhoneStatus('calling');
+    setPhoneTranscript([]);
+    
+    setTimeout(() => {
+        setPhoneStatus('connected');
+        const lines = [
+            "AI Agent: Hi there! Thanks for calling Apex Services. How can I help you?",
+            "You: I'd like to book an appointment for next Tuesday.",
+            "AI Agent: I can help with that. I have an opening at 10 AM or 2 PM. Which works best?",
+            "You: Let's do 10 AM.",
+            "AI Agent: Perfect. You are booked for Tuesday at 10 AM. I've sent a confirmation SMS. Anything else?"
+        ];
+        
+        let i = 0;
+        const interval = setInterval(() => {
+            setPhoneTranscript(prev => [...prev, lines[i]]);
+            
+            // Simple speech synthesis for demo
+            if ('speechSynthesis' in window && lines[i].startsWith('AI Agent')) {
+                const utterance = new SpeechSynthesisUtterance(lines[i].replace('AI Agent: ', ''));
+                utterance.rate = 1.1;
+                window.speechSynthesis.speak(utterance);
+            }
+
+            i++;
+            if (i >= lines.length) {
+                clearInterval(interval);
+                setTimeout(() => setPhoneStatus('idle'), 3000);
+            }
+        }, 2500);
+    }, 1500);
+  };
+
+  const handleViralGenerate = () => {
+    if (!viralTopic) return;
+    setIsGeneratingViral(true);
+    setViralResult(null);
+    setTimeout(() => {
+        setViralResult({
+            user: 'Alex Founder',
+            handle: '@alex_builds',
+            content: `Here is why ${viralTopic} is changing the game forever 🧵👇\n\n1. It saves time.\n2. It scales effortlessly.\n3. The ROI is undeniable.\n\nI implemented ${viralTopic} last week and revenue is up 30%. Don't sleep on this.`,
+            likes: 452,
+            retweets: 89
+        });
+        setIsGeneratingViral(false);
+    }, 1500);
+  };
+
+  const handleSiteBuild = () => {
+    if (!siteName) return;
+    setIsBuildingSite(true);
+    setGeneratedSite(null);
+    setTimeout(() => {
+        setGeneratedSite({
+            name: siteName,
+            headline: `The Best ${siteIndustry} in Town`,
+            subheadline: `Experience premium quality and service at ${siteName}. We are dedicated to excellence.`,
+            cta: 'Book Now'
+        });
+        setIsBuildingSite(false);
+    }, 2000);
+  };
 
   const handleDemoSend = async () => {
     if (!chatInput.trim()) return;
@@ -502,7 +598,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                        <div className="w-3 h-3 rounded-full bg-slate-300"></div>
                        <div className="w-3 h-3 rounded-full bg-slate-300"></div>
                    </div>
-                   <div className="bg-white border border-slate-200 px-3 py-1 rounded text-[10px] text-slate-400 font-mono w-64 text-center">app.buildmybot.io/dashboard</div>
+                   <div className="bg-white border border-slate-200 px-3 py-1 rounded text-[10px] text-slate-400 font-mono w-64 text-center">app.buildmybot.app/dashboard</div>
                    <div className="w-10"></div>
                 </div>
                 
@@ -541,9 +637,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                             {l: 'Revenue', v: '$4,200', i: TrendingUp, c: 'emerald'}
                          ].map((s, i) => (
                             <div key={i} className="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
-                               <div className={`w-8 h-8 rounded-lg bg-${s.c}-50 text-${s.c}-600 flex items-center justify-center mb-3`}><s.i size={16}/></div>
-                               <div className="text-xl md:text-2xl font-bold text-slate-800">{s.v}</div>
-                               <div className="text-xs text-slate-500">{s.l}</div>
+                                <div className={`w-8 h-8 rounded-lg bg-${s.c}-50 text-${s.c}-600 flex items-center justify-center mb-3`}><s.i size={16}/></div>
+                                <div className="text-xl md:text-2xl font-bold text-slate-800">{s.v}</div>
+                                <div className="text-xs text-slate-500">{s.l}</div>
                             </div>
                          ))}
                       </div>
@@ -563,6 +659,413 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                 </div>
               </div>
            </div>
+        </div>
+      </section>
+
+       {/* All-In-One Feature Grid */}
+       <section className="py-24 px-6 bg-white">
+          <div className="max-w-7xl mx-auto">
+             <div className="text-center mb-16">
+               <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">The All-In-One AI Operating System</h2>
+               <p className="text-lg text-slate-600 max-w-2xl mx-auto">Replace 5 different tools with one platform.</p>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {featureCards.map((feat, idx) => (
+                   <div key={idx} className="p-8 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-xl hover:border-blue-200 transition duration-300 group">
+                      <div className={`w-14 h-14 rounded-2xl bg-${feat.color}-50 text-${feat.color}-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                         <feat.icon size={28} />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-3">{feat.title}</h3>
+                      <p className="text-slate-600 leading-relaxed">
+                         {feat.desc}
+                      </p>
+                   </div>
+                ))}
+             </div>
+          </div>
+       </section>
+
+      {/* NEW: Interactive Live Demos Section */}
+      <section className="py-24 px-6 bg-slate-900 text-white relative overflow-hidden">
+         <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/50 to-transparent"></div>
+         <div className="max-w-6xl mx-auto relative z-10">
+            <div className="text-center mb-12">
+               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-blue-300 text-xs font-bold uppercase tracking-wide mb-6">
+                  <Zap size={12} fill="currentColor" /> Live Interactive Demo
+               </div>
+               <h2 className="text-3xl md:text-5xl font-extrabold mb-6">Experience the Power.</h2>
+               <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+                  Don't just take our word for it. Try our most powerful features right here.
+               </p>
+            </div>
+
+            {/* Tab Nav */}
+            <div className="flex flex-wrap justify-center gap-4 mb-12">
+               {[
+                  { id: 'training', label: 'Instant Training', icon: FileText },
+                  { id: 'phone', label: 'AI Phone Agent', icon: Phone },
+                  { id: 'viral', label: 'Viral Post Creator', icon: Search },
+                  { id: 'site', label: 'Instant Website', icon: Layout }
+               ].map((tab) => (
+                  <button
+                     key={tab.id}
+                     onClick={() => setActiveDemo(tab.id as any)}
+                     className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold transition-all duration-300 ${
+                        activeDemo === tab.id 
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-105' 
+                        : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                     }`}
+                  >
+                     <tab.icon size={18} /> {tab.label}
+                  </button>
+               ))}
+            </div>
+
+            {/* Demo Container */}
+            <div className="bg-slate-800 rounded-3xl border border-slate-700 shadow-2xl overflow-hidden min-h-[500px] flex flex-col md:flex-row">
+               
+               {/* Instant Training Demo (PDF/URL) */}
+               {activeDemo === 'training' && (
+                  <div className="w-full h-full flex flex-col md:flex-row animate-fade-in">
+                     <div className="flex-1 p-8 md:p-12 flex flex-col justify-center border-b md:border-b-0 md:border-r border-slate-700 bg-slate-800/50">
+                        <h3 className="text-2xl font-bold mb-4">Train on your Data in Seconds</h3>
+                        <p className="text-slate-400 mb-8">
+                           Upload a lengthy PDF or paste your website URL. The bot absorbs every detail instantly.
+                        </p>
+                        
+                        {trainingStep === 0 && (
+                           <div className="bg-slate-900 rounded-xl p-6 border border-slate-700 space-y-4">
+                              <div className="flex gap-4 mb-4">
+                                 <button 
+                                    onClick={() => setTrainingType('pdf')}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${trainingType === 'pdf' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+                                 >
+                                    <Upload size={16} className="inline mr-2"/> Upload PDF
+                                 </button>
+                                 <button 
+                                    onClick={() => setTrainingType('url')}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${trainingType === 'url' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+                                 >
+                                    <LinkIcon size={16} className="inline mr-2"/> Scan Website
+                                 </button>
+                              </div>
+                              
+                              {trainingType === 'pdf' ? (
+                                 <div className="border-2 border-dashed border-slate-600 rounded-xl h-40 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-900/10 transition" onClick={handleTrainingDemo}>
+                                    <FileText size={48} className="text-slate-500 mb-2"/>
+                                    <p className="text-sm text-slate-400">Drag & Drop Business PDF</p>
+                                    <span className="text-xs text-slate-600 mt-2">Employee Handbook, Menu, Catalog</span>
+                                 </div>
+                              ) : (
+                                 <div className="space-y-4">
+                                    <input type="text" placeholder="https://yourbusiness.com" className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none" />
+                                    <button onClick={handleTrainingDemo} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition">Scan Now</button>
+                                 </div>
+                              )}
+                           </div>
+                        )}
+
+                        {trainingStep === 1 && (
+                           <div className="h-64 flex flex-col items-center justify-center bg-slate-900 rounded-xl border border-slate-700">
+                              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                              <p className="font-bold text-lg animate-pulse">Ingesting Knowledge...</p>
+                              <p className="text-sm text-slate-500">Reading 42 pages...</p>
+                           </div>
+                        )}
+
+                        {trainingStep === 2 && (
+                           <div className="bg-slate-900 rounded-xl p-6 border border-slate-700 h-full flex flex-col">
+                              <div className="flex items-center gap-2 text-emerald-400 mb-4 bg-emerald-500/10 p-2 rounded-lg">
+                                 <CheckCircle size={18}/> <span className="text-sm font-bold">Training Complete</span>
+                              </div>
+                              <div className="space-y-4 flex-1">
+                                 <div className="flex justify-end">
+                                    <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-sm max-w-[90%]">
+                                       What is your return policy for damaged items?
+                                    </div>
+                                 </div>
+                                 <div className="flex justify-start">
+                                    <div className="bg-slate-700 text-white p-3 rounded-2xl rounded-bl-none text-sm max-w-[90%] border border-slate-600">
+                                       <span className="text-xs text-blue-300 block mb-1 font-bold">Source: Employee_Handbook.pdf (Page 12)</span>
+                                       According to our policy, damaged items can be returned within 30 days for a full refund or exchange. The customer must provide a photo of the damage.
+                                    </div>
+                                 </div>
+                              </div>
+                              <button onClick={() => setTrainingStep(0)} className="w-full mt-4 py-2 text-sm text-slate-400 hover:text-white">Try Another</button>
+                           </div>
+                        )}
+                     </div>
+                     <div className="w-full md:w-1/3 bg-slate-900/50 p-8 flex flex-col justify-center gap-6">
+                        <div className="flex items-start gap-4">
+                           <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><FileText size={20} /></div>
+                           <div>
+                              <h4 className="font-bold text-sm">Any Document</h4>
+                              <p className="text-xs text-slate-400 mt-1">PDF, DOCX, TXT. Manuals, menus, policies.</p>
+                           </div>
+                        </div>
+                        <div className="flex items-start gap-4">
+                           <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400"><Globe size={20} /></div>
+                           <div>
+                              <h4 className="font-bold text-sm">Full Website Crawl</h4>
+                              <p className="text-xs text-slate-400 mt-1">We scrape your entire site structure.</p>
+                           </div>
+                        </div>
+                        <div className="flex items-start gap-4">
+                           <div className="p-2 bg-orange-500/20 rounded-lg text-orange-400"><Zap size={20} /></div>
+                           <div>
+                              <h4 className="font-bold text-sm">Instant Recall</h4>
+                              <p className="text-xs text-slate-400 mt-1">No hallucination. Answers based purely on your data.</p>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               )}
+
+               {/* Phone Agent Demo */}
+               {activeDemo === 'phone' && (
+                  <div className="w-full h-full flex flex-col md:flex-row animate-fade-in">
+                     <div className="flex-1 p-8 md:p-12 flex flex-col justify-center border-b md:border-b-0 md:border-r border-slate-700">
+                        <h3 className="text-2xl font-bold mb-4">Talk to your AI Receptionist</h3>
+                        <p className="text-slate-400 mb-8">
+                           Our Phone Agent answers calls, books appointments, and captures leads with a human-like voice.
+                        </p>
+                        <div className="bg-black/30 rounded-2xl p-6 border border-slate-600/50 relative overflow-hidden">
+                           <div className="flex items-center justify-between mb-6">
+                              <div className="flex items-center gap-3">
+                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 ${phoneStatus === 'connected' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
+                                    <Phone size={24} className={phoneStatus === 'calling' ? 'animate-pulse' : ''} />
+                                 </div>
+                                 <div>
+                                    <div className="font-bold">Apex Services</div>
+                                    <div className="text-xs text-slate-400 capitalize">{phoneStatus === 'idle' ? 'Ready to Call' : phoneStatus}</div>
+                                 </div>
+                              </div>
+                              <div className="text-xs text-slate-500 font-mono">00:{phoneStatus === 'connected' ? '12' : '00'}</div>
+                           </div>
+                           
+                           <div className="space-y-3 max-h-48 overflow-y-auto pr-2 mb-6">
+                              {phoneTranscript.length === 0 && (
+                                 <div className="text-center text-slate-500 text-sm py-4 italic">Call to see transcript...</div>
+                              )}
+                              {phoneTranscript.map((line, i) => (
+                                 <div key={i} className={`p-2 rounded-lg text-sm ${line.startsWith('You') ? 'bg-blue-900/30 text-blue-200 ml-8' : 'bg-slate-700/30 text-slate-300 mr-8'}`}>
+                                    {line}
+                                 </div>
+                              ))}
+                           </div>
+
+                           <button 
+                              onClick={handlePhoneDemoCall}
+                              disabled={phoneStatus !== 'idle'}
+                              className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
+                                 phoneStatus === 'idle' 
+                                 ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' 
+                                 : 'bg-red-500/20 text-red-400 cursor-not-allowed'
+                              }`}
+                           >
+                              {phoneStatus === 'idle' ? <><Phone size={20} /> Call Now</> : 'Call in Progress...'}
+                           </button>
+                        </div>
+                     </div>
+                     <div className="w-full md:w-1/3 bg-slate-900/50 p-8 flex flex-col justify-center gap-6">
+                        <div className="flex items-start gap-4">
+                           <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><Zap size={20} /></div>
+                           <div>
+                              <h4 className="font-bold text-sm">Instant Response</h4>
+                              <p className="text-xs text-slate-400 mt-1">Zero latency. Answers immediately, 24/7.</p>
+                           </div>
+                        </div>
+                        <div className="flex items-start gap-4">
+                           <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400"><Smartphone size={20} /></div>
+                           <div>
+                              <h4 className="font-bold text-sm">Human Voice</h4>
+                              <p className="text-xs text-slate-400 mt-1">Indistinguishable from a real person.</p>
+                           </div>
+                        </div>
+                        <div className="flex items-start gap-4">
+                           <div className="p-2 bg-orange-500/20 rounded-lg text-orange-400"><LayoutDashboard size={20} /></div>
+                           <div>
+                              <h4 className="font-bold text-sm">Auto-Logging</h4>
+                              <p className="text-xs text-slate-400 mt-1">Call transcripts saved to CRM automatically.</p>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               )}
+
+               {/* Viral Post Demo */}
+               {activeDemo === 'viral' && (
+                  <div className="w-full h-full flex flex-col md:flex-row animate-fade-in">
+                     <div className="flex-1 p-8 md:p-12 flex flex-col justify-center border-b md:border-b-0 md:border-r border-slate-700">
+                        <h3 className="text-2xl font-bold mb-4">Generate Viral Content</h3>
+                        <p className="text-slate-400 mb-8">
+                           Turn any topic into a high-engagement Twitter thread or LinkedIn post in seconds.
+                        </p>
+                        
+                        <div className="bg-white rounded-xl p-1 shadow-lg">
+                           <div className="flex gap-2 p-2">
+                              <input 
+                                 type="text" 
+                                 placeholder="Enter a topic (e.g. Remote Work, Coffee, AI)"
+                                 value={viralTopic}
+                                 onChange={(e) => setViralTopic(e.target.value)}
+                                 className="flex-1 bg-slate-50 border border-slate-200 text-slate-900 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                              />
+                              <button 
+                                 onClick={handleViralGenerate}
+                                 disabled={isGeneratingViral || !viralTopic}
+                                 className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition disabled:opacity-50"
+                              >
+                                 {isGeneratingViral ? <Zap className="animate-spin" size={16}/> : 'Generate'}
+                              </button>
+                           </div>
+                        </div>
+
+                        {viralResult && (
+                           <div className="mt-6 bg-black rounded-xl p-6 border border-slate-800 animate-fade-in">
+                              <div className="flex gap-3 mb-3">
+                                 <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold">AF</div>
+                                 <div>
+                                    <div className="font-bold text-white flex items-center gap-1">{viralResult.user} <span className="text-blue-400"><CheckCircle size={12} fill="currentColor" /></span></div>
+                                    <div className="text-slate-500 text-xs">{viralResult.handle}</div>
+                                 </div>
+                              </div>
+                              <p className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed mb-4">
+                                 {viralResult.content}
+                              </p>
+                              <div className="flex items-center justify-between text-slate-500 text-xs border-t border-slate-800 pt-3">
+                                 <span className="flex items-center gap-1 hover:text-pink-500 transition"><Flame size={14} /> {viralResult.likes}</span>
+                                 <span className="flex items-center gap-1 hover:text-green-500 transition"><TrendingUp size={14} /> {viralResult.retweets}</span>
+                                 <span className="flex items-center gap-1 hover:text-blue-500 transition"><Megaphone size={14} /> Share</span>
+                              </div>
+                           </div>
+                        )}
+                     </div>
+                     <div className="w-full md:w-1/3 bg-slate-900/50 p-8 flex flex-col justify-center">
+                        <div className="text-center">
+                           <div className="w-16 h-16 bg-blue-600/20 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <Target size={32} />
+                           </div>
+                           <h4 className="font-bold text-lg mb-2">Platform Optimized</h4>
+                           <p className="text-sm text-slate-400">
+                              Our AI understands the algorithm. It writes hooks, threads, and CTAs that actually convert.
+                           </p>
+                        </div>
+                     </div>
+                  </div>
+               )}
+
+               {/* Website Demo */}
+               {activeDemo === 'site' && (
+                  <div className="w-full h-full flex flex-col md:flex-row animate-fade-in">
+                     <div className="w-full md:w-1/3 bg-slate-800 p-8 border-b md:border-b-0 md:border-r border-slate-700 flex flex-col justify-center">
+                        <h3 className="text-2xl font-bold mb-6">Instant Website</h3>
+                        <div className="space-y-4">
+                           <div>
+                              <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Business Name</label>
+                              <input 
+                                 type="text" 
+                                 value={siteName}
+                                 onChange={(e) => setSiteName(e.target.value)}
+                                 placeholder="e.g. Joe's Coffee"
+                                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white focus:border-blue-500 outline-none"
+                              />
+                           </div>
+                           <div>
+                              <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Industry</label>
+                              <select 
+                                 value={siteIndustry}
+                                 onChange={(e) => setSiteIndustry(e.target.value)}
+                                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white focus:border-blue-500 outline-none"
+                              >
+                                 <option>Coffee Shop</option>
+                                 <option>Real Estate</option>
+                                 <option>Gym</option>
+                                 <option>Consulting</option>
+                              </select>
+                           </div>
+                           <button 
+                              onClick={handleSiteBuild}
+                              disabled={isBuildingSite || !siteName}
+                              className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition disabled:opacity-50 mt-2"
+                           >
+                              {isBuildingSite ? 'Building...' : 'Generate Site'}
+                           </button>
+                        </div>
+                     </div>
+                     <div className="flex-1 bg-slate-900 p-8 flex items-center justify-center relative">
+                        {/* Mock Browser Window */}
+                        <div className="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden transform transition-all duration-500 hover:scale-105">
+                           <div className="bg-slate-100 p-2 flex items-center gap-2 border-b border-slate-200">
+                              <div className="flex gap-1">
+                                 <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                                 <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                                 <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                              </div>
+                              <div className="bg-white px-2 py-0.5 rounded text-[8px] text-slate-400 flex-1 text-center font-mono">
+                                 {siteName ? `${siteName.toLowerCase().replace(/\s/g,'')}.com` : 'your-site.com'}
+                              </div>
+                           </div>
+                           
+                           {generatedSite ? (
+                              <div className="animate-fade-in">
+                                 <div className="h-32 bg-slate-800 text-white flex flex-col items-center justify-center text-center p-4">
+                                    <h1 className="text-xl font-bold mb-2">{generatedSite.name}</h1>
+                                    <p className="text-[10px] opacity-80 max-w-[200px]">{generatedSite.headline}</p>
+                                 </div>
+                                 <div className="p-6">
+                                    <h2 className="text-sm font-bold text-slate-800 mb-2">About Us</h2>
+                                    <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                                       {generatedSite.subheadline}
+                                    </p>
+                                    <button className="w-full bg-emerald-500 text-white py-2 rounded text-xs font-bold shadow-md">
+                                       {generatedSite.cta}
+                                    </button>
+                                 </div>
+                              </div>
+                           ) : (
+                              <div className="h-64 flex flex-col items-center justify-center text-slate-300">
+                                 <Layout size={48} className="mb-2 opacity-20" />
+                                 <p className="text-xs">Waiting to generate...</p>
+                              </div>
+                           )}
+                        </div>
+                        
+                        {generatedSite && (
+                           <div className="absolute bottom-10 right-10 bg-emerald-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg animate-bounce-slow flex items-center gap-2">
+                              <CheckCircle size={14} /> Site Ready!
+                           </div>
+                        )}
+                     </div>
+                  </div>
+               )}
+
+            </div>
+         </div>
+      </section>
+
+      {/* Value Prop: Industries */}
+      <section id="industries" className="py-24 bg-slate-50 border-y border-slate-200">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Who is this for?</h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">BuildMyBot powers the immediate response engine for thousands of industries.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {industries.map((ind, i) => (
+              <div key={i} className="p-8 rounded-2xl bg-white hover:shadow-xl transition-all duration-300 border border-slate-200 group">
+                <div className={`w-12 h-12 bg-${ind.color}-100 text-${ind.color}-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                  <ind.icon size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">{ind.title}</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  {ind.desc}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -638,54 +1141,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                   </div>
                </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-       {/* All-In-One Feature Grid */}
-       <section className="py-24 px-6 bg-white">
-          <div className="max-w-7xl mx-auto">
-             <div className="text-center mb-16">
-               <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">The All-In-One AI Operating System</h2>
-               <p className="text-lg text-slate-600 max-w-2xl mx-auto">Replace 5 different tools with one platform.</p>
-             </div>
-
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {featureCards.map((feat, idx) => (
-                   <div key={idx} className="p-8 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-xl hover:border-blue-200 transition duration-300 group">
-                      <div className={`w-14 h-14 rounded-2xl bg-${feat.color}-50 text-${feat.color}-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                         <feat.icon size={28} />
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-900 mb-3">{feat.title}</h3>
-                      <p className="text-slate-600 leading-relaxed">
-                         {feat.desc}
-                      </p>
-                   </div>
-                ))}
-             </div>
-          </div>
-       </section>
-
-      {/* Value Prop: Industries */}
-      <section id="industries" className="py-24 bg-slate-50 border-y border-slate-200">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Who is this for?</h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">BuildMyBot powers the immediate response engine for thousands of industries.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {industries.map((ind, i) => (
-              <div key={i} className="p-8 rounded-2xl bg-white hover:shadow-xl transition-all duration-300 border border-slate-200 group">
-                <div className={`w-12 h-12 bg-${ind.color}-100 text-${ind.color}-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                  <ind.icon size={24} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">{ind.title}</h3>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  {ind.desc}
-                </p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
