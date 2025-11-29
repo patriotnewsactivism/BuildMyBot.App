@@ -12,6 +12,13 @@ export enum PlanType {
   ENTERPRISE = 'ENTERPRISE',
 }
 
+export interface PhoneAgentConfig {
+  enabled: boolean;
+  phoneNumber: string;
+  voiceId: string;
+  introMessage: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -23,6 +30,10 @@ export interface User {
   resellerCode?: string;
   resellerClientCount?: number; // For tier calculation
   customDomain?: string; // White-label domain (e.g., app.myagency.com)
+  referredBy?: string; // Code of the reseller who referred this user
+  phoneConfig?: PhoneAgentConfig;
+  status?: 'Active' | 'Suspended'; // For admin management
+  createdAt?: string; // ISO date string
 }
 
 export interface Bot {

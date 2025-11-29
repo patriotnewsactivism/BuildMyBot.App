@@ -24,8 +24,8 @@ import { auth } from './services/firebaseConfig';
 import { dbService } from './services/dbService';
 import { onAuthStateChanged } from 'firebase/auth';
 
-const INITIAL_CHAT_LOGS: Conversation[] = []; // Chat logs will be fetched or empty initially
-const MOCK_RESELLER_STATS: ResellerStats = {
+const INITIAL_CHAT_LOGS: Conversation[] = []; 
+const INITIAL_RESELLER_STATS: ResellerStats = {
   totalClients: 0,
   totalRevenue: 0,
   commissionRate: 0.20,
@@ -57,12 +57,23 @@ function App() {
      return <FullPageChat botId={botId} />;
   }
 
+  // --- Capture Referral Code ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const refCode = params.get('ref');
+    if (refCode) {
+      localStorage.setItem('bmb_ref_code', refCode);
+      console.log('Referral captured:', refCode);
+    }
+  }, []);
+
   // --- Real-time Data Subscriptions ---
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setIsLoggedIn(true);
         // Fetch full user profile from Firestore
+        // Use onSnapshot for user profile to get real-time plan updates
         const profile = await dbService.getUserProfile(firebaseUser.uid);
         if (profile) {
           setUser(profile);
@@ -337,7 +348,7 @@ function App() {
               onLeadDetected={handleLeadDetected} 
           />}
           
-          {currentView === 'reseller' && <ResellerDashboard user={user} stats={MOCK_RESELLER_STATS} />}
+          {currentView === 'reseller' && <ResellerDashboard user={user} stats={INITIAL_RESELLER_STATS} />}
           
           {currentView === 'marketing' && <MarketingTools />}
           
@@ -347,15 +358,15 @@ function App() {
           
           {currentView === 'marketplace' && <Marketplace onInstall={handleInstallTemplate} />}
           
-          {currentView === 'phone' && <PhoneAgent />}
+          {currentView === 'phone' && <PhoneAgent user={user} onUpdate={(u) => { setUser(u); dbService.saveUserProfile(u); }} />}
           
           {currentView === 'chat-logs' && <ChatLogs conversations={chatLogs} />}
           
-          {currentView === 'billing' && <Billing />}
+          {currentView === 'billing' && <Billing user={user} />}
           
           {currentView === 'admin' && <AdminDashboard />}
           
-          {currentView === 'settings' && <Settings user={user} onUpdateUser={(u) => setUser(u)} />}
+          {currentView === 'settings' && <Settings user={user} onUpdateUser={(u) => { setUser(u); dbService.saveUserProfile(u); }} />}
           
         </div>
       </main>

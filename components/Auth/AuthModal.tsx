@@ -29,6 +29,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     try {
       if (mode === 'signup') {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // Check for referral code
+        const referralCode = localStorage.getItem('bmb_ref_code') || undefined;
+
         // Create user profile in Firestore
         await dbService.saveUserProfile({
           id: userCredential.user.uid,
@@ -36,7 +40,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
           email: email,
           role: UserRole.OWNER,
           plan: PlanType.FREE,
-          companyName: companyName || 'My Company'
+          companyName: companyName || 'My Company',
+          referredBy: referralCode
         });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
@@ -156,4 +161,4 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
       </div>
     </div>
   );
-};
+}

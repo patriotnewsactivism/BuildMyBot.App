@@ -168,6 +168,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     }
   };
 
+  // Embed script snippet
   const embedCode = `<script>
   window.bmbConfig = {
     botId: "${activeBot.id}",
