@@ -1,27 +1,60 @@
-import React, { useState } from 'react';
-import { Phone, Mic, Settings, PlayCircle, Save, Voicemail, Play } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Phone, Mic, Settings, PlayCircle, Save, Voicemail, Play, Loader } from 'lucide-react';
+import { User } from '../../types';
 
-export const PhoneAgent: React.FC = () => {
-  const [enabled, setEnabled] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [voice, setVoice] = useState('alloy');
-  const [introMessage, setIntroMessage] = useState("Hi! Thanks for calling Apex Digital. How can I help you today?");
+interface PhoneAgentProps {
+  user?: User;
+  onUpdate?: (user: User) => void;
+}
+
+export const PhoneAgent: React.FC<PhoneAgentProps> = ({ user, onUpdate }) => {
+  const [enabled, setEnabled] = useState(user?.phoneConfig?.enabled || false);
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneConfig?.phoneNumber || '');
+  const [voice, setVoice] = useState(user?.phoneConfig?.voiceId || 'alloy');
+  const [introMessage, setIntroMessage] = useState(user?.phoneConfig?.introMessage || "Hi! Thanks for calling Apex Digital. How can I help you today?");
   
   // Simulation State
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationStatus, setSimulationStatus] = useState('Ready to call');
+  const [isSaving, setIsSaving] = useState(false);
 
   const startSimulation = () => {
     setIsSimulating(true);
     setSimulationStatus('Connecting...');
+    
+    if ('speechSynthesis' in window) {
+       const utter = new SpeechSynthesisUtterance(introMessage);
+       window.speechSynthesis.speak(utter);
+    }
+
     setTimeout(() => {
-        setSimulationStatus('AI Agent: "Hello, this is the AI receptionist. How can I help?"');
+        setSimulationStatus('AI Agent: "Listening..."');
     }, 1500);
   };
 
   const endSimulation = () => {
     setIsSimulating(false);
     setSimulationStatus('Call ended');
+    window.speechSynthesis.cancel();
+  };
+
+  const handleSave = () => {
+    setIsSaving(true);
+    // Simulate API delay
+    setTimeout(() => {
+        if (onUpdate && user) {
+            onUpdate({
+                ...user,
+                phoneConfig: {
+                    enabled,
+                    phoneNumber,
+                    voiceId: voice,
+                    introMessage
+                }
+            });
+        }
+        setIsSaving(false);
+    }, 1000);
   };
 
   return (
@@ -58,6 +91,8 @@ export const PhoneAgent: React.FC = () => {
                     <label className="block text-sm font-medium text-slate-700 mb-2">Twilio Phone Number SID</label>
                     <input 
                       type="text" 
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
                       placeholder="PNXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" 
                       className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900 font-mono text-sm"
                     />
@@ -89,7 +124,9 @@ export const PhoneAgent: React.FC = () => {
                       }`}
                     >
                       <span className="capitalize font-medium text-slate-700">{v}</span>
-                      <button className="text-slate-400 hover:text-blue-900"><PlayCircle size={16} /></button>
+                      <button className="text-slate-400 hover:text-blue-900" onClick={(e) => { e.stopPropagation(); /* Play sample */ }}>
+                        <PlayCircle size={16} />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -144,8 +181,13 @@ export const PhoneAgent: React.FC = () => {
        </div>
 
        <div className="flex justify-end pt-4 border-t border-slate-200">
-         <button className="px-6 py-2.5 bg-blue-900 text-white rounded-lg font-medium hover:bg-blue-950 shadow-sm transition flex items-center gap-2">
-           <Save size={18} /> Save Agent Configuration
+         <button 
+           onClick={handleSave}
+           disabled={isSaving}
+           className="px-6 py-2.5 bg-blue-900 text-white rounded-lg font-medium hover:bg-blue-950 shadow-sm transition flex items-center gap-2 disabled:opacity-70"
+         >
+           {isSaving ? <Loader className="animate-spin" size={18} /> : <Save size={18} />} 
+           Save Agent Configuration
          </button>
        </div>
     </div>

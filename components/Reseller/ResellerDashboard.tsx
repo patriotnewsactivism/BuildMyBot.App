@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { DollarSign, Users, TrendingUp, Copy, CheckCircle, Shield, Lock, CreditCard, ChevronRight, AlertTriangle, Building, LayoutDashboard } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { DollarSign, Users, TrendingUp, Copy, CheckCircle, Shield, Lock, CreditCard, ChevronRight, AlertTriangle, Building, LayoutDashboard, Loader } from 'lucide-react';
 import { ResellerStats, User } from '../../types';
-import { RESELLER_TIERS } from '../../constants';
+import { RESELLER_TIERS, PLANS } from '../../constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { dbService } from '../../services/dbService';
 
 interface ResellerProps {
   user: User;
@@ -18,21 +19,43 @@ const mockEarnings = [
   { month: 'Jun', amount: 5200 },
 ];
 
-const mockClients = [
-    { name: 'Acme Corp', plan: 'Executive', joined: 'May 12, 2024', status: 'Active', commission: '$99.50/mo' },
-    { name: 'Dr. Smile Dental', plan: 'Professional', joined: 'May 10, 2024', status: 'Active', commission: '$49.50/mo' },
-    { name: 'TechStart Inc', plan: 'Starter', joined: 'Apr 28, 2024', status: 'Past Due', commission: '$0.00' },
-    { name: 'Pizza Paradise', plan: 'Executive', joined: 'Apr 15, 2024', status: 'Active', commission: '$99.50/mo' },
-    { name: 'Law Office A', plan: 'Professional', joined: 'Mar 02, 2024', status: 'Cancelled', commission: '$0.00' },
-];
-
-export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats }) => {
+export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats: initialStats }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'clients' | 'payouts'>('overview');
+  const [referredUsers, setReferredUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [realStats, setRealStats] = useState<ResellerStats>(initialStats);
+
+  useEffect(() => {
+    if (user.resellerCode) {
+      const unsubscribe = dbService.subscribeToReferrals(user.resellerCode, (users) => {
+        setReferredUsers(users);
+        
+        // Calculate real stats
+        const clientCount = users.length;
+        const totalRev = users.reduce((acc, u) => acc + (PLANS[u.plan]?.price || 0), 0);
+        
+        // Determine commission tier
+        const currentTier = RESELLER_TIERS.find(t => clientCount >= t.min && clientCount <= t.max) || RESELLER_TIERS[0];
+        
+        setRealStats({
+          totalClients: clientCount,
+          totalRevenue: totalRev,
+          commissionRate: currentTier.commission,
+          pendingPayout: totalRev * currentTier.commission
+        });
+        
+        setIsLoading(false);
+      });
+      return () => unsubscribe();
+    } else {
+      setIsLoading(false);
+    }
+  }, [user.resellerCode]);
   
-  const currentTier = RESELLER_TIERS.find(t => stats.totalClients >= t.min && stats.totalClients <= t.max) || RESELLER_TIERS[0];
-  const nextTier = RESELLER_TIERS.find(t => t.min > stats.totalClients);
+  const currentTier = RESELLER_TIERS.find(t => realStats.totalClients >= t.min && realStats.totalClients <= t.max) || RESELLER_TIERS[0];
+  const nextTier = RESELLER_TIERS.find(t => t.min > realStats.totalClients);
   const progress = nextTier 
-    ? ((stats.totalClients - currentTier.min) / (nextTier.min - currentTier.min)) * 100 
+    ? ((realStats.totalClients - currentTier.min) / (nextTier.min - currentTier.min)) * 100 
     : 100;
 
   const displayDomain = user.customDomain || (typeof window !== 'undefined' ? window.location.host : 'buildmybot.app');
@@ -48,7 +71,7 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats }) => {
             </div>
             <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded">Monthly</span>
           </div>
-          <p className="text-3xl font-bold text-slate-800">${stats.totalRevenue.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-slate-800">${realStats.totalRevenue.toLocaleString()}</p>
           <p className="text-sm text-slate-500 mt-1">Total Generated Revenue</p>
         </div>
         
@@ -58,7 +81,7 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats }) => {
               <Users size={20} />
             </div>
           </div>
-          <p className="text-3xl font-bold text-slate-800">{stats.totalClients}</p>
+          <p className="text-3xl font-bold text-slate-800">{realStats.totalClients}</p>
           <p className="text-sm text-slate-500 mt-1">Active Referrals</p>
         </div>
 
@@ -67,17 +90,17 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats }) => {
             <div className="p-2 bg-cyan-50 text-cyan-600 rounded-lg">
               <TrendingUp size={20} />
             </div>
-            <span className="text-xs font-semibold bg-cyan-100 text-cyan-700 px-2 py-1 rounded">{(stats.commissionRate * 100)}% Split</span>
+            <span className="text-xs font-semibold bg-cyan-100 text-cyan-700 px-2 py-1 rounded">{(realStats.commissionRate * 100)}% Split</span>
           </div>
-          <p className="text-3xl font-bold text-slate-800">${(stats.totalRevenue * stats.commissionRate).toLocaleString()}</p>
+          <p className="text-3xl font-bold text-slate-800">${realStats.pendingPayout.toLocaleString()}</p>
           <p className="text-sm text-slate-500 mt-1">Your Est. Commission</p>
         </div>
 
         <div className="bg-gradient-to-br from-blue-900 to-slate-900 p-6 rounded-xl shadow-lg text-white">
            <p className="text-blue-200 text-sm font-medium mb-1">Referral Link</p>
            <div className="flex items-center gap-2 bg-white/10 p-2 rounded-lg border border-white/20 mb-3">
-             <code className="text-xs truncate flex-1">{displayDomain}/r/{user.resellerCode || 'user123'}</code>
-             <Copy size={14} className="cursor-pointer hover:text-blue-300" />
+             <code className="text-xs truncate flex-1">{displayDomain}/?ref={user.resellerCode || 'CODE'}</code>
+             <Copy size={14} className="cursor-pointer hover:text-blue-300" onClick={() => navigator.clipboard.writeText(`${displayDomain}/?ref=${user.resellerCode}`)} />
            </div>
            <p className="text-xs text-blue-200">Share this link to track signups automatically.</p>
         </div>
@@ -87,14 +110,14 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats }) => {
       <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
          <div className="flex justify-between mb-2">
            <h3 className="font-semibold text-slate-800">Current Tier: <span className="text-blue-900">{currentTier.label}</span></h3>
-           <span className="text-sm text-slate-500">{stats.totalClients} / {nextTier ? nextTier.min : 'Max'} Clients</span>
+           <span className="text-sm text-slate-500">{realStats.totalClients} / {nextTier ? nextTier.min : 'Max'} Clients</span>
          </div>
          <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-2">
             <div className="bg-blue-900 h-full transition-all duration-1000" style={{ width: `${progress}%` }}></div>
          </div>
          <p className="text-sm text-slate-500">
            {nextTier 
-             ? `Recruit ${nextTier.min - stats.totalClients} more clients to unlock ${nextTier.commission * 100}% commission!` 
+             ? `Recruit ${nextTier.min - realStats.totalClients} more clients to unlock ${nextTier.commission * 100}% commission!` 
              : "You've reached the top tier!"}
          </p>
       </div>
@@ -129,44 +152,49 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats }) => {
                      <tr>
                          <th className="px-6 py-4">Business Name</th>
                          <th className="px-6 py-4">Plan</th>
-                         <th className="px-6 py-4">Joined</th>
+                         <th className="px-6 py-4">Contact</th>
                          <th className="px-6 py-4">Status</th>
                          <th className="px-6 py-4">Your Commission</th>
                          <th className="px-6 py-4 text-right">Actions</th>
                      </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-100 text-sm">
-                     {mockClients.map((client, i) => (
+                     {referredUsers.map((client, i) => {
+                         const price = PLANS[client.plan]?.price || 0;
+                         const commission = price * realStats.commissionRate;
+                         
+                         return (
                          <tr key={i} className="hover:bg-slate-50 transition">
-                             <td className="px-6 py-4 font-medium text-slate-800">{client.name}</td>
+                             <td className="px-6 py-4 font-medium text-slate-800">{client.companyName}</td>
                              <td className="px-6 py-4">
                                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                     client.plan === 'Executive' ? 'bg-blue-100 text-blue-800' :
-                                     client.plan === 'Professional' ? 'bg-emerald-100 text-emerald-800' :
+                                     client.plan === 'EXECUTIVE' ? 'bg-blue-100 text-blue-800' :
+                                     client.plan === 'PROFESSIONAL' ? 'bg-emerald-100 text-emerald-800' :
                                      'bg-slate-100 text-slate-600'
                                  }`}>{client.plan}</span>
                              </td>
-                             <td className="px-6 py-4 text-slate-500">{client.joined}</td>
+                             <td className="px-6 py-4 text-slate-500">{client.email}</td>
                              <td className="px-6 py-4">
-                                <span className={`flex items-center gap-1.5 ${
-                                    client.status === 'Active' ? 'text-emerald-600' : 
-                                    client.status === 'Past Due' ? 'text-red-500' : 'text-slate-400'
-                                }`}>
-                                    <span className={`w-1.5 h-1.5 rounded-full ${
-                                        client.status === 'Active' ? 'bg-emerald-500' :
-                                        client.status === 'Past Due' ? 'bg-red-500' : 'bg-slate-400'
-                                    }`}></span>
-                                    {client.status}
+                                <span className="flex items-center gap-1.5 text-emerald-600">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    Active
                                 </span>
                              </td>
-                             <td className="px-6 py-4 font-mono font-medium text-slate-700">{client.commission}</td>
+                             <td className="px-6 py-4 font-mono font-medium text-slate-700">${commission.toFixed(2)}/mo</td>
                              <td className="px-6 py-4 text-right">
                                 <button className="text-xs flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md transition ml-auto font-medium">
-                                  <LayoutDashboard size={14} /> Manage
+                                  <LayoutDashboard size={14} /> View
                                 </button>
                              </td>
                          </tr>
-                     ))}
+                     )})}
+                     {referredUsers.length === 0 && (
+                        <tr>
+                            <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
+                                No clients referred yet. Share your link to start earning!
+                            </td>
+                        </tr>
+                     )}
                  </tbody>
              </table>
          </div>
@@ -242,6 +270,10 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats }) => {
           </div>
       </div>
   );
+
+  if (isLoading) {
+      return <div className="flex justify-center items-center h-64"><Loader className="animate-spin text-blue-900" size={32} /></div>;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in pb-10">

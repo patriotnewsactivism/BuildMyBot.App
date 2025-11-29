@@ -595,7 +595,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                    <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 font-bold text-xl">2</div>
                    <div>
                      <h4 className="font-bold text-lg">Triggers "Hot Lead" Status</h4>
-                     <p className="text-slate-400 text-sm">When score &gt; 80, the bot asks for name & phone number.</p>
+                     <p className="text-slate-400 text-sm">When score > 80, the bot asks for name & phone number.</p>
                    </div>
                  </div>
                  <div className="flex gap-4">

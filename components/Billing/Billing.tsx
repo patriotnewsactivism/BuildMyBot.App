@@ -1,15 +1,34 @@
-import React from 'react';
-import { Check, Shield, Zap, Star, Crown } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, Shield, Zap, Star, Crown, Loader } from 'lucide-react';
 import { PLANS } from '../../constants';
-import { PlanType } from '../../types';
+import { PlanType, User } from '../../types';
+import { dbService } from '../../services/dbService';
 
-export const Billing: React.FC = () => {
-  const currentPlan = PlanType.PROFESSIONAL;
+interface BillingProps {
+  user?: User;
+}
 
-  const handleUpgrade = (planId: string) => {
-    // In a real implementation, this would call your backend to create a Stripe Checkout Session
-    // Example: await fetch('/api/create-checkout-session', { method: 'POST', body: JSON.stringify({ planId }) })
-    alert(`Redirecting to Stripe Checkout for ${planId} plan...`);
+export const Billing: React.FC<BillingProps> = ({ user }) => {
+  const currentPlan = user?.plan || PlanType.FREE;
+  const [processingPlan, setProcessingPlan] = useState<string | null>(null);
+
+  const handleUpgrade = async (planId: string) => {
+    if (!user) return;
+    setProcessingPlan(planId);
+    
+    // Simulate Stripe Checkout API Call
+    setTimeout(async () => {
+        try {
+            await dbService.updateUserPlan(user.id, planId as PlanType);
+            // In real app, this would redirect to Stripe URL
+            alert(`Upgrade successful! Welcome to the ${planId} plan.`);
+        } catch (e) {
+            console.error(e);
+            alert("Upgrade failed. Please try again.");
+        } finally {
+            setProcessingPlan(null);
+        }
+    }, 2000);
   };
 
   return (
@@ -71,8 +90,8 @@ export const Billing: React.FC = () => {
 
                 <button 
                   onClick={() => handleUpgrade(key)}
-                  disabled={isCurrent}
-                  className={`w-full py-3 rounded-lg font-bold text-sm transition shadow-md ${
+                  disabled={isCurrent || processingPlan !== null}
+                  className={`w-full py-3 rounded-lg font-bold text-sm transition shadow-md flex items-center justify-center gap-2 ${
                     isCurrent 
                     ? 'bg-slate-100 text-slate-400 cursor-default shadow-none' 
                     : isEnterprise 
@@ -80,7 +99,8 @@ export const Billing: React.FC = () => {
                         : 'bg-blue-900 text-white hover:bg-blue-950 hover:shadow-blue-200'
                   }`}
                 >
-                  {isCurrent ? 'Current Plan' : isEnterprise ? 'Contact Sales / Upgrade' : `Upgrade to ${plan.name}`}
+                  {processingPlan === key ? <Loader className="animate-spin" size={16} /> : null}
+                  {isCurrent ? 'Current Plan' : isEnterprise ? 'Upgrade to Enterprise' : `Upgrade to ${plan.name}`}
                 </button>
              </div>
            );
