@@ -20,9 +20,8 @@ import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversa
 import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame } from 'lucide-react';
-import { auth } from './services/firebaseConfig';
+import { supabase } from './services/supabaseClient';
 import { dbService } from './services/dbService';
-import { onAuthStateChanged } from 'firebase/auth';
 
 const INITIAL_CHAT_LOGS: Conversation[] = []; 
 const INITIAL_RESELLER_STATS: ResellerStats = {
@@ -72,42 +71,49 @@ function App() {
 
   // --- Real-time Data Subscriptions ---
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
+    if (!supabase) return;
+
+    // Supabase Auth Listener
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
         setIsLoggedIn(true);
+        const email = session.user.email;
         
         // CHECK FOR GOD MODE (Master Emails)
-        if (firebaseUser.email && MASTER_EMAILS.includes(firebaseUser.email.toLowerCase())) {
+        if (email && MASTER_EMAILS.includes(email.toLowerCase())) {
            setUser({
-              id: firebaseUser.uid,
+              id: session.user.id,
               name: 'Master Admin',
-              email: firebaseUser.email,
+              email: email,
               role: UserRole.ADMIN, // Grant Full Access
               plan: PlanType.ENTERPRISE, // Grant Uncapped Limits
               companyName: 'BuildMyBot HQ',
-              avatarUrl: firebaseUser.photoURL || undefined
+              avatarUrl: session.user.user_metadata?.avatar_url
            });
            return;
         }
 
         // Standard User Flow
-        const profile = await dbService.getUserProfile(firebaseUser.uid);
+        const profile = await dbService.getUserProfile(session.user.id);
         if (profile) {
           setUser(profile);
         } else {
           // Fallback if profile creation is lagging (create a basic free user in state)
           setUser({
-            id: firebaseUser.uid,
-            name: firebaseUser.email?.split('@')[0] || 'User',
-            email: firebaseUser.email || '',
+            id: session.user.id,
+            name: email?.split('@')[0] || 'User',
+            email: email || '',
             role: UserRole.OWNER,
             plan: PlanType.FREE,
             companyName: 'My Company'
           });
         }
-      } else {
-        setIsLoggedIn(false);
-        setUser(null);
+      } else if (event === 'SIGNED_OUT') {
+        // Do not reset if user was set manually (Demo Mode fallback)
+        if (!user || !user.id.startsWith('demo-user')) {
+             setIsLoggedIn(false);
+             setUser(null);
+        }
       }
     });
 
@@ -122,11 +128,11 @@ function App() {
     });
 
     return () => {
-      unsubscribeAuth();
+      authListener.subscription.unsubscribe();
       unsubscribeBots();
       unsubscribeLeads();
     };
-  }, []);
+  }, [user]); // Add user to dependancy array to prevent clobbering demo user
 
   // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
@@ -136,20 +142,37 @@ function App() {
 
   const handleAdminLogin = () => {
       // Manual trigger for demo purposes if needed (from footer)
-      setUser({ 
-        id: 'admin', 
-        name: 'Master Admin', 
-        email: 'admin@buildmybot.app', 
-        role: UserRole.ADMIN, 
-        plan: PlanType.ENTERPRISE, 
-        companyName: 'BuildMyBot HQ' 
-      });
+      handleManualAuth('admin@buildmybot.app', 'Master Admin', 'BuildMyBot HQ');
+  };
+
+  // Fallback authentication for when Supabase Config is invalid or blocked
+  const handleManualAuth = (email: string, name?: string, companyName?: string) => {
+      const isMaster = MASTER_EMAILS.includes(email.toLowerCase());
+      
+      const newUser: User = {
+          id: isMaster ? 'master-admin' : 'demo-user-' + Date.now(),
+          name: name || email.split('@')[0],
+          email: email,
+          role: isMaster ? UserRole.ADMIN : UserRole.OWNER,
+          plan: isMaster ? PlanType.ENTERPRISE : PlanType.FREE,
+          companyName: companyName || (isMaster ? 'BuildMyBot HQ' : 'Demo Company'),
+          createdAt: new Date().toISOString()
+      };
+
+      setUser(newUser);
       setIsLoggedIn(true);
-      setCurrentView('admin');
+      setAuthModalOpen(false);
+      
+      if (isMaster) {
+          setCurrentView('admin');
+      }
+      
+      setNotification("Logged in (Demo Mode)");
+      setTimeout(() => setNotification(null), 3000);
   };
 
   const handlePartnerSignup = (data: any) => {
-    // In a real flow, this would create the user in Firebase with RESELLER role
+    // In a real flow, this would create the user in DB with RESELLER role
     setUser({ 
       id: 'reseller-' + Date.now(),
       email: data.email,
@@ -181,7 +204,7 @@ function App() {
       randomizeIdentity: true
     };
     
-    // Save to Firestore
+    // Save to DB
     dbService.saveBot(newBot);
     
     setNotification(`Installed "${template.name}" successfully!`);
@@ -239,6 +262,7 @@ function App() {
           isOpen={authModalOpen} 
           onClose={() => setAuthModalOpen(false)} 
           defaultMode={authMode} 
+          onLoginSuccess={handleManualAuth}
         />
       </>
     );
