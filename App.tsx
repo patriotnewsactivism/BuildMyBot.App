@@ -20,9 +20,8 @@ import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversa
 import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame } from 'lucide-react';
-import { auth } from './services/firebaseConfig';
+import { authService } from './services/authService';
 import { dbService } from './services/dbService';
-import { onAuthStateChanged } from 'firebase/auth';
 
 const INITIAL_CHAT_LOGS: Conversation[] = []; 
 const INITIAL_RESELLER_STATS: ResellerStats = {
@@ -69,20 +68,19 @@ function App() {
 
   // --- Real-time Data Subscriptions ---
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
+    const { data: { subscription } } = authService.onAuthStateChange(async (supabaseUser) => {
+      if (supabaseUser) {
         setIsLoggedIn(true);
-        // Fetch full user profile from Firestore
-        // Use onSnapshot for user profile to get real-time plan updates
-        const profile = await dbService.getUserProfile(firebaseUser.uid);
+        // Fetch full user profile from Supabase
+        const profile = await dbService.getUserProfile(supabaseUser.id);
         if (profile) {
           setUser(profile);
         } else {
           // Fallback if profile creation is lagging
           setUser({
-            id: firebaseUser.uid,
-            name: firebaseUser.email?.split('@')[0] || 'User',
-            email: firebaseUser.email || '',
+            id: supabaseUser.id,
+            name: supabaseUser.email?.split('@')[0] || 'User',
+            email: supabaseUser.email || '',
             role: UserRole.OWNER,
             plan: PlanType.FREE,
             companyName: 'My Company'
@@ -105,7 +103,7 @@ function App() {
     });
 
     return () => {
-      unsubscribeAuth();
+      subscription.unsubscribe();
       unsubscribeBots();
       unsubscribeLeads();
     };
