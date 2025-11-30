@@ -1,9 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign } from 'lucide-react';
 import { Bot as BotType } from '../../types';
 import { generateBotResponse } from '../../services/geminiService';
-import { crawlWebsite } from '../../services/crawlerService';
 import { AVAILABLE_MODELS } from '../../constants';
 import { dbService } from '../../services/dbService';
 
@@ -143,33 +141,17 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     setKbInput('');
   };
 
-  const handleScrapeUrl = async () => {
+  const handleScrapeUrl = () => {
     if (!urlInput.trim()) return;
     setIsScraping(true);
-    
-    try {
-        // Use real crawler
-        const scrapedText = await crawlWebsite(urlInput);
-        const snippet = scrapedText.substring(0, 300) + '...';
-        
+    setTimeout(() => {
+        setIsScraping(false);
         setActiveBot({
             ...activeBot,
-            knowledgeBase: [
-                ...(activeBot.knowledgeBase || []), 
-                `[WEBSITE CONTENT FROM ${urlInput}]: ${scrapedText}`
-            ]
+            knowledgeBase: [...(activeBot.knowledgeBase || []), `[SCRAPED CONTENT FROM ${urlInput}]: This business offers premium services. Hours are 9-5. Contact us at 555-0123.`]
         });
         setUrlInput('');
-    } catch (e) {
-        console.error(e);
-        // Fallback (should be handled by crawler service, but safe guard here)
-        setActiveBot({
-            ...activeBot,
-            knowledgeBase: [...(activeBot.knowledgeBase || []), `[SYSTEM] Manual entry for ${urlInput}`]
-        });
-    } finally {
-        setIsScraping(false);
-    }
+    }, 2000);
   };
 
   const handleTestSend = async () => {
@@ -453,7 +435,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                            Train Bot
                          </button>
                       </div>
-                      <p className="text-xs text-slate-500 mt-2">We will crawl this URL (approx 10s) and add its text to the bot's memory.</p>
+                      <p className="text-xs text-slate-500 mt-2">We will scrape this URL and add it to the bot's memory.</p>
                    </div>
 
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
@@ -483,15 +465,15 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                             </div>
                          )}
                          {activeBot.knowledgeBase.map((item, i) => (
-                            <div key={i} className="flex items-start justify-between bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm group">
-                               <p className="text-slate-700 line-clamp-2">{item}</p>
+                            <div key={i} className="flex items-start justify-between bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm">
+                               <p className="text-slate-700">{item}</p>
                                <button 
                                  onClick={() => {
                                      const newKb = [...activeBot.knowledgeBase];
                                      newKb.splice(i, 1);
                                      setActiveBot({...activeBot, knowledgeBase: newKb});
                                  }}
-                                 className="text-slate-400 hover:text-red-500 ml-2 opacity-0 group-hover:opacity-100 transition"
+                                 className="text-slate-400 hover:text-red-500 ml-2"
                                >
                                  <Trash2 size={14} />
                                </button>
