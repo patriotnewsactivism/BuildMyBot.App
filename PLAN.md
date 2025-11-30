@@ -217,11 +217,18 @@ Each function lives in `supabase/functions/<name>`.
 - Landing page upgrades  
 
 ## Milestone 4 – Hardening & Launch (2–3 weeks)
-- Testing framework  
-- Logging + Analytics dashboards  
-- Sentry integration  
-- SEO & landing page polish  
-- Final docs  
+- Testing framework
+- Logging + Analytics dashboards
+- Sentry integration
+- SEO & landing page polish
+- Final docs
+
+## Milestone 5 – Post-Launch Growth & Integrations (2–3 weeks)
+- Multi-language support rollout across chat, website pages, and marketing tools
+- Team collaboration (multi-seat) controls with role-based permissions
+- Advanced analytics dashboards for bots, leads, and marketing performance
+- Webhook integrations (Zapier, Make.com) and reseller webhooks
+- White-label domain system for agencies with per-tenant routing
 
 ---
 
