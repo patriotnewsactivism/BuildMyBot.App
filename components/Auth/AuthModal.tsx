@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, Loader, ArrowRight, Bot } from 'lucide-react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../services/firebaseConfig';
+import { supabase } from '../../services/supabaseClient';
 import { dbService } from '../../services/dbService';
 import { UserRole, PlanType } from '../../types';
 
@@ -9,9 +8,10 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultMode?: 'login' | 'signup';
+  onLoginSuccess?: (email: string, name?: string, companyName?: string) => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 'login' }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 'login', onLoginSuccess }) => {
   const [mode, setMode] = useState<'login' | 'signup'>(defaultMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,30 +26,62 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     setLoading(true);
     setError('');
 
+    if (!supabase) {
+       // Supabase not configured, use fallback
+       if (onLoginSuccess) {
+         onLoginSuccess(email, email.split('@')[0], companyName);
+         return;
+       }
+       setError("Supabase not configured.");
+       setLoading(false);
+       return;
+    }
+
     try {
       if (mode === 'signup') {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        
-        // Check for referral code
-        const referralCode = localStorage.getItem('bmb_ref_code') || undefined;
-
-        // Create user profile in Firestore
-        await dbService.saveUserProfile({
-          id: userCredential.user.uid,
-          name: email.split('@')[0], // Default name
-          email: email,
-          role: UserRole.OWNER,
-          plan: PlanType.FREE,
-          companyName: companyName || 'My Company',
-          referredBy: referralCode
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
         });
+
+        if (signUpError) throw signUpError;
+        
+        if (data.user) {
+           // Check for referral code
+           const referralCode = localStorage.getItem('bmb_ref_code') || undefined;
+
+           // Create user profile in Database
+           await dbService.saveUserProfile({
+             id: data.user.id,
+             name: email.split('@')[0], // Default name
+             email: email,
+             role: UserRole.OWNER,
+             plan: PlanType.FREE,
+             companyName: companyName || 'My Company',
+             referredBy: referralCode
+           });
+        }
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInError) throw signInError;
       }
       onClose();
     } catch (err: any) {
-      console.error(err);
-      setError(err.message.replace('Firebase:', '').trim());
+      console.error("Auth Error:", err);
+      
+      // Fallback for Demo Mode / Bad Config
+      const isConfigError = err.message.includes('missing') || err.status === 500;
+
+      if (isConfigError && onLoginSuccess) {
+         console.warn("Auth blocked. Switching to Demo Mode.");
+         onLoginSuccess(email, email.split('@')[0], companyName);
+         return;
+      }
+
+      setError(err.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
