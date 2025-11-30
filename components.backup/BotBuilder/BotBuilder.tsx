@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare } from 'lucide-react';
+import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign } from 'lucide-react';
 import { Bot as BotType } from '../../types';
 import { generateBotResponse } from '../../services/geminiService';
 import { AVAILABLE_MODELS } from '../../constants';
@@ -19,8 +19,18 @@ const PERSONAS = [
   { id: 'support', name: 'Customer Support Agent', prompt: 'You are a helpful customer support agent for {company}. Be polite, patient, and concise. Your goal is to resolve issues quickly. If you do not know the answer, ask for their contact info.' },
   { id: 'sales', name: 'Sales Representative', prompt: 'You are a top-performing sales representative for {company}. Your goal is to qualify leads and close deals. Be persuasive but not pushy. Focus on value and benefits. Always try to get a meeting booked.' },
   { id: 'receptionist', name: 'AI Receptionist', prompt: 'You are the front desk receptionist for {company}. Be warm and welcoming. Help schedule appointments and route calls. Keep responses short and professional.' },
+  { id: 'city_gov', name: 'City Services Agent', prompt: 'You are the official AI agent for {company} (City Government). Assist citizens with utility bill payments, trash pickup schedules, and permit applications. Be authoritative, helpful, and community-focused. If a citizen reports an emergency, tell them to dial 911 immediately.' },
+  { id: 'batesville', name: 'Batesville City Assistant', prompt: 'You are the official AI liaison for the City of Batesville, Mississippi. Your primary duties are to assist residents with utility bill payments (water, gas, electricity), answer questions about city ordinances, and help schedule inspections. \n\nContext:\n- City Hall is located at 103 College St.\n- Utility payments can be made in person or via the online portal.\n- Trash pickup is weekly.\n\nBe professional, warm, and neighborly. Always direct utility payment queries to the secure payment portal.' },
   { id: 'hr', name: 'HR Assistant', prompt: 'You are a Human Resources assistant. Answer employee questions about benefits, holidays, and company policy. Maintain strict confidentiality and professionalism.' },
   { id: 'tech', name: 'Technical Support', prompt: 'You are a Tier 1 Technical Support agent. Walk users through troubleshooting steps logically. Ask clarifying questions to diagnose the issue.' },
+  { id: 'scheduler', name: 'Appointment Scheduler', prompt: 'You are a dedicated scheduling assistant for {company}. Your primary goal is to book appointments. Be efficient and accommodating. Always offer specific time slots and confirm details.' },
+  { id: 'product', name: 'Product Specialist', prompt: 'You are an expert product specialist for {company}. Assist customers in finding the perfect product. Ask about their needs, compare options, and explain benefits clearly.' },
+  { id: 'realestate', name: 'Real Estate Agent', prompt: 'You are a knowledgeable real estate agent for {company}. Qualify buyers by asking about budget, location, and preferences. Schedule property viewings.' },
+  { id: 'legal', name: 'Legal Intake', prompt: 'You are a legal intake specialist for {company}. Collect potential client details and case information with empathy and discretion. Do not provide legal advice.' },
+  { id: 'coach', name: 'Lifestyle Coach', prompt: 'You are a lifestyle and wellness coach representing {company}. Motivate users, track progress, and provide encouraging feedback. Maintain a positive, energetic tone.' },
+  { id: 'recruiter', name: 'Recruitment Assistant', prompt: 'You are a recruitment assistant for {company}. Screen candidates by asking about their experience, availability, and skills. Be professional, encouraging, and efficient. If they seem qualified, ask for their email to schedule an interview.' },
+  { id: 'travel', name: 'Travel Concierge', prompt: 'You are a knowledgeable travel concierge for {company}. Help users plan their perfect trip by asking about their budget, preferred climate, and interests. Suggest destinations and activities. Be enthusiastic and descriptive.' },
+  { id: 'financial', name: 'Financial Guide', prompt: 'You are a financial guide for {company}. Help users understand our banking products, credit cards, and loan options. Explain complex terms simply. Be trustworthy and precise. Do not give personal investment advice.' }
 ];
 
 export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDomain, onLeadDetected }) => {
@@ -107,10 +117,17 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   const handleApplyPersona = (personaId: string) => {
     const persona = PERSONAS.find(p => p.id === personaId);
     if (persona) {
+      const isBatesville = personaId === 'batesville';
       setActiveBot({
         ...activeBot,
-        systemPrompt: persona.prompt.replace('{company}', 'our company'),
-        type: persona.name as any
+        systemPrompt: persona.prompt.replace('{company}', 'our organization'),
+        type: persona.name,
+        // Auto-set name for Batesville demo
+        name: isBatesville ? 'Batesville City Assistant' : activeBot.name,
+        // Auto-inject Knowledge for Batesville demo to ensure it works flawlessly immediately
+        knowledgeBase: isBatesville 
+            ? ['City Hall is located at 103 College St, Batesville, MS.', 'Utility payments can be made online at batesville.ms.gov/pay.', 'Trash pickup is every Tuesday for residential areas.'] 
+            : activeBot.knowledgeBase
       });
     }
   };
@@ -296,9 +313,16 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                              <button
                                key={p.id}
                                onClick={() => handleApplyPersona(p.id)}
-                               className={`text-left p-3 rounded-lg border text-sm transition hover:shadow-md ${activeBot.type === p.name ? 'border-blue-900 bg-blue-50 ring-1 ring-blue-900' : 'border-slate-200 bg-slate-50 hover:bg-white'}`}
+                               className={`text-left p-3 rounded-lg border text-sm transition hover:shadow-md relative overflow-hidden ${activeBot.type === p.name ? 'border-blue-900 bg-blue-50 ring-1 ring-blue-900' : 'border-slate-200 bg-slate-50 hover:bg-white'}`}
                              >
-                                <div className="font-semibold text-slate-900">{p.name}</div>
+                                {p.id === 'batesville' && <div className="absolute top-0 right-0 bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded-bl-lg font-bold">DEMO</div>}
+                                <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                                    {p.id.includes('city') || p.id === 'batesville' ? <Building2 size={14} className="text-blue-600"/> : null}
+                                    {p.id === 'recruiter' ? <Briefcase size={14} className="text-blue-600"/> : null}
+                                    {p.id === 'travel' ? <Plane size={14} className="text-blue-600"/> : null}
+                                    {p.id === 'financial' ? <DollarSign size={14} className="text-blue-600"/> : null}
+                                    {p.name}
+                                </div>
                                 <div className="text-xs text-slate-500 mt-1 truncate">Apply preset</div>
                              </button>
                           ))}
