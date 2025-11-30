@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
-import { generateBotResponse } from '../../services/geminiService';
+import { generateBotResponse } from '../../services/aiService';
 
 interface LandingProps {
   onLogin: () => void;

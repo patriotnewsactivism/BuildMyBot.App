@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, AlertCircle, Loader } from 'lucide-react';
-import { generateBotResponse } from '../../services/geminiService';
+import { generateBotResponse } from '../../services/aiService';
 import { dbService } from '../../services/dbService';
 import { Bot as BotType } from '../../types';
 
