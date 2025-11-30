@@ -32,6 +32,9 @@ const INITIAL_RESELLER_STATS: ResellerStats = {
   pendingPayout: 0,
 };
 
+// Define Master Admins here
+const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org'];
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
@@ -72,13 +75,27 @@ function App() {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setIsLoggedIn(true);
-        // Fetch full user profile from Firestore
-        // Use onSnapshot for user profile to get real-time plan updates
+        
+        // CHECK FOR GOD MODE (Master Emails)
+        if (firebaseUser.email && MASTER_EMAILS.includes(firebaseUser.email.toLowerCase())) {
+           setUser({
+              id: firebaseUser.uid,
+              name: 'Master Admin',
+              email: firebaseUser.email,
+              role: UserRole.ADMIN, // Grant Full Access
+              plan: PlanType.ENTERPRISE, // Grant Uncapped Limits
+              companyName: 'BuildMyBot HQ',
+              avatarUrl: firebaseUser.photoURL || undefined
+           });
+           return;
+        }
+
+        // Standard User Flow
         const profile = await dbService.getUserProfile(firebaseUser.uid);
         if (profile) {
           setUser(profile);
         } else {
-          // Fallback if profile creation is lagging
+          // Fallback if profile creation is lagging (create a basic free user in state)
           setUser({
             id: firebaseUser.uid,
             name: firebaseUser.email?.split('@')[0] || 'User',
@@ -118,7 +135,7 @@ function App() {
   const avgResponseTime = "0.8s";
 
   const handleAdminLogin = () => {
-      // For demo purposes, we still allow a mock admin override
+      // Manual trigger for demo purposes if needed (from footer)
       setUser({ 
         id: 'admin', 
         name: 'Master Admin', 
