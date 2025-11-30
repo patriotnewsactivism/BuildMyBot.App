@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search } from 'lucide-react';
+import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
 import { generateBotResponse } from '../../services/geminiService';
@@ -27,7 +27,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Live Demos State
-  const [activeDemo, setActiveDemo] = useState<'training' | 'phone' | 'viral' | 'site'>('training');
+  const [activeDemo, setActiveDemo] = useState<'training' | 'phone' | 'viral' | 'site' | 'crm'>('training');
   
   // Training Demo State
   const [trainingStep, setTrainingStep] = useState(0); // 0: Input, 1: Scanning, 2: Ready/Chat
@@ -47,6 +47,13 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   const [siteIndustry, setSiteIndustry] = useState('Coffee Shop');
   const [generatedSite, setGeneratedSite] = useState<any>(null);
   const [isBuildingSite, setIsBuildingSite] = useState(false);
+
+  // CRM Demo State
+  const [crmLeads, setCrmLeads] = useState<any[]>([
+      { name: 'Sarah Miller', email: 'sarah.m@gmail.com', status: 'New', score: 45, time: '2m ago' },
+      { name: 'Mike Ross', email: 'mike.ross@law.com', status: 'Qualified', score: 88, time: '15m ago' },
+  ]);
+  const [isSimulatingLead, setIsSimulatingLead] = useState(false);
 
   // Initialize random identity on mount
   useEffect(() => {
@@ -139,12 +146,29 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     setTimeout(() => {
         setGeneratedSite({
             name: siteName,
-            headline: `The Best ${siteIndustry} in Town`,
-            subheadline: `Experience premium quality and service at ${siteName}. We are dedicated to excellence.`,
-            cta: 'Book Now'
+            headline: siteIndustry === 'City Government' ? `Welcome to the City of ${siteName}` : `The Best ${siteIndustry} in Town`,
+            subheadline: siteIndustry === 'City Government' 
+                ? `Official portal for residents. Pay bills, report issues, and access city services online.`
+                : `Experience premium quality and service at ${siteName}. We are dedicated to excellence.`,
+            cta: siteIndustry === 'City Government' ? 'Access Services' : 'Book Now'
         });
         setIsBuildingSite(false);
     }, 2000);
+  };
+
+  const handleSimulateLead = () => {
+    setIsSimulatingLead(true);
+    setTimeout(() => {
+        const newLead = { 
+            name: 'John Resident', 
+            email: 'john.d@email.com', 
+            status: 'Hot Lead', 
+            score: 95, 
+            time: 'Just now' 
+        };
+        setCrmLeads(prev => [newLead, ...prev]);
+        setIsSimulatingLead(false);
+    }, 1500);
   };
 
   const handleDemoSend = async () => {
@@ -711,6 +735,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                {[
                   { id: 'training', label: 'Instant Training', icon: FileText },
                   { id: 'phone', label: 'AI Phone Agent', icon: Phone },
+                  { id: 'crm', label: 'Lead CRM', icon: Users },
                   { id: 'viral', label: 'Viral Post Creator', icon: Search },
                   { id: 'site', label: 'Instant Website', icon: Layout }
                ].map((tab) => (
@@ -900,6 +925,98 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                   </div>
                )}
 
+               {/* Lead CRM Demo */}
+               {activeDemo === 'crm' && (
+                  <div className="w-full h-full flex flex-col md:flex-row animate-fade-in">
+                     <div className="w-full md:w-1/3 bg-slate-900 p-8 border-b md:border-b-0 md:border-r border-slate-700 flex flex-col justify-center gap-6">
+                        <div>
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-900/50 border border-orange-500/50 text-orange-300 text-xs font-bold uppercase tracking-wide mb-4">
+                                <Flame size={12} fill="currentColor" /> Lead Intelligence
+                            </div>
+                            <h3 className="text-2xl font-bold mb-4">Never Miss a Lead</h3>
+                            <p className="text-slate-400 text-sm mb-6">
+                                The AI scores every conversation. If a lead shows buying intent, it is instantly tagged as "Hot" and you get notified.
+                            </p>
+                            <button 
+                                onClick={handleSimulateLead}
+                                disabled={isSimulatingLead}
+                                className="w-full bg-orange-600 text-white py-3 rounded-lg font-bold hover:bg-orange-500 transition shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2"
+                            >
+                                {isSimulatingLead ? <Zap className="animate-spin" size={18}/> : <Plus size={18}/>} Simulate Incoming Lead
+                            </button>
+                        </div>
+                        
+                        <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                             <h4 className="font-bold text-sm mb-2 flex items-center gap-2"><Bell size={14}/> Live Notifications</h4>
+                             <p className="text-xs text-slate-400">You receive alerts via:</p>
+                             <div className="flex gap-2 mt-2">
+                                <span className="bg-slate-700 px-2 py-1 rounded text-xs">SMS</span>
+                                <span className="bg-slate-700 px-2 py-1 rounded text-xs">Email</span>
+                                <span className="bg-slate-700 px-2 py-1 rounded text-xs">Slack</span>
+                             </div>
+                        </div>
+                     </div>
+
+                     <div className="flex-1 bg-slate-800 p-8 relative">
+                        {/* Mock CRM UI */}
+                        <div className="bg-white rounded-xl shadow-2xl overflow-hidden h-full flex flex-col">
+                            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white">
+                                <div className="font-bold text-slate-800 flex items-center gap-2"><Users size={16}/> Lead Pipeline</div>
+                                <div className="flex gap-1">
+                                    <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                                    <div className="w-2 h-2 rounded-full bg-yellow-400"></div>
+                                    <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                                </div>
+                            </div>
+                            <div className="flex-1 bg-slate-50 p-4 overflow-y-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="text-slate-400 text-xs uppercase font-semibold">
+                                        <tr>
+                                            <th className="pb-2">Lead Name</th>
+                                            <th className="pb-2">Status</th>
+                                            <th className="pb-2 text-right">Score</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="space-y-2">
+                                        {crmLeads.map((lead, i) => (
+                                            <tr key={i} className={`bg-white border-b-4 border-slate-50 shadow-sm rounded-lg overflow-hidden animate-fade-in ${i === 0 && isSimulatingLead ? 'opacity-50' : 'opacity-100'}`}>
+                                                <td className="p-3">
+                                                    <div className="font-bold text-slate-800">{lead.name}</div>
+                                                    <div className="text-xs text-slate-400">{lead.email}</div>
+                                                </td>
+                                                <td className="p-3">
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                                        lead.status === 'Hot Lead' ? 'bg-orange-100 text-orange-600' :
+                                                        lead.status === 'Qualified' ? 'bg-emerald-100 text-emerald-600' :
+                                                        'bg-blue-100 text-blue-600'
+                                                    }`}>
+                                                        {lead.status === 'Hot Lead' && <Flame size={10} className="inline mr-1 fill-orange-500" />}
+                                                        {lead.status}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3 text-right">
+                                                    <span className="font-bold text-slate-700">{lead.score}</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {/* Notification Toast Mock */}
+                            {crmLeads.length > 2 && (
+                                <div className="absolute bottom-4 right-4 bg-slate-900 text-white p-3 rounded-lg shadow-xl flex items-center gap-3 animate-bounce-slow text-sm max-w-xs">
+                                    <div className="bg-red-500 p-2 rounded-full"><Bell size={14}/></div>
+                                    <div>
+                                        <div className="font-bold">Hot Lead Detected!</div>
+                                        <div className="text-xs text-slate-300">John Resident just scored 95/100.</div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                     </div>
+                  </div>
+               )}
+
                {/* Viral Post Demo */}
                {activeDemo === 'viral' && (
                   <div className="w-full h-full flex flex-col md:flex-row animate-fade-in">
@@ -989,6 +1106,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                                  <option>Real Estate</option>
                                  <option>Gym</option>
                                  <option>Consulting</option>
+                                 <option>City Government</option>
                               </select>
                            </div>
                            <button 
@@ -1016,16 +1134,17 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                            
                            {generatedSite ? (
                               <div className="animate-fade-in">
-                                 <div className="h-32 bg-slate-800 text-white flex flex-col items-center justify-center text-center p-4">
+                                 <div className={`h-32 text-white flex flex-col items-center justify-center text-center p-4 ${siteIndustry === 'City Government' ? 'bg-slate-800' : 'bg-blue-900'}`}>
+                                    {siteIndustry === 'City Government' && <Landmark size={24} className="mb-2 text-white/80"/>}
                                     <h1 className="text-xl font-bold mb-2">{generatedSite.name}</h1>
                                     <p className="text-[10px] opacity-80 max-w-[200px]">{generatedSite.headline}</p>
                                  </div>
                                  <div className="p-6">
-                                    <h2 className="text-sm font-bold text-slate-800 mb-2">About Us</h2>
+                                    <h2 className="text-sm font-bold text-slate-800 mb-2">{siteIndustry === 'City Government' ? 'City Services' : 'About Us'}</h2>
                                     <p className="text-xs text-slate-500 mb-4 leading-relaxed">
                                        {generatedSite.subheadline}
                                     </p>
-                                    <button className="w-full bg-emerald-500 text-white py-2 rounded text-xs font-bold shadow-md">
+                                    <button className={`w-full text-white py-2 rounded text-xs font-bold shadow-md ${siteIndustry === 'City Government' ? 'bg-slate-700' : 'bg-emerald-500'}`}>
                                        {generatedSite.cta}
                                     </button>
                                  </div>

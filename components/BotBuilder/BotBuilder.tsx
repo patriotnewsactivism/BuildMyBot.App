@@ -114,12 +114,17 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   const handleApplyPersona = (personaId: string) => {
     const persona = PERSONAS.find(p => p.id === personaId);
     if (persona) {
+      const isBatesville = personaId === 'batesville';
       setActiveBot({
         ...activeBot,
         systemPrompt: persona.prompt.replace('{company}', 'our organization'),
         type: persona.name,
         // Auto-set name for Batesville demo
-        name: personaId === 'batesville' ? 'Batesville City Assistant' : activeBot.name
+        name: isBatesville ? 'Batesville City Assistant' : activeBot.name,
+        // Auto-inject Knowledge for Batesville demo to ensure it works flawlessly immediately
+        knowledgeBase: isBatesville 
+            ? ['City Hall is located at 103 College St, Batesville, MS.', 'Utility payments can be made online at batesville.ms.gov/pay.', 'Trash pickup is every Tuesday for residential areas.'] 
+            : activeBot.knowledgeBase
       });
     }
   };
