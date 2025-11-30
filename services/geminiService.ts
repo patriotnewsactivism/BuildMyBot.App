@@ -121,4 +121,39 @@ export const generateWebsiteStructure = async (businessName: string, description
    } catch (e) {
      return "{}";
    }
-}
+};
+
+export const simulateWebScrape = async (url: string): Promise<string> => {
+  if (!API_KEY) return "Unable to scrape: API Key missing.";
+
+  try {
+    const prompt = `Act as a web scraper. I am providing you a URL: "${url}". 
+    Since you cannot access the live internet, please generate a high-fidelity, plausible summary of what is likely on this website based on its domain name. 
+    Include:
+    1. Business Name and Industry
+    2. Main Services/Products offered
+    3. Likely Hours of Operation
+    4. Key Policies (Return policy, cancellation, etc.)
+    5. A short "About Us" blurb.
+    
+    Format this as a clean text block that a chatbot can use as context.`;
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.5
+        })
+      });
+  
+      const data = await response.json();
+      return data.choices[0]?.message?.content || "Failed to simulate scrape.";
+  } catch (e) {
+    return "Error simulating scrape.";
+  }
+};
