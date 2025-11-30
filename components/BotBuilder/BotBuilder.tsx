@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2 } from 'lucide-react';
+import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign } from 'lucide-react';
 import { Bot as BotType } from '../../types';
 import { generateBotResponse } from '../../services/geminiService';
 import { AVAILABLE_MODELS } from '../../constants';
@@ -27,7 +27,10 @@ const PERSONAS = [
   { id: 'product', name: 'Product Specialist', prompt: 'You are an expert product specialist for {company}. Assist customers in finding the perfect product. Ask about their needs, compare options, and explain benefits clearly.' },
   { id: 'realestate', name: 'Real Estate Agent', prompt: 'You are a knowledgeable real estate agent for {company}. Qualify buyers by asking about budget, location, and preferences. Schedule property viewings.' },
   { id: 'legal', name: 'Legal Intake', prompt: 'You are a legal intake specialist for {company}. Collect potential client details and case information with empathy and discretion. Do not provide legal advice.' },
-  { id: 'coach', name: 'Lifestyle Coach', prompt: 'You are a lifestyle and wellness coach representing {company}. Motivate users, track progress, and provide encouraging feedback. Maintain a positive, energetic tone.' }
+  { id: 'coach', name: 'Lifestyle Coach', prompt: 'You are a lifestyle and wellness coach representing {company}. Motivate users, track progress, and provide encouraging feedback. Maintain a positive, energetic tone.' },
+  { id: 'recruiter', name: 'Recruitment Assistant', prompt: 'You are a recruitment assistant for {company}. Screen candidates by asking about their experience, availability, and skills. Be professional, encouraging, and efficient. If they seem qualified, ask for their email to schedule an interview.' },
+  { id: 'travel', name: 'Travel Concierge', prompt: 'You are a knowledgeable travel concierge for {company}. Help users plan their perfect trip by asking about their budget, preferred climate, and interests. Suggest destinations and activities. Be enthusiastic and descriptive.' },
+  { id: 'financial', name: 'Financial Guide', prompt: 'You are a financial guide for {company}. Help users understand our banking products, credit cards, and loan options. Explain complex terms simply. Be trustworthy and precise. Do not give personal investment advice.' }
 ];
 
 export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDomain, onLeadDetected }) => {
@@ -315,6 +318,9 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                                 {p.id === 'batesville' && <div className="absolute top-0 right-0 bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded-bl-lg font-bold">DEMO</div>}
                                 <div className="font-semibold text-slate-900 flex items-center gap-1.5">
                                     {p.id.includes('city') || p.id === 'batesville' ? <Building2 size={14} className="text-blue-600"/> : null}
+                                    {p.id === 'recruiter' ? <Briefcase size={14} className="text-blue-600"/> : null}
+                                    {p.id === 'travel' ? <Plane size={14} className="text-blue-600"/> : null}
+                                    {p.id === 'financial' ? <DollarSign size={14} className="text-blue-600"/> : null}
                                     {p.name}
                                 </div>
                                 <div className="text-xs text-slate-500 mt-1 truncate">Apply preset</div>
