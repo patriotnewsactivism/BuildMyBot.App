@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign } from 'lucide-react';
 import { Bot as BotType } from '../../types';
-import { generateBotResponse } from '../../services/geminiService';
+import { generateBotResponse, uploadKnowledgeBase } from '../../services/aiService';
 import { AVAILABLE_MODELS } from '../../constants';
 import { dbService } from '../../services/dbService';
 
@@ -172,8 +172,8 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
 
     try {
         const context = activeBot.knowledgeBase.join('\n\n');
-        const response = await generateBotResponse(activeBot.systemPrompt, updatedHistory, newMessage.text, activeBot.model, context);
-        
+        const response = await generateBotResponse(activeBot.systemPrompt, updatedHistory, newMessage.text, activeBot.model, context, activeBot.id);
+
         // Use configured delay
         setTimeout(() => {
             setTestHistory(prev => [...prev, { role: 'model', text: response, timestamp: Date.now() }]);
