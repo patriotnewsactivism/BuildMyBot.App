@@ -6,11 +6,12 @@ export const dbService = {
   
   // Real-time listener for bots
   subscribeToBots: (onUpdate: (bots: Bot[]) => void) => {
-    if (!supabase) return () => {};
+    const client = supabase;
+    if (!client) return () => {};
 
     // Initial fetch
     const fetchBots = async () => {
-      const { data, error } = await supabase.from('bots').select('*');
+      const { data, error } = await client.from('bots').select('*');
       if (!error && data) {
         onUpdate(data as Bot[]);
       }
@@ -18,7 +19,7 @@ export const dbService = {
     fetchBots();
 
     // Subscribe to changes
-    const channel = supabase.channel('public:bots')
+    const channel = client.channel('public:bots')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bots' }, () => {
         // Re-fetch on any change for simplicity
         fetchBots();
@@ -26,13 +27,14 @@ export const dbService = {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      client.removeChannel(channel);
     };
   },
 
   saveBot: async (bot: Bot) => {
-    if (!supabase) return bot;
-    const { data, error } = await supabase
+    const client = supabase;
+    if (!client) return bot;
+    const { data, error } = await client
       .from('bots')
       .upsert(bot)
       .select()
@@ -43,8 +45,9 @@ export const dbService = {
   },
 
   getBotById: async (id: string): Promise<Bot | undefined> => {
-    if (!supabase) return undefined;
-    const { data, error } = await supabase
+    const client = supabase;
+    if (!client) return undefined;
+    const { data, error } = await client
       .from('bots')
       .select('*')
       .eq('id', id)
@@ -57,10 +60,11 @@ export const dbService = {
   // --- LEADS ---
 
   subscribeToLeads: (onUpdate: (leads: Lead[]) => void) => {
-    if (!supabase) return () => {};
+    const client = supabase;
+    if (!client) return () => {};
 
     const fetchLeads = async () => {
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('leads')
         .select('*')
         .order('createdAt', { ascending: false });
@@ -71,23 +75,24 @@ export const dbService = {
     };
     fetchLeads();
 
-    const channel = supabase.channel('public:leads')
+    const channel = client.channel('public:leads')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
         fetchLeads();
       })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      client.removeChannel(channel);
     };
   },
 
   saveLead: async (lead: Lead) => {
-    if (!supabase) return lead;
+    const client = supabase;
+    if (!client) return lead;
     
     // Upsert handles duplicate ID or we can rely on unique constraints
     // Assuming 'id' is the primary key or we have a unique constraint on email + bot
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('leads')
       .upsert(lead)
       .select()
@@ -103,8 +108,9 @@ export const dbService = {
   // --- USER & BILLING ---
 
   getUserProfile: async (uid: string): Promise<User | null> => {
-    if (!supabase) return null;
-    const { data, error } = await supabase
+    const client = supabase;
+    if (!client) return null;
+    const { data, error } = await client
       .from('profiles')
       .select('*')
       .eq('id', uid)
@@ -115,7 +121,8 @@ export const dbService = {
   },
 
   saveUserProfile: async (user: User) => {
-    if (!supabase) return;
+    const client = supabase;
+    if (!client) return;
     const now = new Date().toISOString();
     
     const userData = {
@@ -124,7 +131,7 @@ export const dbService = {
         createdAt: user.createdAt || now
     };
     
-    const { error } = await supabase
+    const { error } = await client
       .from('profiles')
       .upsert(userData);
       
@@ -132,8 +139,9 @@ export const dbService = {
   },
 
   updateUserPlan: async (uid: string, plan: PlanType) => {
-    if (!supabase) return;
-    const { error } = await supabase
+    const client = supabase;
+    if (!client) return;
+    const { error } = await client
       .from('profiles')
       .update({ plan: plan })
       .eq('id', uid);
@@ -145,10 +153,11 @@ export const dbService = {
 
   // Listen to users who were referred by this reseller code
   subscribeToReferrals: (resellerCode: string, onUpdate: (users: User[]) => void) => {
-    if (!supabase) return () => {};
+    const client = supabase;
+    if (!client) return () => {};
 
     const fetchReferrals = async () => {
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('profiles')
         .select('*')
         .eq('referredBy', resellerCode);
@@ -160,14 +169,14 @@ export const dbService = {
     fetchReferrals();
 
     // Supabase allows filtering on channels, but simpler to just listen to table and filter in fetch or usage
-    const channel = supabase.channel('public:profiles')
+    const channel = client.channel('public:profiles')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `referredBy=eq.${resellerCode}` }, () => {
         fetchReferrals();
       })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      client.removeChannel(channel);
     };
   },
 
@@ -175,8 +184,9 @@ export const dbService = {
   
   // Get ALL users for the Admin Dashboard
   getAllUsers: async (): Promise<User[]> => {
-    if (!supabase) return [];
-    const { data, error } = await supabase
+    const client = supabase;
+    if (!client) return [];
+    const { data, error } = await client
       .from('profiles')
       .select('*');
       
@@ -188,16 +198,18 @@ export const dbService = {
   },
 
   updateUserStatus: async (uid: string, status: 'Active' | 'Suspended') => {
-    if (!supabase) return;
-    await supabase
+    const client = supabase;
+    if (!client) return;
+    await client
       .from('profiles')
       .update({ status })
       .eq('id', uid);
   },
 
   approvePartner: async (uid: string) => {
-    if (!supabase) return;
-    await supabase
+    const client = supabase;
+    if (!client) return;
+    await client
       .from('profiles')
       .update({ status: 'Active' })
       .eq('id', uid);
