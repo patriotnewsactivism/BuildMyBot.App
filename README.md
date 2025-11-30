@@ -1,146 +1,86 @@
 # BuildMyBot.app
 
-BuildMyBot is a full-stack AI automation platform that enables creators, businesses, agencies, and resellers to **build, train, deploy, and sell AI agents**—all from a single interface.
+The ultimate white-label AI chatbot platform for businesses and agencies. Build, deploy, and resell intelligent bots with zero coding.
 
-Powered by **React + Vite + Supabase + GPT-4o**, BuildMyBot.app provides a complete ecosystem including:
+## 🚀 Overview
 
-- AI Chatbot Builder  
-- Knowledge Base & Embedding Engine  
-- CRM + Lead Capture  
-- Website & Landing Page Generator  
-- AI Marketing Studio  
-- Phone Agent (Voice AI)  
-- Template Marketplace  
-- Reseller Program (White-label Optional)  
-- Usage-based Billing & Stripe Integration  
-- Admin Console & Analytics  
+BuildMyBot is an all-in-one AI Operating System that empowers businesses to automate customer interactions across text, web, and voice. It includes a comprehensive suite of tools for lead generation, customer support, and marketing automation.
 
-This repository contains the frontend (React/Vite) and backend (Supabase Edge Functions + Postgres schema) required to run the entire platform.
+## ✨ Key Features
 
----
+### 🤖 AI Bot Builder
+- **Specialized Personas:** tailored roles for City Government (e.g., Batesville City Assistant), Recruitment, Travel, Real Estate, and more.
+- **RAG Knowledge Base:** Train bots on PDFs, Website URLs, and text data.
+- **Visual Editor:** No-code customization of identity, tone, and behavior.
 
-## 🚀 Features
+### 📞 AI Phone Agent
+- **24/7 Receptionist:** Handles incoming calls, books appointments, and routes urgent issues.
+- **Human-like Voice:** Powered by advanced neural speech synthesis.
+- **Call Logging:** Transcripts automatically saved to the CRM.
 
-### **AI Bot Builder**
-Create AI agents with:
-- Custom system prompts  
-- GPT-4o / GPT-4o-mini model selection  
-- Temperature & behavior tuning  
-- Identity randomization  
-- Settings schema for future extensions  
-- Full multi-bot support  
+### 📊 Lead CRM
+- **Hot Lead Detection:** Automatically scores leads (0-100) based on conversation intent.
+- **Pipeline Management:** Kanban and List views to manage deal flow.
+- **Instant Alerts:** SMS/Email notifications for high-priority leads.
 
-### **Knowledge Base & Embeddings**
-Use:
-- Raw text  
-- PDFs / files  
-- URL content crawler  
-Data is split into chunks, vectorized using OpenAI embeddings, and stored using **pgvector** for semantic search.
+### 📢 Marketing Studio
+- **Viral Content Generator:** Create high-engagement Twitter/X threads and LinkedIn posts.
+- **Instant Website Builder:** Generate industry-specific landing pages in seconds.
 
-### **Multi-Channel AI Chat**
-- Real-time chat with AI agent  
-- Conversation logs  
-- Token usage & cost tracking  
-- Optional automatic lead capture  
-- External-user attribution (session tracking)
+### 💼 Reseller & Partner Portal
+- **White-label Ready:** Agencies can resell the platform under their own brand.
+- **Commission Tracking:** Real-time dashboard for earnings, payouts, and client management.
+- **Tiered System:** Bronze, Silver, Gold, and Platinum tiers with increasing commission rates.
 
-### **CRM & Lead Management**
-All leads captured by bots flow into a complete CRM including:
-- Lead statuses (New → Contacted → Qualified → Converted)  
-- Lead scoring  
-- Custom metadata  
-- Export (CSV, JSON)  
-- Integration-ready record structure  
+## 🛠 Tech Stack
 
-### **Marketing Studio**
-Generate:
-- Ad copy  
-- Emails  
-- Sales scripts  
-- Blog posts  
-- Social posts  
-- Brand voice templates  
-Stored in `marketing_content` for reuse.
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS
+- **Backend (Current):** Firebase (Firestore, Auth)
+- **Backend (Target):** Supabase (Postgres, Edge Functions, Auth) - See `PLAN.md`
+- **AI Models:** OpenAI GPT-4o / GPT-4o Mini
+- **Icons:** Lucide React
 
-### **Website Builder**
-Users can generate:
-- Landing pages  
-- SEO metadata  
-- Hosted mini-sites for each bot  
-Pages can be published instantly or exported.
+## 🚦 Getting Started
 
-### **Phone Agent**
-Voice-driven AI agent with:
-- Twilio webhook integration  
-- Live call handling  
-- Transcripts stored in `phone_calls`  
-- Configurable greetings & flows  
+### Prerequisites
+- Node.js 18+
+- Firebase Project or Supabase Project (depending on migration stage)
+- OpenAI API Key
 
-### **Template Marketplace**
-Installable bot templates for verticals such as:
-- Real estate  
-- Law firms  
-- Restaurants  
-- SaaS  
-- Sales funnels  
-- Support assistants  
-- Agency systems  
+### Installation
 
-### **Reseller & White-Label Program**
-- Referral link tracking  
-- Commissions  
-- Client management  
-- Optional white-label mode  
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-org/buildmybot.git
+   cd buildmybot
+   ```
 
-### **Usage-Based Billing**
-Stripe + Supabase integration includes:
-- Monthly subscription plans  
-- AI usage limits (token caps)  
-- Overage prevention  
-- Automated quota enforcement  
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Configure Environment:
+   Create a `.env` file and add your keys:
+   ```env
+   VITE_FIREBASE_API_KEY=...
+   VITE_OPENAI_API_KEY=...
+   ```
+
+4. Run Development Server:
+   ```bash
+   npm run dev
+   ```
+
+## 🏗 Architecture & Roadmap
+
+For a detailed breakdown of the engineering plan, database schema, and migration strategy to Supabase, please refer to **[PLAN.md](./PLAN.md)**.
+
+## 📱 Live Demos included in the App
+- **City Services:** Batesville City Assistant demo with utility payment logic.
+- **Instant Training:** Drag-and-drop PDF training.
+- **Viral Post Creator:** Content generation engine.
+- **Phone Agent:** Interactive call simulator.
 
 ---
-
-## 🧩 Tech Stack
-
-### **Frontend**
-- React 18  
-- Vite  
-- TypeScript  
-- Zustand state management  
-- Recharts  
-- Lucide Icons  
-
-### **Backend**
-- **Supabase**
-  - Auth  
-  - PostgreSQL  
-  - Row-Level Security  
-  - Storage  
-  - Realtime  
-  - Edge Functions  
-- **OpenAI GPT-4o**  
-- **pgvector** semantic search  
-- **Stripe** billing  
-
----
-
-## 📁 Directory Structure
-
-```plaintext
-├── src/
-│   ├── components/        # Bots, CRM, Website builder, Marketing Studio, etc.
-│   ├── pages/             # Dashboard routes
-│   ├── store/             # Zustand global state
-│   ├── services/          # API helpers (Supabase + Edge Functions)
-│   ├── utils/             # Parsing, chunking, formatting
-│   └── types/             # Shared TypeScript definitions
-│
-├── supabase/
-│   ├── migrations/        # SQL migrations & schema
-│   ├── functions/         # Edge Functions (AI, leads, billing, etc.)
-│   └── seed/              # Optional template seeds
-│
-├── public/                # Static assets
-├── README.md
-└── PLAN.md
+© 2024 BuildMyBot. All rights reserved.

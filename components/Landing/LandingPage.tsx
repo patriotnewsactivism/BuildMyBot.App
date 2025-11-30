@@ -1,10 +1,8 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
 import { generateBotResponse } from '../../services/geminiService';
-import { crawlWebsite } from '../../services/crawlerService';
 
 interface LandingProps {
   onLogin: () => void;
@@ -33,13 +31,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   
   // Training Demo State
   const [trainingStep, setTrainingStep] = useState(0); // 0: Input, 1: Scanning, 2: Ready/Chat
-  const [trainingType, setTrainingType] = useState<'pdf' | 'url'>('url');
-  const [demoUrl, setDemoUrl] = useState('');
-  const [crawledData, setCrawledData] = useState<string>('');
-  const [demoChatHistory, setDemoChatHistory] = useState<{role: 'user'|'model', text: string}[]>([]);
-  const [demoChatInput, setDemoChatInput] = useState('');
-  const [demoChatTyping, setDemoChatTyping] = useState(false);
-  const demoChatScrollRef = useRef<HTMLDivElement>(null);
+  const [trainingType, setTrainingType] = useState<'pdf' | 'url'>('pdf');
 
   // Phone Demo State
   const [phoneStatus, setPhoneStatus] = useState<'idle' | 'calling' | 'connected'>('idle');
@@ -74,10 +66,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
-    if (demoChatScrollRef.current) {
-      demoChatScrollRef.current.scrollTop = demoChatScrollRef.current.scrollHeight;
-    }
-  }, [chatHistory, isTyping, isChatOpen, demoChatHistory, demoChatTyping]);
+  }, [chatHistory, isTyping, isChatOpen]);
 
   // Open Greeting
   useEffect(() => {
@@ -93,61 +82,11 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
   // --- DEMO HANDLERS ---
 
-  const handleTrainingDemo = async () => {
-    if (trainingType === 'url' && !demoUrl) return;
-    
+  const handleTrainingDemo = () => {
     setTrainingStep(1);
-    
-    // Simulate or perform real crawl
-    try {
-        let content = "";
-        if (trainingType === 'url') {
-            // Real crawl
-            content = await crawlWebsite(demoUrl);
-        } else {
-            // PDF simulation
-            content = "This is simulated content from a PDF. Our company policy states that returns are accepted within 30 days. We are open Mon-Fri 9am-5pm. Support email is help@company.com.";
-            await new Promise(r => setTimeout(r, 2000));
-        }
-
-        setCrawledData(content);
+    setTimeout(() => {
         setTrainingStep(2);
-        // Initial greeting based on crawl
-        setDemoChatHistory([{ role: 'model', text: `I've finished analyzing ${demoUrl || 'your document'}. I'm ready to answer questions!` }]);
-    } catch (e) {
-        setTrainingStep(0);
-        alert("Failed to crawl. Please try another URL.");
-    }
-  };
-
-  const handleDemoChatSend = async () => {
-    if (!demoChatInput.trim()) return;
-    
-    const userMsg = { role: 'user' as const, text: demoChatInput };
-    setDemoChatHistory(prev => [...prev, userMsg]);
-    setDemoChatInput('');
-    setDemoChatTyping(true);
-
-    try {
-        const systemPrompt = `You are a helpful AI assistant trained on specific website content. 
-        Use the context provided to answer the user's question. 
-        If the context includes a crawl error, rely on your internal knowledge about the entity: ${demoUrl}.
-        Be concise and professional.`;
-        
-        const response = await generateBotResponse(
-            systemPrompt, 
-            [...demoChatHistory, userMsg], 
-            userMsg.text, 
-            'gpt-4o-mini', 
-            crawledData // Pass the real crawled text!
-        );
-        
-        setDemoChatHistory(prev => [...prev, { role: 'model', text: response }]);
-    } catch (e) {
-        setDemoChatHistory(prev => [...prev, { role: 'model', text: "I'm having trouble processing that right now." }]);
-    } finally {
-        setDemoChatTyping(false);
-    }
+    }, 2500);
   };
 
   const handlePhoneDemoCall = () => {
@@ -823,23 +762,23 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                      <div className="flex-1 p-8 md:p-12 flex flex-col justify-center border-b md:border-b-0 md:border-r border-slate-700 bg-slate-800/50">
                         <h3 className="text-2xl font-bold mb-4">Train on your Data in Seconds</h3>
                         <p className="text-slate-400 mb-8">
-                           Enter any URL (e.g. <code>panola.gov</code>) or upload a PDF. We'll crawl it in real-time.
+                           Upload a lengthy PDF or paste your website URL. The bot absorbs every detail instantly.
                         </p>
                         
                         {trainingStep === 0 && (
                            <div className="bg-slate-900 rounded-xl p-6 border border-slate-700 space-y-4">
                               <div className="flex gap-4 mb-4">
                                  <button 
-                                    onClick={() => setTrainingType('url')}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${trainingType === 'url' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
-                                 >
-                                    <LinkIcon size={16} className="inline mr-2"/> Scan Website
-                                 </button>
-                                 <button 
                                     onClick={() => setTrainingType('pdf')}
                                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${trainingType === 'pdf' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
                                  >
                                     <Upload size={16} className="inline mr-2"/> Upload PDF
+                                 </button>
+                                 <button 
+                                    onClick={() => setTrainingType('url')}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${trainingType === 'url' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+                                 >
+                                    <LinkIcon size={16} className="inline mr-2"/> Scan Website
                                  </button>
                               </div>
                               
@@ -851,14 +790,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                                  </div>
                               ) : (
                                  <div className="space-y-4">
-                                    <input 
-                                       type="text" 
-                                       placeholder="https://panola.gov" 
-                                       value={demoUrl}
-                                       onChange={(e) => setDemoUrl(e.target.value)}
-                                       className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none" 
-                                    />
-                                    <button onClick={handleTrainingDemo} disabled={!demoUrl} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition disabled:opacity-50">Scan Now</button>
+                                    <input type="text" placeholder="https://yourbusiness.com" className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none" />
+                                    <button onClick={handleTrainingDemo} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition">Scan Now</button>
                                  </div>
                               )}
                            </div>
@@ -867,52 +800,30 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                         {trainingStep === 1 && (
                            <div className="h-64 flex flex-col items-center justify-center bg-slate-900 rounded-xl border border-slate-700">
                               <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                              <p className="font-bold text-lg animate-pulse">Crawling Live Content...</p>
-                              <p className="text-sm text-slate-500">Accessing {demoUrl || 'Document'}...</p>
+                              <p className="font-bold text-lg animate-pulse">Ingesting Knowledge...</p>
+                              <p className="text-sm text-slate-500">Reading 42 pages...</p>
                            </div>
                         )}
 
                         {trainingStep === 2 && (
                            <div className="bg-slate-900 rounded-xl p-6 border border-slate-700 h-full flex flex-col">
                               <div className="flex items-center gap-2 text-emerald-400 mb-4 bg-emerald-500/10 p-2 rounded-lg">
-                                 <CheckCircle size={18}/> <span className="text-sm font-bold">Knowledge Base Ready</span>
+                                 <CheckCircle size={18}/> <span className="text-sm font-bold">Training Complete</span>
                               </div>
-                              <div className="flex-1 overflow-y-auto space-y-4 pr-2 max-h-[300px]" ref={demoChatScrollRef}>
-                                 {demoChatHistory.map((msg, idx) => (
-                                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                         <div className={`max-w-[85%] p-3 rounded-xl text-sm ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-white border border-slate-600'}`}>
-                                            {msg.text}
-                                         </div>
-                                     </div>
-                                 ))}
-                                 {demoChatTyping && (
-                                    <div className="flex justify-start">
-                                       <div className="bg-slate-700 border border-slate-600 p-3 rounded-xl flex gap-1 items-center">
-                                          <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
-                                          <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                                          <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                                       </div>
+                              <div className="space-y-4 flex-1">
+                                 <div className="flex justify-end">
+                                    <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-sm max-w-[90%]">
+                                       What is your return policy for damaged items?
                                     </div>
-                                 )}
+                                 </div>
+                                 <div className="flex justify-start">
+                                    <div className="bg-slate-700 text-white p-3 rounded-2xl rounded-bl-none text-sm max-w-[90%] border border-slate-600">
+                                       <span className="text-xs text-blue-300 block mb-1 font-bold">Source: Employee_Handbook.pdf (Page 12)</span>
+                                       According to our policy, damaged items can be returned within 30 days for a full refund or exchange. The customer must provide a photo of the damage.
+                                    </div>
+                                 </div>
                               </div>
-                              <div className="mt-4 flex gap-2">
-                                 <input 
-                                    type="text" 
-                                    value={demoChatInput}
-                                    onChange={(e) => setDemoChatInput(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleDemoChatSend()}
-                                    placeholder="Ask about hours, bills, services..."
-                                    className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
-                                 />
-                                 <button 
-                                    onClick={handleDemoChatSend}
-                                    disabled={!demoChatInput}
-                                    className="p-2 bg-blue-600 rounded-lg text-white hover:bg-blue-500 transition"
-                                 >
-                                    <ArrowRight size={18}/>
-                                 </button>
-                              </div>
-                              <button onClick={() => {setTrainingStep(0); setDemoChatHistory([]); setCrawledData('');}} className="w-full mt-2 py-1 text-xs text-slate-500 hover:text-white">Start Over</button>
+                              <button onClick={() => setTrainingStep(0)} className="w-full mt-4 py-2 text-sm text-slate-400 hover:text-white">Try Another</button>
                            </div>
                         )}
                      </div>
