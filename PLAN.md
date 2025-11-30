@@ -6,7 +6,7 @@ This document defines the **architecture**, **schema**, **security model**, **ba
 
 # 1. System Architecture
 
-**Current State:** React + Vite + Firebase (Firestore/Auth)
+**Current State:** React + Vite + Supabase (Postgres/Auth/RLS)
 **Target Architecture:**
 React + Vite (Frontend SPA)
 ↓

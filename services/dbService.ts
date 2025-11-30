@@ -15,12 +15,14 @@ export const dbService = {
 
   // Real-time listener for bots
   subscribeToBots: (onUpdate: (bots: Bot[]) => void) => {
-    if (!supabase) {
+    const client = supabase;
+
+    if (!client) {
       console.warn('Supabase not initialized');
       return () => {};
     }
 
-    const channel = supabase
+    const channel = client
       .channel('bots-changes')
       .on(
         'postgres_changes',
@@ -31,7 +33,7 @@ export const dbService = {
         },
         async () => {
           // Fetch updated bots
-          const { data, error } = await supabase
+          const { data, error } = await client
             .from(TABLES.BOTS)
             .select('*')
             .order('created_at', { ascending: false });
@@ -59,7 +61,7 @@ export const dbService = {
       .subscribe();
 
     // Initial fetch
-    supabase
+    client
       .from(TABLES.BOTS)
       .select('*')
       .order('created_at', { ascending: false })
@@ -84,17 +86,19 @@ export const dbService = {
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      client.removeChannel(channel);
     };
   },
 
   saveBot: async (bot: Bot) => {
-    if (!supabase) {
+    const client = supabase;
+
+    if (!client) {
       console.error('Supabase not initialized');
       return bot;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await client.auth.getUser();
     if (!user) {
       throw new Error('User not authenticated');
     }
@@ -115,7 +119,7 @@ export const dbService = {
       conversations_count: bot.conversationsCount || 0,
     };
 
-    const { error } = await supabase
+    const { error } = await client
       .from(TABLES.BOTS)
       .upsert(botData);
 
@@ -128,9 +132,10 @@ export const dbService = {
   },
 
   getBotById: async (id: string): Promise<Bot | undefined> => {
-    if (!supabase) return undefined;
+    const client = supabase;
+    if (!client) return undefined;
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from(TABLES.BOTS)
       .select('*')
       .eq('id', id)
@@ -157,12 +162,14 @@ export const dbService = {
   // --- LEADS ---
 
   subscribeToLeads: (onUpdate: (leads: Lead[]) => void) => {
-    if (!supabase) {
+    const client = supabase;
+
+    if (!client) {
       console.warn('Supabase not initialized');
       return () => {};
     }
 
-    const channel = supabase
+    const channel = client
       .channel('leads-changes')
       .on(
         'postgres_changes',
@@ -172,7 +179,7 @@ export const dbService = {
           table: TABLES.LEADS,
         },
         async () => {
-          const { data, error } = await supabase
+          const { data, error } = await client
             .from(TABLES.LEADS)
             .select('*')
             .order('created_at', { ascending: false });
@@ -197,7 +204,7 @@ export const dbService = {
       .subscribe();
 
     // Initial fetch
-    supabase
+    client
       .from(TABLES.LEADS)
       .select('*')
       .order('created_at', { ascending: false })
@@ -220,17 +227,19 @@ export const dbService = {
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      client.removeChannel(channel);
     };
   },
 
   saveLead: async (lead: Lead) => {
-    if (!supabase) {
+    const client = supabase;
+
+    if (!client) {
       console.error('Supabase not initialized');
       return lead;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await client.auth.getUser();
     if (!user) {
       throw new Error('User not authenticated');
     }
@@ -248,7 +257,7 @@ export const dbService = {
       notes: lead.notes,
     };
 
-    const { error } = await supabase
+    const { error } = await client
       .from(TABLES.LEADS)
       .upsert(leadData);
 
@@ -263,9 +272,10 @@ export const dbService = {
   // --- USER & BILLING ---
 
   getUserProfile: async (uid: string): Promise<User | null> => {
-    if (!supabase) return null;
+    const client = supabase;
+    if (!client) return null;
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from(TABLES.PROFILES)
       .select('*')
       .eq('id', uid)
@@ -288,7 +298,9 @@ export const dbService = {
   },
 
   saveUserProfile: async (user: User) => {
-    if (!supabase) {
+    const client = supabase;
+
+    if (!client) {
       console.error('Supabase not initialized');
       return;
     }
@@ -305,7 +317,7 @@ export const dbService = {
       status: user.status || 'active',
     };
 
-    const { error } = await supabase
+    const { error } = await client
       .from(TABLES.PROFILES)
       .upsert(userData);
 
@@ -316,9 +328,10 @@ export const dbService = {
   },
 
   updateUserPlan: async (uid: string, plan: PlanType) => {
-    if (!supabase) return;
+    const client = supabase;
+    if (!client) return;
 
-    const { error } = await supabase
+    const { error } = await client
       .from(TABLES.PROFILES)
       .update({ plan })
       .eq('id', uid);
@@ -332,12 +345,14 @@ export const dbService = {
   // --- RESELLER ---
 
   subscribeToReferrals: (resellerCode: string, onUpdate: (users: User[]) => void) => {
-    if (!supabase) {
+    const client = supabase;
+
+    if (!client) {
       console.warn('Supabase not initialized');
       return () => {};
     }
 
-    const channel = supabase
+    const channel = client
       .channel('referrals-changes')
       .on(
         'postgres_changes',
@@ -348,7 +363,7 @@ export const dbService = {
           filter: `referred_by=eq.${resellerCode}`,
         },
         async () => {
-          const { data, error } = await supabase
+          const { data, error } = await client
             .from(TABLES.PROFILES)
             .select('*')
             .eq('referred_by', resellerCode);
@@ -371,16 +386,17 @@ export const dbService = {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      client.removeChannel(channel);
     };
   },
 
   // --- ADMIN FUNCTIONS ---
 
   getAllUsers: async (): Promise<User[]> => {
-    if (!supabase) return [];
+    const client = supabase;
+    if (!client) return [];
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from(TABLES.PROFILES)
       .select('*')
       .order('created_at', { ascending: false });
@@ -400,9 +416,10 @@ export const dbService = {
   },
 
   updateUserStatus: async (uid: string, status: 'Active' | 'Suspended') => {
-    if (!supabase) return;
+    const client = supabase;
+    if (!client) return;
 
-    const { error } = await supabase
+    const { error } = await client
       .from(TABLES.PROFILES)
       .update({ status: status.toLowerCase() })
       .eq('id', uid);
@@ -414,9 +431,10 @@ export const dbService = {
   },
 
   approvePartner: async (uid: string) => {
-    if (!supabase) return;
+    const client = supabase;
+    if (!client) return;
 
-    const { error } = await supabase
+    const { error } = await client
       .from(TABLES.PROFILES)
       .update({ status: 'active' })
       .eq('id', uid);

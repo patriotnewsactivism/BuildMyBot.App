@@ -130,7 +130,7 @@ function App() {
   };
 
   const handlePartnerSignup = (data: any) => {
-    // In a real flow, this would create the user in Firebase with RESELLER role
+    // In a real flow, this would create the user in Supabase with RESELLER role
     setUser({ 
       id: 'reseller-' + Date.now(),
       email: data.email,
@@ -162,7 +162,7 @@ function App() {
       randomizeIdentity: true
     };
     
-    // Save to Firestore
+    // Save to Supabase
     dbService.saveBot(newBot);
     
     setNotification(`Installed "${template.name}" successfully!`);

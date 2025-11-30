@@ -85,12 +85,11 @@ supabase secrets set TWILIO_AUTH_TOKEN=your-token
 
 ### 5. Update Frontend Environment Variables
 
-Update your `.env` file with your Supabase credentials:
+Update your `.env` file with your Supabase credentials (client-safe keys only):
 
 ```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_OPENAI_API_KEY=sk-your-key
 ```
 
 Get these from the Supabase dashboard:

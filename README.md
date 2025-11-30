@@ -35,8 +35,7 @@ BuildMyBot is an all-in-one AI Operating System that empowers businesses to auto
 ## 🛠 Tech Stack
 
 - **Frontend:** React, TypeScript, Vite, Tailwind CSS
-- **Backend (Current):** Firebase (Firestore, Auth)
-- **Backend (Target):** Supabase (Postgres, Edge Functions, Auth) - See `PLAN.md`
+- **Backend:** Supabase (Postgres, Edge Functions, Auth) with full RLS — see `PLAN.md`
 - **AI Models:** OpenAI GPT-4o / GPT-4o Mini
 - **Icons:** Lucide React
 
@@ -44,8 +43,8 @@ BuildMyBot is an all-in-one AI Operating System that empowers businesses to auto
 
 ### Prerequisites
 - Node.js 18+
-- Firebase Project or Supabase Project (depending on migration stage)
-- OpenAI API Key
+- Supabase project (see `supabase/DEPLOYMENT.md` for setup)
+- OpenAI API Key (server-side only; set via Supabase secrets)
 
 ### Installation
 
@@ -61,21 +60,16 @@ BuildMyBot is an all-in-one AI Operating System that empowers businesses to auto
    ```
 
 3. Configure Environment:
-   Create a `.env` file and add your keys:
+   Create a `.env` file and add your keys (see `.env.example` for full list). Never expose secrets in client-side `VITE_` variables unless they are safe for public use.
    ```env
-   # OpenAI
-   VITE_OPENAI_API_KEY=sk-...
-   
-   # Firebase (Current)
-   VITE_FIREBASE_API_KEY=...
-   
-   # Supabase (Optional/Migration)
+   # Supabase client (safe anon key)
    VITE_SUPABASE_URL=https://your-project.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-key
-   
-   # Note: For Vercel deployments, you may need to use NEXT_PUBLIC_ prefix for Supabase variables
-   NEXT_PUBLIC_SUPABASE_URL=...
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+
+   # Server-side only secrets (set via Supabase secrets or your deployment provider)
+   OPENAI_API_KEY=sk-...
+   STRIPE_SECRET_KEY=sk_test...
+   STRIPE_WEBHOOK_SECRET=whsec...
    ```
 
 4. Run Development Server:

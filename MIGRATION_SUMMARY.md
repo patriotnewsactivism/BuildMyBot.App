@@ -101,6 +101,7 @@ Created 6 serverless backend functions:
 #### Updated Components
 - `components/Auth/AuthModal.tsx` - Uses Supabase Auth
 - `App.tsx` - Supabase auth state management
+- Removed legacy Firebase dependencies and import maps to complete the migration cleanup
 
 ### 5. Configuration Files ✅
 
