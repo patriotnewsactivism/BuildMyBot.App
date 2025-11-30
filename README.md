@@ -63,8 +63,19 @@ BuildMyBot is an all-in-one AI Operating System that empowers businesses to auto
 3. Configure Environment:
    Create a `.env` file and add your keys:
    ```env
+   # OpenAI
+   VITE_OPENAI_API_KEY=sk-...
+   
+   # Firebase (Current)
    VITE_FIREBASE_API_KEY=...
-   VITE_OPENAI_API_KEY=...
+   
+   # Supabase (Optional/Migration)
+   VITE_SUPABASE_URL=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key
+   
+   # Note: For Vercel deployments, you may need to use NEXT_PUBLIC_ prefix for Supabase variables
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
    ```
 
 4. Run Development Server:
