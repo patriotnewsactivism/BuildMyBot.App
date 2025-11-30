@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, Loader, ArrowRight, Bot } from 'lucide-react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../services/firebaseConfig';
-import { dbService } from '../../services/dbService';
+import { authService } from '../../services/authService';
 import { UserRole, PlanType } from '../../types';
 
 interface AuthModalProps {
@@ -28,28 +26,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
 
     try {
       if (mode === 'signup') {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        
         // Check for referral code
         const referralCode = localStorage.getItem('bmb_ref_code') || undefined;
 
-        // Create user profile in Firestore
-        await dbService.saveUserProfile({
-          id: userCredential.user.uid,
-          name: email.split('@')[0], // Default name
-          email: email,
-          role: UserRole.OWNER,
-          plan: PlanType.FREE,
+        // Sign up with Supabase (creates profile automatically via authService)
+        await authService.signUp(email, password, {
+          name: email.split('@')[0],
           companyName: companyName || 'My Company',
-          referredBy: referralCode
         });
+
+        // If referral code exists, track it
+        if (referralCode) {
+          // This will be handled after email confirmation
+          localStorage.setItem('bmb_pending_referral', referralCode);
+        }
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        await authService.signIn(email, password);
       }
       onClose();
     } catch (err: any) {
       console.error(err);
-      setError(err.message.replace('Firebase:', '').trim());
+      setError(err.message.replace('Auth', '').trim());
     } finally {
       setLoading(false);
     }
