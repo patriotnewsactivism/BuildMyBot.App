@@ -1,3 +1,4 @@
+
 // NOTE: Filename retained as geminiService.ts to prevent breaking imports in other files,
 // but the implementation has been switched to OpenAI GPT-4o Mini as requested.
 
@@ -15,8 +16,15 @@ export const generateBotResponse = async (
   try {
     // Inject Context into System Prompt if available
     let finalSystemPrompt = systemPrompt;
+    
     if (context && context.trim().length > 0) {
-      finalSystemPrompt += `\n\n[CONTEXT / KNOWLEDGE BASE]\nUse the following information to answer user questions. If the answer is not in this context, say you don't know, but offer to take their contact info.\n\n${context}`;
+      // Check if the crawl failed and we need to rely on internal training data
+      if (context.includes("[SYSTEM_CRAWL_ERROR")) {
+         finalSystemPrompt += `\n\n[IMPORTANT INSTRUCTION]\nThe user wanted to train this bot on a specific URL, but the live crawler was blocked. \nHowever, YOU (the AI) likely have internal training data about this entity/website.\n\nACT AS IF you have read the website. Answer the user's questions specifically about the business/entity implied by the conversation or the URL if mentioned. Be confident and specific.`;
+      } else {
+         // Standard RAG (Retrieval Augmented Generation)
+         finalSystemPrompt += `\n\n[KNOWLEDGE BASE / WEBSITE CONTENT]\nThe following is the scraped content from the business's website. Use ONLY this information to answer questions if possible. If the answer is not in this text, fall back to your general knowledge but mention you aren't 100% sure.\n\n--- START OF CONTENT ---\n${context}\n--- END OF CONTENT ---`;
+      }
     }
 
     // Map internal roles to OpenAI roles
