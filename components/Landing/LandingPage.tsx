@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus } from 'lucide-react';
+import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus, Loader, RefreshCcw, Send } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
-import { generateBotResponse } from '../../services/geminiService';
+import { generateBotResponse, generateMarketingContent, simulateWebScrape } from '../../services/geminiService';
 
 interface LandingProps {
   onLogin: () => void;
@@ -31,7 +31,12 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   
   // Training Demo State
   const [trainingStep, setTrainingStep] = useState(0); // 0: Input, 1: Scanning, 2: Ready/Chat
-  const [trainingType, setTrainingType] = useState<'pdf' | 'url'>('pdf');
+  const [trainingType, setTrainingType] = useState<'pdf' | 'url'>('url');
+  const [trainingUrl, setTrainingUrl] = useState('');
+  const [scrapedContent, setScrapedContent] = useState('');
+  const [trainingChatInput, setTrainingChatInput] = useState('');
+  const [trainingChatHistory, setTrainingChatHistory] = useState<{role: 'user'|'model', text: string}[]>([]);
+  const [isTrainingChatTyping, setIsTrainingChatTyping] = useState(false);
 
   // Phone Demo State
   const [phoneStatus, setPhoneStatus] = useState<'idle' | 'calling' | 'connected'>('idle');
@@ -82,11 +87,52 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
   // --- DEMO HANDLERS ---
 
-  const handleTrainingDemo = () => {
+  const handleTrainingDemo = async () => {
+    if (trainingType === 'url' && !trainingUrl) return;
+    
     setTrainingStep(1);
-    setTimeout(() => {
-        setTrainingStep(2);
-    }, 2500);
+    setTrainingChatHistory([]);
+    
+    // Simulate Scrape
+    let content = "";
+    if (trainingType === 'pdf') {
+       await new Promise(r => setTimeout(r, 2000));
+       content = "SOURCE: Employee_Handbook.pdf\n\n- Standard work hours are 9 AM to 5 PM EST.\n- Return policy is 30 days with receipt.\n- Paid time off accrues at 1.5 days per month.\n- Emergency contact: 555-0199.";
+    } else {
+       // Call Gemini to simulate scrape based on URL
+       try {
+         content = await simulateWebScrape(trainingUrl);
+       } catch (e) {
+         content = "Unable to access URL. Using offline backup data for " + trainingUrl;
+       }
+    }
+    
+    setScrapedContent(content);
+    setTrainingStep(2);
+  };
+
+  const handleTrainingChatSend = async () => {
+    if (!trainingChatInput.trim()) return;
+    
+    const userMsg = { role: 'user' as const, text: trainingChatInput };
+    setTrainingChatHistory(prev => [...prev, userMsg]);
+    setTrainingChatInput('');
+    setIsTrainingChatTyping(true);
+
+    try {
+        const response = await generateBotResponse(
+            "You are a helpful AI assistant trained on the provided context. Answer the user's question accurately based ONLY on the context.", 
+            [...trainingChatHistory, userMsg], 
+            userMsg.text, 
+            'gpt-4o-mini', 
+            scrapedContent
+        );
+        setTrainingChatHistory(prev => [...prev, { role: 'model', text: response }]);
+    } catch (e) {
+        setTrainingChatHistory(prev => [...prev, { role: 'model', text: "Error connecting to AI." }]);
+    } finally {
+        setIsTrainingChatTyping(false);
+    }
   };
 
   const handlePhoneDemoCall = () => {
@@ -123,20 +169,32 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     }, 1500);
   };
 
-  const handleViralGenerate = () => {
+  const handleViralGenerate = async () => {
     if (!viralTopic) return;
     setIsGeneratingViral(true);
     setViralResult(null);
-    setTimeout(() => {
+    
+    try {
+        const content = await generateMarketingContent('viral-thread', viralTopic, 'engaging');
         setViralResult({
             user: 'Alex Founder',
             handle: '@alex_builds',
-            content: `Here is why ${viralTopic} is changing the game forever 🧵👇\n\n1. It saves time.\n2. It scales effortlessly.\n3. The ROI is undeniable.\n\nI implemented ${viralTopic} last week and revenue is up 30%. Don't sleep on this.`,
-            likes: 452,
-            retweets: 89
+            content: content.substring(0, 280) + '...', // Truncate for preview
+            fullContent: content,
+            likes: Math.floor(Math.random() * 1000) + 100,
+            retweets: Math.floor(Math.random() * 200) + 20
         });
+    } catch (e) {
+        setViralResult({
+             user: 'Alex Founder',
+             handle: '@alex_builds',
+             content: "Error generating content. Please check API configuration.",
+             likes: 0,
+             retweets: 0
+        });
+    } finally {
         setIsGeneratingViral(false);
-    }, 1500);
+    }
   };
 
   const handleSiteBuild = () => {
@@ -790,8 +848,20 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                                  </div>
                               ) : (
                                  <div className="space-y-4">
-                                    <input type="text" placeholder="https://yourbusiness.com" className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none" />
-                                    <button onClick={handleTrainingDemo} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition">Scan Now</button>
+                                    <input 
+                                       type="text" 
+                                       value={trainingUrl}
+                                       onChange={(e) => setTrainingUrl(e.target.value)}
+                                       placeholder="https://yourbusiness.com" 
+                                       className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none" 
+                                    />
+                                    <button 
+                                       onClick={handleTrainingDemo} 
+                                       disabled={!trainingUrl}
+                                       className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition disabled:opacity-50"
+                                    >
+                                       Scan Now
+                                    </button>
                                  </div>
                               )}
                            </div>
@@ -799,9 +869,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
                         {trainingStep === 1 && (
                            <div className="h-64 flex flex-col items-center justify-center bg-slate-900 rounded-xl border border-slate-700">
-                              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                              <p className="font-bold text-lg animate-pulse">Ingesting Knowledge...</p>
-                              <p className="text-sm text-slate-500">Reading 42 pages...</p>
+                              <Loader className="w-16 h-16 text-blue-500 animate-spin mb-4" />
+                              <p className="font-bold text-lg animate-pulse">Extracting Knowledge...</p>
+                              <p className="text-sm text-slate-500">Learning business details...</p>
                            </div>
                         )}
 
@@ -810,20 +880,37 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                               <div className="flex items-center gap-2 text-emerald-400 mb-4 bg-emerald-500/10 p-2 rounded-lg">
                                  <CheckCircle size={18}/> <span className="text-sm font-bold">Training Complete</span>
                               </div>
-                              <div className="space-y-4 flex-1">
-                                 <div className="flex justify-end">
-                                    <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-sm max-w-[90%]">
-                                       What is your return policy for damaged items?
-                                    </div>
+                              <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-2 max-h-[200px] border border-slate-800 rounded p-2 bg-slate-950/50">
+                                 <p className="text-xs text-slate-400 whitespace-pre-wrap">{scrapedContent}</p>
+                              </div>
+                              
+                              {/* Mini Chat Interface */}
+                              <div className="space-y-3 border-t border-slate-800 pt-3">
+                                 <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                                    {trainingChatHistory.map((m, i) => (
+                                       <div key={i} className={`text-xs p-2 rounded ${m.role === 'user' ? 'bg-blue-600 ml-8' : 'bg-slate-700 mr-8'}`}>
+                                          {m.text}
+                                       </div>
+                                    ))}
+                                    {isTrainingChatTyping && <div className="text-xs text-slate-500">Bot typing...</div>}
                                  </div>
-                                 <div className="flex justify-start">
-                                    <div className="bg-slate-700 text-white p-3 rounded-2xl rounded-bl-none text-sm max-w-[90%] border border-slate-600">
-                                       <span className="text-xs text-blue-300 block mb-1 font-bold">Source: Employee_Handbook.pdf (Page 12)</span>
-                                       According to our policy, damaged items can be returned within 30 days for a full refund or exchange. The customer must provide a photo of the damage.
-                                    </div>
+                                 <div className="flex gap-2">
+                                    <input 
+                                       value={trainingChatInput}
+                                       onChange={(e) => setTrainingChatInput(e.target.value)}
+                                       placeholder="Ask a question about this data..."
+                                       className="flex-1 bg-slate-800 border border-slate-600 rounded text-xs px-2 py-1.5 focus:border-blue-500 outline-none text-white"
+                                       onKeyDown={(e) => e.key === 'Enter' && handleTrainingChatSend()}
+                                    />
+                                    <button onClick={handleTrainingChatSend} className="bg-blue-600 p-1.5 rounded hover:bg-blue-500">
+                                       <Send size={14} />
+                                    </button>
                                  </div>
                               </div>
-                              <button onClick={() => setTrainingStep(0)} className="w-full mt-4 py-2 text-sm text-slate-400 hover:text-white">Try Another</button>
+
+                              <button onClick={() => { setTrainingStep(0); setTrainingUrl(''); }} className="w-full mt-4 py-2 text-sm text-slate-400 hover:text-white flex items-center justify-center gap-1">
+                                 <RefreshCcw size={14} /> Try Another URL
+                              </button>
                            </div>
                         )}
                      </div>
