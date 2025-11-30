@@ -32,7 +32,7 @@ export interface User {
   customDomain?: string; // White-label domain (e.g., app.myagency.com)
   referredBy?: string; // Code of the reseller who referred this user
   phoneConfig?: PhoneAgentConfig;
-  status?: 'Active' | 'Suspended'; // For admin management
+  status?: 'Active' | 'Suspended' | 'Pending'; // For admin management
   createdAt?: string; // ISO date string
 }
 
