@@ -161,6 +161,13 @@ React App → Supabase Auth (JWT) → Supabase Edge Functions → PostgreSQL (RL
 - [ ] Zapier/Make.com integrations
 - [ ] White-label domain system
 
+### Future (Milestone 5)
+- [ ] Production-grade webhook marketplace (Zapier/Make.com) with per-tenant secrets
+- [ ] Multi-language AI experiences for chat, phone, and website content
+- [ ] Role-based team seats with audit logging
+- [ ] Expanded analytics dashboards for usage, billing, and conversions
+- [ ] White-label domain routing and SSL management for agencies
+
 ---
 
 ## 🔒 Security Features
