@@ -59,11 +59,9 @@ export interface Lead {
   name: string;
   email: string;
   phone?: string;
-  company?: string;
   score: number;
   status: 'New' | 'Contacted' | 'Qualified' | 'Closed';
   sourceBotId: string;
-  notes?: string;
   createdAt: string;
 }
 

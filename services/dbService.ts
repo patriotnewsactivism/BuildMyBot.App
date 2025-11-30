@@ -1,494 +1,141 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from './supabaseClient';
-import { Bot, Lead, Conversation, User, PlanType, UserRole } from '../types';
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  getDoc, 
+  setDoc, 
+  addDoc, 
+  updateDoc, 
+  query, 
+  where, 
+  onSnapshot,
+  orderBy,
+  limit
+} from 'firebase/firestore';
+import { db } from './firebaseConfig';
+import { Bot, Lead, Conversation, User, PlanType } from '../types';
 import { PLANS } from '../constants';
 
-const TABLES = {
+const COLLECTIONS = {
   BOTS: 'bots',
   LEADS: 'leads',
-  PROFILES: 'profiles',
-  CONVERSATIONS: 'conversations',
-  USAGE_EVENTS: 'usage_events',
-};
-
-type BotRow = {
-  id: string;
-  name: string;
-  type: string;
-  system_prompt: string;
-  model: string;
-  temperature: number;
-  active: boolean;
-  theme_color: string;
-  max_messages: number | null;
-  randomize_identity: boolean | null;
-  conversations_count: number | null;
-};
-
-type LeadRow = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  company: string | null;
-  score: number;
-  status: 'New' | 'Contacted' | 'Qualified' | 'Closed';
-  source_bot_id: string;
-  notes: string | null;
-  created_at: string;
-};
-
-type ProfileRow = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  plan: PlanType;
-  company_name: string;
-  custom_domain: string | null;
-  reseller_code: string | null;
-  referred_by?: string | null;
-  status: string;
-  created_at: string;
-};
-
-const normalizeRole = (role: string | null): UserRole => {
-  if (role && Object.values(UserRole).includes(role as UserRole)) {
-    return role as UserRole;
-  }
-  return UserRole.OWNER;
-};
-
-const normalizeStatus = (status: string | null): User['status'] => {
-  if (!status) return undefined;
-  const normalized = status.toLowerCase();
-
-  if (normalized === 'active') return 'Active';
-  if (normalized === 'suspended') return 'Suspended';
-  if (normalized === 'pending') return 'Pending';
-
-  return undefined;
+  USERS: 'users',
+  CONVERSATIONS: 'conversations'
 };
 
 export const dbService = {
   // --- BOTS ---
-
+  
   // Real-time listener for bots
   subscribeToBots: (onUpdate: (bots: Bot[]) => void) => {
-    if (!supabase) {
-      console.warn('Supabase not initialized');
-      return () => {};
-    }
-
-    const supabaseClient = supabase as SupabaseClient;
-
-    const channel = supabaseClient
-      .channel('bots-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: TABLES.BOTS,
-        },
-        async () => {
-          // Fetch updated bots
-          const { data, error } = await supabaseClient
-            .from(TABLES.BOTS)
-            .select('*')
-            .order('created_at', { ascending: false });
-
-          if (!error && data) {
-            const bots = (data as BotRow[]).map((bot): Bot => ({
-              id: bot.id,
-              name: bot.name,
-              type: bot.type,
-              systemPrompt: bot.system_prompt,
-              model: bot.model,
-              temperature: bot.temperature,
-              knowledgeBase: [], // Will be loaded separately if needed
-              active: bot.active,
-              conversationsCount: bot.conversations_count || 0,
-              themeColor: bot.theme_color,
-              maxMessages: bot.max_messages ?? undefined,
-              randomizeIdentity: bot.randomize_identity ?? undefined,
-            }));
-            onUpdate(bots);
-          }
-        }
-      )
-      .subscribe();
-
-    // Initial fetch
-    supabaseClient
-      .from(TABLES.BOTS)
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) {
-          const bots = (data as BotRow[]).map((bot): Bot => ({
-            id: bot.id,
-            name: bot.name,
-            type: bot.type,
-            systemPrompt: bot.system_prompt,
-            model: bot.model,
-            temperature: bot.temperature,
-            knowledgeBase: [],
-            active: bot.active,
-            conversationsCount: bot.conversations_count || 0,
-            themeColor: bot.theme_color,
-            maxMessages: bot.max_messages ?? undefined,
-            randomizeIdentity: bot.randomize_identity ?? undefined,
-          }));
-          onUpdate(bots);
-        }
-      });
-
-    return () => {
-      supabaseClient.removeChannel(channel);
-    };
+    const q = query(collection(db, COLLECTIONS.BOTS));
+    return onSnapshot(q, (snapshot) => {
+      const bots = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Bot));
+      onUpdate(bots);
+    });
   },
 
   saveBot: async (bot: Bot) => {
-    if (!supabase) {
-      console.error('Supabase not initialized');
-      return bot;
-    }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-
-    // Transform camelCase to snake_case
-    const botData = {
-      id: bot.id,
-      owner_id: user.id,
-      name: bot.name,
-      type: bot.type,
-      system_prompt: bot.systemPrompt,
-      model: bot.model,
-      temperature: bot.temperature,
-      active: bot.active,
-      theme_color: bot.themeColor,
-      max_messages: bot.maxMessages,
-      randomize_identity: bot.randomizeIdentity,
-      conversations_count: bot.conversationsCount || 0,
-    };
-
-    const { error } = await supabase
-      .from(TABLES.BOTS)
-      .upsert(botData);
-
-    if (error) {
-      console.error('Error saving bot:', error);
-      throw error;
-    }
-
+    const botRef = doc(collection(db, COLLECTIONS.BOTS), bot.id);
+    await setDoc(botRef, bot, { merge: true });
     return bot;
   },
 
   getBotById: async (id: string): Promise<Bot | undefined> => {
-    if (!supabase) return undefined;
-
-    const { data, error } = await supabase
-      .from(TABLES.BOTS)
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error || !data) return undefined;
-
-    return {
-      id: data.id,
-      name: data.name,
-      type: data.type,
-      systemPrompt: data.system_prompt,
-      model: data.model,
-      temperature: data.temperature,
-      knowledgeBase: [],
-      active: data.active,
-      conversationsCount: data.conversations_count || 0,
-      themeColor: data.theme_color,
-      maxMessages: data.max_messages,
-      randomizeIdentity: data.randomize_identity,
-    };
+    const docRef = doc(db, COLLECTIONS.BOTS, id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as Bot;
+    }
+    return undefined;
   },
 
   // --- LEADS ---
 
   subscribeToLeads: (onUpdate: (leads: Lead[]) => void) => {
-    if (!supabase) {
-      console.warn('Supabase not initialized');
-      return () => {};
-    }
-
-    const supabaseClient = supabase as SupabaseClient;
-
-    const channel = supabaseClient
-      .channel('leads-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: TABLES.LEADS,
-        },
-        async () => {
-          const { data, error } = await supabaseClient
-            .from(TABLES.LEADS)
-            .select('*')
-            .order('created_at', { ascending: false });
-
-          if (!error && data) {
-            const leads = (data as LeadRow[]).map((lead): Lead => ({
-              id: lead.id,
-              name: lead.name,
-              email: lead.email,
-              phone: lead.phone ?? undefined,
-              company: lead.company ?? undefined,
-              score: lead.score,
-              status: lead.status,
-              sourceBotId: lead.source_bot_id,
-              notes: lead.notes ?? undefined,
-              createdAt: lead.created_at,
-            }));
-            onUpdate(leads);
-          }
-        }
-      )
-      .subscribe();
-
-    // Initial fetch
-    supabaseClient
-      .from(TABLES.LEADS)
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) {
-          const leads = (data as LeadRow[]).map((lead): Lead => ({
-            id: lead.id,
-            name: lead.name,
-            email: lead.email,
-            phone: lead.phone ?? undefined,
-            company: lead.company ?? undefined,
-            score: lead.score,
-            status: lead.status,
-            sourceBotId: lead.source_bot_id,
-            notes: lead.notes ?? undefined,
-            createdAt: lead.created_at,
-          }));
-          onUpdate(leads);
-        }
-      });
-
-    return () => {
-      supabaseClient.removeChannel(channel);
-    };
+    const q = query(collection(db, COLLECTIONS.LEADS), orderBy('createdAt', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+      const leads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lead));
+      onUpdate(leads);
+    });
   },
 
   saveLead: async (lead: Lead) => {
-    if (!supabase) {
-      console.error('Supabase not initialized');
-      return lead;
+    // Check for duplicate by email to avoid spamming DB
+    const q = query(collection(db, COLLECTIONS.LEADS), where("email", "==", lead.email));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      // Update existing lead
+      const existingDoc = querySnapshot.docs[0];
+      await updateDoc(doc(db, COLLECTIONS.LEADS, existingDoc.id), { ...lead, id: existingDoc.id });
+      return { ...lead, id: existingDoc.id };
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-
-    const leadData = {
-      id: lead.id,
-      owner_id: user.id,
-      name: lead.name,
-      email: lead.email,
-      phone: lead.phone,
-      company: lead.company,
-      score: lead.score,
-      status: lead.status,
-      source_bot_id: lead.sourceBotId,
-      notes: lead.notes,
-    };
-
-    const { error } = await supabase
-      .from(TABLES.LEADS)
-      .upsert(leadData);
-
-    if (error) {
-      console.error('Error saving lead:', error);
-      throw error;
-    }
-
-    return lead;
+    // Create new
+    const docRef = await addDoc(collection(db, COLLECTIONS.LEADS), lead);
+    return { ...lead, id: docRef.id };
   },
 
   // --- USER & BILLING ---
 
   getUserProfile: async (uid: string): Promise<User | null> => {
-    if (!supabase) return null;
-
-    const { data, error } = await supabase
-      .from(TABLES.PROFILES)
-      .select('*')
-      .eq('id', uid)
-      .single();
-
-    if (error || !data) return null;
-
-    return {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      role: normalizeRole(data.role),
-      plan: data.plan,
-      companyName: data.company_name,
-      customDomain: data.custom_domain,
-      resellerCode: data.reseller_code,
-      status: normalizeStatus(data.status),
-      createdAt: data.created_at,
-    };
+    const docRef = doc(db, COLLECTIONS.USERS, uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as User;
+    }
+    return null;
   },
 
   saveUserProfile: async (user: User) => {
-    if (!supabase) {
-      console.error('Supabase not initialized');
-      return;
-    }
-
+    const userRef = doc(db, COLLECTIONS.USERS, user.id);
+    const now = new Date().toISOString();
+    
     const userData = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      plan: user.plan,
-      company_name: user.companyName,
-      custom_domain: user.customDomain,
-      reseller_code: user.resellerCode,
-      status: user.status || 'active',
+        ...user,
+        status: user.status || 'Active',
+        createdAt: user.createdAt || now
     };
-
-    const { error } = await supabase
-      .from(TABLES.PROFILES)
-      .upsert(userData);
-
-    if (error) {
-      console.error('Error saving user profile:', error);
-      throw error;
-    }
+    
+    await setDoc(userRef, userData, { merge: true });
   },
 
   updateUserPlan: async (uid: string, plan: PlanType) => {
-    if (!supabase) return;
-
-    const { error } = await supabase
-      .from(TABLES.PROFILES)
-      .update({ plan })
-      .eq('id', uid);
-
-    if (error) {
-      console.error('Error updating user plan:', error);
-      throw error;
-    }
+    const userRef = doc(db, COLLECTIONS.USERS, uid);
+    await updateDoc(userRef, { plan: plan });
   },
 
   // --- RESELLER ---
 
+  // Listen to users who were referred by this reseller code
   subscribeToReferrals: (resellerCode: string, onUpdate: (users: User[]) => void) => {
-    if (!supabase) {
-      console.warn('Supabase not initialized');
-      return () => {};
-    }
-
-    const supabaseClient = supabase as SupabaseClient;
-
-    const channel = supabaseClient
-      .channel('referrals-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: TABLES.PROFILES,
-          filter: `referred_by=eq.${resellerCode}`,
-        },
-        async () => {
-          const { data, error } = await supabaseClient
-            .from(TABLES.PROFILES)
-            .select('*')
-            .eq('referred_by', resellerCode);
-
-          if (!error && data) {
-            const users = (data as ProfileRow[]).map((u): User => ({
-              id: u.id,
-              name: u.name,
-              email: u.email,
-              role: normalizeRole(u.role),
-              plan: u.plan,
-              companyName: u.company_name,
-              status: normalizeStatus(u.status),
-              createdAt: u.created_at,
-            }));
-            onUpdate(users);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabaseClient.removeChannel(channel);
-    };
+    const q = query(collection(db, COLLECTIONS.USERS), where("referredBy", "==", resellerCode));
+    return onSnapshot(q, (snapshot) => {
+      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+      onUpdate(users);
+    });
   },
 
   // --- ADMIN FUNCTIONS ---
-
+  
+  // Get ALL users for the Admin Dashboard
   getAllUsers: async (): Promise<User[]> => {
-    if (!supabase) return [];
-
-    const { data, error } = await supabase
-      .from(TABLES.PROFILES)
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error || !data) return [];
-
-    return (data as ProfileRow[]).map((u): User => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      role: normalizeRole(u.role),
-      plan: u.plan,
-      companyName: u.company_name,
-      status: normalizeStatus(u.status),
-      createdAt: u.created_at,
-    }));
+    const q = query(collection(db, COLLECTIONS.USERS));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
   },
 
   updateUserStatus: async (uid: string, status: 'Active' | 'Suspended') => {
-    if (!supabase) return;
-
-    const { error } = await supabase
-      .from(TABLES.PROFILES)
-      .update({ status: status.toLowerCase() })
-      .eq('id', uid);
-
-    if (error) {
-      console.error('Error updating user status:', error);
-      throw error;
-    }
+    const userRef = doc(db, COLLECTIONS.USERS, uid);
+    await updateDoc(userRef, { status });
   },
 
   approvePartner: async (uid: string) => {
-    if (!supabase) return;
-
-    const { error } = await supabase
-      .from(TABLES.PROFILES)
-      .update({ status: 'active' })
-      .eq('id', uid);
-
-    if (error) {
-      console.error('Error approving partner:', error);
-      throw error;
-    }
-  },
+    const userRef = doc(db, COLLECTIONS.USERS, uid);
+    await updateDoc(userRef, { 
+        status: 'Active'
+        // Logic to trigger approval email would go here via cloud function
+    });
+  }
 };
