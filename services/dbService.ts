@@ -1,5 +1,6 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
-import { Bot, Lead, Conversation, User, PlanType } from '../types';
+import { Bot, Lead, Conversation, User, PlanType, UserRole } from '../types';
 import { PLANS } from '../constants';
 
 const TABLES = {
@@ -8,6 +9,65 @@ const TABLES = {
   PROFILES: 'profiles',
   CONVERSATIONS: 'conversations',
   USAGE_EVENTS: 'usage_events',
+};
+
+type BotRow = {
+  id: string;
+  name: string;
+  type: string;
+  system_prompt: string;
+  model: string;
+  temperature: number;
+  active: boolean;
+  theme_color: string;
+  max_messages: number | null;
+  randomize_identity: boolean | null;
+  conversations_count: number | null;
+};
+
+type LeadRow = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  company: string | null;
+  score: number;
+  status: 'New' | 'Contacted' | 'Qualified' | 'Closed';
+  source_bot_id: string;
+  notes: string | null;
+  created_at: string;
+};
+
+type ProfileRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  plan: PlanType;
+  company_name: string;
+  custom_domain: string | null;
+  reseller_code: string | null;
+  referred_by?: string | null;
+  status: string;
+  created_at: string;
+};
+
+const normalizeRole = (role: string | null): UserRole => {
+  if (role && Object.values(UserRole).includes(role as UserRole)) {
+    return role as UserRole;
+  }
+  return UserRole.OWNER;
+};
+
+const normalizeStatus = (status: string | null): User['status'] => {
+  if (!status) return undefined;
+  const normalized = status.toLowerCase();
+
+  if (normalized === 'active') return 'Active';
+  if (normalized === 'suspended') return 'Suspended';
+  if (normalized === 'pending') return 'Pending';
+
+  return undefined;
 };
 
 export const dbService = {
@@ -20,7 +80,9 @@ export const dbService = {
       return () => {};
     }
 
-    const channel = supabase
+    const supabaseClient = supabase as SupabaseClient;
+
+    const channel = supabaseClient
       .channel('bots-changes')
       .on(
         'postgres_changes',
@@ -31,14 +93,13 @@ export const dbService = {
         },
         async () => {
           // Fetch updated bots
-          const { data, error } = await supabase
+          const { data, error } = await supabaseClient
             .from(TABLES.BOTS)
             .select('*')
             .order('created_at', { ascending: false });
 
           if (!error && data) {
-            // Transform snake_case to camelCase
-            const bots = data.map(bot => ({
+            const bots = (data as BotRow[]).map((bot): Bot => ({
               id: bot.id,
               name: bot.name,
               type: bot.type,
@@ -49,8 +110,8 @@ export const dbService = {
               active: bot.active,
               conversationsCount: bot.conversations_count || 0,
               themeColor: bot.theme_color,
-              maxMessages: bot.max_messages,
-              randomizeIdentity: bot.randomize_identity,
+              maxMessages: bot.max_messages ?? undefined,
+              randomizeIdentity: bot.randomize_identity ?? undefined,
             }));
             onUpdate(bots);
           }
@@ -59,13 +120,13 @@ export const dbService = {
       .subscribe();
 
     // Initial fetch
-    supabase
+    supabaseClient
       .from(TABLES.BOTS)
       .select('*')
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
         if (!error && data) {
-          const bots = data.map(bot => ({
+          const bots = (data as BotRow[]).map((bot): Bot => ({
             id: bot.id,
             name: bot.name,
             type: bot.type,
@@ -76,15 +137,15 @@ export const dbService = {
             active: bot.active,
             conversationsCount: bot.conversations_count || 0,
             themeColor: bot.theme_color,
-            maxMessages: bot.max_messages,
-            randomizeIdentity: bot.randomize_identity,
+            maxMessages: bot.max_messages ?? undefined,
+            randomizeIdentity: bot.randomize_identity ?? undefined,
           }));
           onUpdate(bots);
         }
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      supabaseClient.removeChannel(channel);
     };
   },
 
@@ -162,7 +223,9 @@ export const dbService = {
       return () => {};
     }
 
-    const channel = supabase
+    const supabaseClient = supabase as SupabaseClient;
+
+    const channel = supabaseClient
       .channel('leads-changes')
       .on(
         'postgres_changes',
@@ -172,22 +235,22 @@ export const dbService = {
           table: TABLES.LEADS,
         },
         async () => {
-          const { data, error } = await supabase
+          const { data, error } = await supabaseClient
             .from(TABLES.LEADS)
             .select('*')
             .order('created_at', { ascending: false });
 
           if (!error && data) {
-            const leads = data.map(lead => ({
+            const leads = (data as LeadRow[]).map((lead): Lead => ({
               id: lead.id,
               name: lead.name,
               email: lead.email,
-              phone: lead.phone,
-              company: lead.company,
+              phone: lead.phone ?? undefined,
+              company: lead.company ?? undefined,
               score: lead.score,
               status: lead.status,
               sourceBotId: lead.source_bot_id,
-              notes: lead.notes,
+              notes: lead.notes ?? undefined,
               createdAt: lead.created_at,
             }));
             onUpdate(leads);
@@ -197,22 +260,22 @@ export const dbService = {
       .subscribe();
 
     // Initial fetch
-    supabase
+    supabaseClient
       .from(TABLES.LEADS)
       .select('*')
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
         if (!error && data) {
-          const leads = data.map(lead => ({
+          const leads = (data as LeadRow[]).map((lead): Lead => ({
             id: lead.id,
             name: lead.name,
             email: lead.email,
-            phone: lead.phone,
-            company: lead.company,
+            phone: lead.phone ?? undefined,
+            company: lead.company ?? undefined,
             score: lead.score,
             status: lead.status,
             sourceBotId: lead.source_bot_id,
-            notes: lead.notes,
+            notes: lead.notes ?? undefined,
             createdAt: lead.created_at,
           }));
           onUpdate(leads);
@@ -220,7 +283,7 @@ export const dbService = {
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      supabaseClient.removeChannel(channel);
     };
   },
 
@@ -277,12 +340,12 @@ export const dbService = {
       id: data.id,
       name: data.name,
       email: data.email,
-      role: data.role,
+      role: normalizeRole(data.role),
       plan: data.plan,
       companyName: data.company_name,
       customDomain: data.custom_domain,
       resellerCode: data.reseller_code,
-      status: data.status,
+      status: normalizeStatus(data.status),
       createdAt: data.created_at,
     };
   },
@@ -337,7 +400,9 @@ export const dbService = {
       return () => {};
     }
 
-    const channel = supabase
+    const supabaseClient = supabase as SupabaseClient;
+
+    const channel = supabaseClient
       .channel('referrals-changes')
       .on(
         'postgres_changes',
@@ -348,20 +413,20 @@ export const dbService = {
           filter: `referred_by=eq.${resellerCode}`,
         },
         async () => {
-          const { data, error } = await supabase
+          const { data, error } = await supabaseClient
             .from(TABLES.PROFILES)
             .select('*')
             .eq('referred_by', resellerCode);
 
           if (!error && data) {
-            const users = data.map(u => ({
+            const users = (data as ProfileRow[]).map((u): User => ({
               id: u.id,
               name: u.name,
               email: u.email,
-              role: u.role,
+              role: normalizeRole(u.role),
               plan: u.plan,
               companyName: u.company_name,
-              status: u.status,
+              status: normalizeStatus(u.status),
               createdAt: u.created_at,
             }));
             onUpdate(users);
@@ -371,7 +436,7 @@ export const dbService = {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabaseClient.removeChannel(channel);
     };
   },
 
@@ -387,14 +452,14 @@ export const dbService = {
 
     if (error || !data) return [];
 
-    return data.map(u => ({
+    return (data as ProfileRow[]).map((u): User => ({
       id: u.id,
       name: u.name,
       email: u.email,
-      role: u.role,
+      role: normalizeRole(u.role),
       plan: u.plan,
       companyName: u.company_name,
-      status: u.status,
+      status: normalizeStatus(u.status),
       createdAt: u.created_at,
     }));
   },
