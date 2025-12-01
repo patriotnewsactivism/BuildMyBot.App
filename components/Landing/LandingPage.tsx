@@ -1259,6 +1259,181 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
          </div>
       </section>
 
+      {/* Value Prop: Industries */}
+      <section id="industries" className="py-24 bg-white border-y border-slate-100">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Who is this for?</h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">BuildMyBot powers the immediate response engine for thousands of industries.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {industries.map((ind, i) => (
+              <div key={i} className="p-8 rounded-2xl bg-slate-50 hover:bg-white hover:shadow-xl transition-all duration-300 border border-slate-100 group">
+                <div className={`w-12 h-12 bg-${ind.color}-100 text-${ind.color}-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                  <ind.icon size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">{ind.title}</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  {ind.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Feature Highlight: Hot Leads */}
+      <section className="py-24 bg-slate-900 text-white overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-blue-900/10 rounded-l-full blur-3xl"></div>
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-900/50 border border-red-500/50 text-red-300 text-xs font-bold uppercase tracking-wide mb-6">
+                 <Flame size={12} fill="currentColor" /> Hot Lead System
+              </div>
+              <h2 className="text-3xl md:text-5xl font-extrabold mb-6 leading-tight">
+                It doesn't just chat. <br/>
+                <span className="text-blue-400">It closes deals.</span>
+              </h2>
+              <p className="text-lg text-slate-300 mb-8 leading-relaxed">
+                Most chatbots are passive. Ours is proactive. It scores every conversation in real-time based on intent, budget, and urgency.
+              </p>
+              
+              <div className="space-y-6">
+                 <div className="flex gap-4">
+                   <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xl">1</div>
+                   <div>
+                     <h4 className="font-bold text-lg">Qualifies Automatically</h4>
+                     <p className="text-slate-400 text-sm">The AI identifies who is "just looking" vs who is ready to buy.</p>
+                   </div>
+                 </div>
+                 <div className="flex gap-4">
+                   <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 font-bold text-xl">2</div>
+                   <div>
+                     <h4 className="font-bold text-lg">Triggers "Hot Lead" Status</h4>
+                     <p className="text-slate-400 text-sm">When score &gt; 80, the bot asks for name & phone number.</p>
+                   </div>
+                 </div>
+                 <div className="flex gap-4">
+                   <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-xl">3</div>
+                   <div>
+                     <h4 className="font-bold text-lg">Notifies You Instantly</h4>
+                     <p className="text-slate-400 text-sm">You get an SMS or Email immediately. You jump in and close.</p>
+                   </div>
+                 </div>
+              </div>
+            </div>
+
+            <div className="relative">
+               {/* Phone Mockup */}
+               <div className="bg-slate-800 rounded-[2.5rem] p-4 border-8 border-slate-700 shadow-2xl max-w-sm mx-auto transform rotate-3 hover:rotate-0 transition duration-500">
+                  <div className="bg-slate-900 rounded-[2rem] overflow-hidden h-[500px] flex flex-col relative">
+                     {/* Notch */}
+                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-800 rounded-b-xl z-20"></div>
+                     
+                     {/* Lock Screen Notification */}
+                     <div className="mt-16 mx-4">
+                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 shadow-lg animate-pulse">
+                           <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-blue-500 rounded flex items-center justify-center"><Bot size={14} className="text-white"/></div>
+                                <span className="text-xs font-bold text-white">BuildMyBot • Now</span>
+                              </div>
+                           </div>
+                           <p className="text-white font-semibold text-sm">🔥 Hot Lead Detected!</p>
+                           <p className="text-slate-300 text-xs mt-1">John Doe wants to buy the Enterprise plan. Phone: (555) 012-3456.</p>
+                        </div>
+                     </div>
+
+                     {/* Chat Screen Background */}
+                     <div className="mt-auto p-4 space-y-3">
+                        <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-xs self-end ml-12">I'm ready to move forward. Can we talk pricing?</div>
+                        <div className="bg-slate-700 text-white p-3 rounded-2xl rounded-bl-none text-xs self-start mr-12">Absolutely! What's the best number to reach you at right now?</div>
+                        <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-xs self-end ml-12">555-012-3456</div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="py-24 px-6 bg-slate-50">
+        <div className="max-w-[90rem] mx-auto">
+           <div className="text-center mb-16">
+             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Pricing that Scales with You</h2>
+             <p className="text-lg text-slate-600">Start for free. Upgrade as you grow.</p>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+              {Object.entries(PLANS).map(([key, plan]: [string, any]) => {
+                const isEnterprise = key === PlanType.ENTERPRISE;
+                const isProfessional = key === PlanType.PROFESSIONAL;
+
+                return (
+                  <div key={key} className={`p-8 rounded-2xl border flex flex-col transition-all hover:shadow-xl ${
+                    isProfessional 
+                      ? 'border-blue-900 shadow-xl ring-1 ring-blue-900 relative z-10 scale-105 bg-white' 
+                      : isEnterprise
+                        ? 'border-slate-800 bg-slate-900 text-white'
+                        : 'border-slate-200 bg-white'
+                  }`}>
+                    {isProfessional && (
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-900 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Most Popular</div>
+                    )}
+                    {isEnterprise && (
+                      <div className="mb-2 inline-flex items-center gap-1 text-yellow-400 font-bold text-xs uppercase tracking-wide"><Crown size={12} fill="currentColor"/> Ultimate Power</div>
+                    )}
+                    
+                    <h3 className={`text-lg font-bold ${isEnterprise ? 'text-white' : 'text-slate-900'}`}>{plan.name}</h3>
+                    <div className="mt-4 mb-6">
+                      <span className={`text-4xl font-extrabold ${isEnterprise ? 'text-white' : 'text-slate-900'}`}>${plan.price}</span>
+                      <span className={`${isEnterprise ? 'text-slate-400' : 'text-slate-500'}`}>/mo</span>
+                    </div>
+                    
+                    <ul className="space-y-4 mb-8 flex-1">
+                      <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/> 
+                        {plan.bots >= 9999 ? 'Unlimited' : plan.bots} Bot(s)
+                      </li>
+                      <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/> 
+                        <span className="font-bold">{plan.conversations.toLocaleString()}</span>&nbsp;Conversations
+                      </li>
+                      <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/> 
+                        {isEnterprise ? 'Enterprise Analytics' : 'Basic Analytics'}
+                      </li>
+                      {isEnterprise && (
+                        <>
+                           <li className="flex items-center gap-3 text-sm text-slate-300">
+                             <CheckCircle size={16} className="text-yellow-400 shrink-0"/> White-label Ready
+                           </li>
+                           <li className="flex items-center gap-3 text-sm text-slate-300">
+                             <CheckCircle size={16} className="text-yellow-400 shrink-0"/> SLA Support
+                           </li>
+                        </>
+                      )}
+                    </ul>
+                    
+                    <button onClick={onLogin} className={`w-full py-3 rounded-lg font-bold transition ${
+                      isProfessional 
+                        ? 'bg-blue-900 text-white hover:bg-blue-950' 
+                        : isEnterprise
+                          ? 'bg-white text-slate-900 hover:bg-slate-200'
+                          : 'bg-white text-slate-900 border border-slate-300 hover:bg-slate-50'
+                    }`}>
+                      {isEnterprise ? 'Get Enterprise' : `Choose ${plan.name}`}
+                    </button>
+                  </div>
+                );
+              })}
+           </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-slate-900 text-slate-400 py-16 px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
