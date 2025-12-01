@@ -32,7 +32,7 @@ const INITIAL_RESELLER_STATS: ResellerStats = {
 };
 
 // Define Master Admins here
-const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org'];
+const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org', 'ben@texasplanninglaw.com'];
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
