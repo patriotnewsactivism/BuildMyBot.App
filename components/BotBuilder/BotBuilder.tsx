@@ -62,6 +62,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   const [kbInput, setKbInput] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [isScraping, setIsScraping] = useState(false);
+  const [scrapeProgress, setScrapeProgress] = useState('');
   
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -144,17 +145,24 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   const handleScrapeUrl = async () => {
     if (!urlInput.trim()) return;
     setIsScraping(true);
-    
+    setScrapeProgress('Starting...');
+
     try {
-        const extractedData = await scrapeWebsiteContent(urlInput);
+        const extractedData = await scrapeWebsiteContent(urlInput, {
+            onProgress: (stage) => setScrapeProgress(stage)
+        });
         setActiveBot({
             ...activeBot,
             knowledgeBase: [...(activeBot.knowledgeBase || []), extractedData]
         });
         setUrlInput('');
-    } catch (error) {
+        setScrapeProgress('Added to knowledge base!');
+        setTimeout(() => setScrapeProgress(''), 2000);
+    } catch (error: any) {
         console.error("Scrape failed", error);
-        alert("Failed to scrape website. Please check the URL and try again.");
+        const errorMsg = error?.message || "Failed to scrape website. Please check the URL and try again.";
+        alert(errorMsg);
+        setScrapeProgress('');
     } finally {
         setIsScraping(false);
     }
@@ -441,7 +449,11 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                            Train Bot
                          </button>
                       </div>
-                      <p className="text-xs text-slate-500 mt-2">We will scrape this URL and add key info to the bot's memory.</p>
+                      {scrapeProgress ? (
+                        <p className="text-xs text-blue-600 mt-2 font-medium">{scrapeProgress}</p>
+                     ) : (
+                        <p className="text-xs text-slate-500 mt-2">We will scrape this URL and add key info to the bot's memory.</p>
+                     )}
                    </div>
 
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">

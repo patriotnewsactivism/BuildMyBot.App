@@ -134,8 +134,8 @@ function App() {
     });
 
     // Load analytics data when user is available
-    if (session?.user) {
-      dbService.getAnalytics(session.user.id, 7).then(data => {
+    if (user?.id) {
+      dbService.getAnalytics(user.id, 7).then(data => {
         if (data.length > 0) {
           setAnalyticsData(data);
         } else {

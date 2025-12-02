@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus, Loader, RefreshCcw, Send } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
-import { generateBotResponse, generateMarketingContent, scrapeWebsiteContent } from '../../services/geminiService';
+import { generateBotResponse, generateMarketingContent, scrapeWebsiteContent, generateWebsiteStructure } from '../../services/geminiService';
+import { processPDFForKnowledgeBase } from '../../services/pdfService';
 
 interface LandingProps {
   onLogin: () => void;
@@ -33,10 +34,14 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   const [trainingStep, setTrainingStep] = useState(0); // 0: Input, 1: Scanning, 2: Ready/Chat
   const [trainingType, setTrainingType] = useState<'pdf' | 'url'>('url');
   const [trainingUrl, setTrainingUrl] = useState('');
+  const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
   const [scrapedContent, setScrapedContent] = useState('');
   const [trainingChatInput, setTrainingChatInput] = useState('');
   const [trainingChatHistory, setTrainingChatHistory] = useState<{role: 'user'|'model', text: string}[]>([]);
   const [isTrainingChatTyping, setIsTrainingChatTyping] = useState(false);
+  const [trainingProgress, setTrainingProgress] = useState('');
+  const [trainingError, setTrainingError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Phone Demo State
   const [phoneStatus, setPhoneStatus] = useState<'idle' | 'calling' | 'connected'>('idle');
@@ -87,28 +92,66 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
   // --- DEMO HANDLERS ---
 
+  const handlePdfFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedPdfFile(file);
+      handleTrainingDemo();
+    } else if (file) {
+      setTrainingError('Please select a valid PDF file');
+      setTimeout(() => setTrainingError(''), 3000);
+    }
+  };
+
   const handleTrainingDemo = async () => {
     if (trainingType === 'url' && !trainingUrl) return;
-    
+    if (trainingType === 'pdf' && !selectedPdfFile) {
+      // Trigger file input
+      fileInputRef.current?.click();
+      return;
+    }
+
     setTrainingStep(1);
     setTrainingChatHistory([]);
-    
+    setTrainingError('');
+    setTrainingProgress('Starting...');
+
     let content = "";
-    if (trainingType === 'pdf') {
-       // Simulate PDF extraction for demo
-       await new Promise(r => setTimeout(r, 2000));
-       content = "SOURCE: Employee_Handbook.pdf\n\n- Standard work hours are 9 AM to 5 PM EST.\n- Return policy is 30 days with receipt.\n- Paid time off accrues at 1.5 days per month.\n- Emergency contact: 555-0199.";
-       setScrapedContent(content);
-       setTrainingStep(2);
-    } else {
-       // Real Scrape
+    if (trainingType === 'pdf' && selectedPdfFile) {
+       // Real PDF extraction
        try {
-         content = await scrapeWebsiteContent(trainingUrl);
+         content = await processPDFForKnowledgeBase(selectedPdfFile, (progress, stage) => {
+           setTrainingProgress(`${stage} (${progress}%)`);
+         });
+         setScrapedContent(content);
+         setTrainingProgress('Complete!');
+         setTrainingStep(2);
+       } catch (e: any) {
+         const errorMsg = e?.message || "Error processing PDF. Please try another file.";
+         setTrainingError(errorMsg);
+         setTrainingProgress('');
+         setSelectedPdfFile(null);
+         setTimeout(() => {
+           setTrainingStep(0);
+           setTrainingError('');
+         }, 5000);
+       }
+    } else {
+       // Real URL Scrape with progress tracking
+       try {
+         content = await scrapeWebsiteContent(trainingUrl, {
+           onProgress: (stage) => setTrainingProgress(stage)
+         });
          setScrapedContent(content);
          setTrainingStep(2);
-       } catch (e) {
-         setScrapedContent("Error scraping website. Please check the URL and try again.");
-         setTrainingStep(0);
+       } catch (e: any) {
+         const errorMsg = e?.message || "Error scraping website. Please check the URL and try again.";
+         setTrainingError(errorMsg);
+         setTrainingProgress('');
+         setTimeout(() => {
+           setTrainingStep(0);
+           setTrainingError('');
+         }, 5000); // Show error for 5 seconds
        }
     }
   };
@@ -199,21 +242,37 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     }
   };
 
-  const handleSiteBuild = () => {
+  const handleSiteBuild = async () => {
     if (!siteName) return;
     setIsBuildingSite(true);
     setGeneratedSite(null);
-    setTimeout(() => {
+
+    try {
+        const description = `A ${siteIndustry} business that provides excellent service and quality.`;
+        const jsonResponse = await generateWebsiteStructure(siteName, description);
+        const siteData = JSON.parse(jsonResponse);
+
+        setGeneratedSite({
+            name: siteName,
+            headline: siteData.headline || `Welcome to ${siteName}`,
+            subheadline: siteData.subheadline || `The Best ${siteIndustry}`,
+            cta: siteData.ctaText || siteData.cta || 'Get Started',
+            features: siteData.features || []
+        });
+    } catch (e) {
+        console.error("Website generation error:", e);
+        // Fallback to basic template on error
         setGeneratedSite({
             name: siteName,
             headline: siteIndustry === 'City Government' ? `Welcome to the City of ${siteName}` : `The Best ${siteIndustry} in Town`,
-            subheadline: siteIndustry === 'City Government' 
+            subheadline: siteIndustry === 'City Government'
                 ? `Official portal for residents. Pay bills, report issues, and access city services online.`
                 : `Experience premium quality and service at ${siteName}. We are dedicated to excellence.`,
             cta: siteIndustry === 'City Government' ? 'Access Services' : 'Book Now'
         });
+    } finally {
         setIsBuildingSite(false);
-    }, 2000);
+    }
   };
 
   const handleSimulateLead = () => {
@@ -827,26 +886,47 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                         
                         {trainingStep === 0 && (
                            <div className="bg-slate-900 rounded-xl p-6 border border-slate-700 space-y-4">
+                              <input
+                                 type="file"
+                                 ref={fileInputRef}
+                                 accept="application/pdf"
+                                 onChange={handlePdfFileSelect}
+                                 className="hidden"
+                              />
                               <div className="flex gap-4 mb-4">
-                                 <button 
-                                    onClick={() => setTrainingType('pdf')}
+                                 <button
+                                    onClick={() => { setTrainingType('pdf'); setSelectedPdfFile(null); }}
                                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${trainingType === 'pdf' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
                                  >
                                     <Upload size={16} className="inline mr-2"/> Upload PDF
                                  </button>
-                                 <button 
+                                 <button
                                     onClick={() => setTrainingType('url')}
                                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${trainingType === 'url' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
                                  >
                                     <LinkIcon size={16} className="inline mr-2"/> Scan Website
                                  </button>
                               </div>
-                              
+
                               {trainingType === 'pdf' ? (
-                                 <div className="border-2 border-dashed border-slate-600 rounded-xl h-40 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-900/10 transition" onClick={handleTrainingDemo}>
-                                    <FileText size={48} className="text-slate-500 mb-2"/>
-                                    <p className="text-sm text-slate-400">Drag & Drop Business PDF</p>
-                                    <span className="text-xs text-slate-600 mt-2">Employee Handbook, Menu, Catalog</span>
+                                 <div>
+                                    <div className="border-2 border-dashed border-slate-600 rounded-xl h-40 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-900/10 transition" onClick={handleTrainingDemo}>
+                                       <FileText size={48} className="text-slate-500 mb-2"/>
+                                       <p className="text-sm text-slate-400">
+                                          {selectedPdfFile ? selectedPdfFile.name : 'Click to Upload PDF'}
+                                       </p>
+                                       <span className="text-xs text-slate-600 mt-2">
+                                          {selectedPdfFile ? `${(selectedPdfFile.size / 1024).toFixed(1)}KB` : 'Employee Handbook, Menu, Catalog'}
+                                       </span>
+                                    </div>
+                                    {selectedPdfFile && (
+                                       <button
+                                          onClick={handleTrainingDemo}
+                                          className="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition"
+                                       >
+                                          Extract Text
+                                       </button>
+                                    )}
                                  </div>
                               ) : (
                                  <div className="space-y-4">
@@ -871,9 +951,21 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
                         {trainingStep === 1 && (
                            <div className="h-64 flex flex-col items-center justify-center bg-slate-900 rounded-xl border border-slate-700">
-                              <Loader className="w-16 h-16 text-blue-500 animate-spin mb-4" />
-                              <p className="font-bold text-lg animate-pulse">Extracting Knowledge...</p>
-                              <p className="text-sm text-slate-500">Reading website content...</p>
+                              {trainingError ? (
+                                 <div className="text-center px-6">
+                                    <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                                       <X size={32} className="text-red-400" />
+                                    </div>
+                                    <p className="font-bold text-lg text-red-400 mb-2">Scraping Failed</p>
+                                    <p className="text-sm text-slate-400">{trainingError}</p>
+                                 </div>
+                              ) : (
+                                 <>
+                                    <Loader className="w-16 h-16 text-blue-500 animate-spin mb-4" />
+                                    <p className="font-bold text-lg animate-pulse">Extracting Knowledge...</p>
+                                    <p className="text-sm text-slate-500 mt-2">{trainingProgress || 'Processing...'}</p>
+                                 </>
+                              )}
                            </div>
                         )}
 
