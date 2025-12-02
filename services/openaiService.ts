@@ -1,7 +1,6 @@
-import { GoogleGenAI, Type } from "@google/genai";
 
-// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
-const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Use process.env provided by Vite define config to avoid import.meta issues
+const getApiKey = () => process.env.VITE_OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
 
 export const generateBotResponse = async (
   systemPrompt: string,
@@ -10,42 +9,58 @@ export const generateBotResponse = async (
   modelName: string = 'gpt-4o-mini',
   context?: string
 ): Promise<string> => {
-  // Use a Gemini model.
-  const geminiModel = 'gemini-2.5-flash';
+  const apiKey = getApiKey();
+  if (!apiKey) return "Error: API Key is missing. Please check your configuration.";
 
-  let finalSystemPrompt = systemPrompt;
+  // Construct messages
+  const messages: any[] = [
+    { role: 'system', content: systemPrompt }
+  ];
+
   if (context) {
-    finalSystemPrompt += `\n\n### KNOWLEDGE BASE (REAL DATA):\n${context}\n\n### INSTRUCTIONS:\nAnswer strictly based on the provided Knowledge Base. If the answer is not in the text, state that you do not have that information. Do not invent facts.`;
+    messages[0].content += `\n\n### KNOWLEDGE BASE:\n${context}\n\n### INSTRUCTIONS:\nAnswer strictly based on the provided Knowledge Base. If the answer is not in the text, state that you do not have that information.`;
   }
 
-  const contents = history.map(msg => ({
-    role: msg.role === 'model' ? 'model' : 'user',
-    parts: [{ text: msg.text }]
-  }));
-
-  contents.push({
-    role: 'user',
-    parts: [{ text: lastMessage }]
+  history.forEach(msg => {
+    messages.push({
+      role: msg.role === 'model' ? 'assistant' : 'user',
+      content: msg.text
+    });
   });
 
+  messages.push({ role: 'user', content: lastMessage });
+
   try {
-    const response = await genAI.models.generateContent({
-      model: geminiModel,
-      config: {
-        systemInstruction: finalSystemPrompt,
-        temperature: 0.7,
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
       },
-      contents: contents
+      body: JSON.stringify({
+        model: modelName,
+        messages: messages,
+        temperature: 0.7
+      })
     });
 
-    return response.text || "No response generated.";
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error?.message || response.statusText);
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || "";
   } catch (error: any) {
-    return `Error: ${error.message}`;
+    console.error("OpenAI Error:", error);
+    return "I'm having trouble connecting to the AI service right now. Please check your internet connection or API Key.";
   }
 };
 
 export const scrapeWebsiteContent = async (url: string): Promise<string> => {
   if (!url) return "";
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("API Key missing");
 
   try {
     let targetUrl = url;
@@ -53,90 +68,92 @@ export const scrapeWebsiteContent = async (url: string): Promise<string> => {
       targetUrl = 'https://' + targetUrl;
     }
 
+    // 1. Scrape using Jina (Free tier, robust scraping)
     const scrapeResponse = await fetch(`https://r.jina.ai/${targetUrl}`);
-    if (!scrapeResponse.ok) {
-      throw new Error(`Failed to access ${url}.`);
-    }
-
-    const rawMarkdown = await scrapeResponse.text();
+    if (!scrapeResponse.ok) throw new Error("Failed to scrape website.");
     
-    if (!rawMarkdown || rawMarkdown.includes("Access denied")) {
-        throw new Error("Could not retrieve readable content.");
-    }
+    const rawText = await scrapeResponse.text();
+    const truncatedText = rawText.substring(0, 20000); // Limit context window
 
-    const truncatedContent = rawMarkdown.substring(0, 30000); 
-
-    const response = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash',
-      config: {
-        systemInstruction: 'You are a precise Data Extractor. Your job is to extract business facts from website content. Output a clean, list-based summary.',
-      },
-      contents: [
-        { 
-            role: 'user', 
-            parts: [{ text: `Analyze this website content and extract the following details:\n1. Business Name & One-line Description\n2. Key Services/Products\n3. Contact Details (Phone, Email, Address)\n4. Pricing/Hours (if available)\n\nWEBSITE CONTENT:\n${truncatedContent}` }]
-        }
-      ]
+    // 2. Summarize using GPT-4o-mini
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+                { role: 'system', content: 'You are a precise Data Extractor. Extract business facts.' },
+                { role: 'user', content: `Analyze this content and extract:\n1. Business Name & Description\n2. Key Services\n3. Contact Info\n4. Pricing/Hours\n\nCONTENT:\n${truncatedText}` }
+            ]
+        })
     });
 
-    return response.text || "Content scraped but AI failed to summarize.";
+    if (!response.ok) throw new Error("Failed to summarize content.");
+    const data = await response.json();
+    return data.choices[0]?.message?.content || rawText.substring(0, 1000);
 
   } catch (error: any) {
-    console.error("Scraping Error:", error);
-    throw new Error(`Scraping failed: ${error.message}`);
+    console.error("Scrape Error:", error);
+    throw new Error("Failed to process website content.");
   }
+};
+
+export const generateMarketingContent = async (type: string, topic: string, tone: string): Promise<string> => {
+    const apiKey = getApiKey();
+    if (!apiKey) return "Error: API Key missing.";
+
+    try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [
+                    { role: 'system', content: `You are an expert Copywriter. Tone: ${tone}.` },
+                    { role: 'user', content: `Write a ${type} about ${topic}. Return ONLY the content, no filler.` }
+                ]
+            })
+        });
+        const data = await response.json();
+        return data.choices[0]?.message?.content || "";
+    } catch (e) {
+        return "Failed to generate content.";
+    }
+};
+
+export const generateWebsiteStructure = async (businessName: string, description: string): Promise<string> => {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("API Key missing");
+
+    try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                response_format: { type: "json_object" },
+                messages: [
+                    { role: 'system', content: 'You are a Website Builder AI. Output JSON only with keys: headline, subheadline, features (array of strings), ctaText.' },
+                    { role: 'user', content: `Generate landing page structure for "${businessName}". Description: ${description}` }
+                ]
+            })
+        });
+        const data = await response.json();
+        return data.choices[0]?.message?.content || "{}";
+    } catch (e) {
+        console.error(e);
+        throw e;
+    }
 };
 
 // Legacy alias
 export const simulateWebScrape = scrapeWebsiteContent;
-
-export const generateMarketingContent = async (type: string, topic: string, tone: string): Promise<string> => {
-  try {
-    const response = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash',
-      config: {
-        systemInstruction: `You are an expert Copywriter. Tone: ${tone}.`,
-      },
-      contents: [{
-        role: 'user',
-        parts: [{ text: `Write a ${type} about ${topic}. Return ONLY the content, no conversational filler.` }]
-      }]
-    });
-    return response.text || "";
-  } catch (error: any) {
-    return `Error generating content: ${error.message}`;
-  }
-};
-
-export const generateWebsiteStructure = async (businessName: string, description: string): Promise<string> => {
-  try {
-    const response = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash',
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-                headline: { type: Type.STRING },
-                subheadline: { type: Type.STRING },
-                features: { 
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING }
-                },
-                ctaText: { type: Type.STRING }
-            },
-            required: ["headline", "subheadline", "features", "ctaText"]
-        },
-        systemInstruction: 'You are a Website Builder AI. Output JSON only.',
-      },
-      contents: [{
-        role: 'user',
-        parts: [{ text: `Generate a landing page structure for "${businessName}". Description: ${description}.` }]
-      }]
-    });
-    return response.text || "{}";
-  } catch (error) {
-    console.error("Site Gen Error:", error);
-    throw error;
-  }
-};
