@@ -1,0 +1,11 @@
+# BuildMyBot Robots.txt
+# https://buildmybot.app/robots.txt
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /settings
+Disallow: /billing
+
+# Sitemap
+Sitemap: https://buildmybot.app/sitemap.xml
