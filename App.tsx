@@ -134,8 +134,10 @@ function App() {
     });
 
     // Load analytics data when user is available
-    if (session?.user) {
-      dbService.getAnalytics(session.user.id, 7).then(data => {
+    const loadAnalytics = async () => {
+      const { data: { session } } = await supabase!.auth.getSession();
+      if (session?.user) {
+        const data = await dbService.getAnalytics(session.user.id, 7);
         if (data.length > 0) {
           setAnalyticsData(data);
         } else {
@@ -144,7 +146,11 @@ function App() {
           const emptyData = dayNames.map(date => ({ date, conversations: 0, leads: 0 }));
           setAnalyticsData(emptyData);
         }
-      });
+      }
+    };
+
+    if (supabase) {
+      loadAnalytics();
     }
 
     return () => {
