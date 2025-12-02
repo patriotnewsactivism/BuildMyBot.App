@@ -237,17 +237,19 @@ function App() {
     dbService.saveLead(updatedLead);
   };
 
-  const handleLeadDetected = (email: string) => {
-    // This is called by BotBuilder test chat
-    const newLead: Lead = {
-      id: Date.now().toString(),
-      name: 'Website Visitor',
-      email: email,
-      score: 85,
-      status: 'New',
-      sourceBotId: 'test-bot',
-      createdAt: new Date().toISOString()
-    };
+    const handleLeadDetected = (email: string) => {
+      // This is called by BotBuilder test chat
+      const newLead: Lead = {
+        id: Date.now().toString(),
+        ownerId: user?.id || 'demo-owner',
+        botId: 'test-bot',
+        name: 'Website Visitor',
+        email: email,
+        score: 85,
+        status: 'New',
+        sourceBotId: 'test-bot',
+        createdAt: new Date().toISOString()
+      };
     dbService.saveLead(newLead);
     setNotification("New Hot Lead Detected from Chat! 🔥");
     setTimeout(() => setNotification(null), 4000);

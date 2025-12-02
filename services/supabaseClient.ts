@@ -20,3 +20,10 @@ if (supabaseUrl && supabaseAnonKey) {
 }
 
 export const supabase = supabaseInstance;
+
+export const requireSupabaseClient = (): SupabaseClient => {
+  if (!supabaseInstance) {
+    throw new Error('Supabase client is not initialized.');
+  }
+  return supabaseInstance;
+};

@@ -1,12 +1,22 @@
-import { supabase } from './supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { requireSupabaseClient } from './supabaseClient';
 import { Bot, Lead, Conversation, User, PlanType } from '../types';
+
+const getClient = (): SupabaseClient | null => {
+  try {
+    return requireSupabaseClient();
+  } catch (error) {
+    console.warn('Supabase client unavailable. Skipping database call.', error);
+    return null;
+  }
+};
 
 export const dbService = {
   // --- BOTS ---
   
   // Real-time listener for bots
   subscribeToBots: (onUpdate: (bots: Bot[]) => void) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return () => {};
 
     // Initial fetch
@@ -32,7 +42,7 @@ export const dbService = {
   },
 
   saveBot: async (bot: Bot) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return bot;
     const { data, error } = await client
       .from('bots')
@@ -45,7 +55,7 @@ export const dbService = {
   },
 
   getBotById: async (id: string): Promise<Bot | undefined> => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return undefined;
     const { data, error } = await client
       .from('bots')
@@ -60,7 +70,7 @@ export const dbService = {
   // --- LEADS ---
 
   subscribeToLeads: (onUpdate: (leads: Lead[]) => void) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return () => {};
 
     const fetchLeads = async () => {
@@ -87,7 +97,7 @@ export const dbService = {
   },
 
   saveLead: async (lead: Lead) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return lead;
     
     // Upsert handles duplicate ID or we can rely on unique constraints
@@ -108,7 +118,7 @@ export const dbService = {
   // --- USER & BILLING ---
 
   getUserProfile: async (uid: string): Promise<User | null> => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return null;
     const { data, error } = await client
       .from('profiles')
@@ -121,7 +131,7 @@ export const dbService = {
   },
 
   saveUserProfile: async (user: User) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return;
     const now = new Date().toISOString();
     
@@ -139,7 +149,7 @@ export const dbService = {
   },
 
   updateUserPlan: async (uid: string, plan: PlanType) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return;
     const { error } = await client
       .from('profiles')
@@ -153,7 +163,7 @@ export const dbService = {
 
   // Listen to users who were referred by this reseller code
   subscribeToReferrals: (resellerCode: string, onUpdate: (users: User[]) => void) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return () => {};
 
     const fetchReferrals = async () => {
@@ -184,7 +194,7 @@ export const dbService = {
   
   // Get ALL users for the Admin Dashboard
   getAllUsers: async (): Promise<User[]> => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return [];
     const { data, error } = await client
       .from('profiles')
@@ -198,7 +208,7 @@ export const dbService = {
   },
 
   updateUserStatus: async (uid: string, status: 'Active' | 'Suspended') => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return;
     await client
       .from('profiles')
@@ -207,7 +217,7 @@ export const dbService = {
   },
 
   approvePartner: async (uid: string) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return;
     await client
       .from('profiles')
@@ -218,7 +228,7 @@ export const dbService = {
   // --- CONVERSATIONS ---
 
   subscribeToConversations: (onUpdate: (conversations: Conversation[]) => void) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return () => {};
 
     const fetchConversations = async () => {
@@ -245,7 +255,7 @@ export const dbService = {
   },
 
   saveConversation: async (conversation: Conversation, ownerId: string) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return conversation;
 
     const convData = {
@@ -274,7 +284,7 @@ export const dbService = {
   // --- ANALYTICS ---
 
   getAnalytics: async (ownerId: string, days: number = 7) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return [];
 
     const startDate = new Date();
@@ -337,7 +347,7 @@ export const dbService = {
   // --- MARKETING CONTENT ---
 
   saveMarketingContent: async (ownerId: string, type: string, title: string, content: string, topic: string, tone: string) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return;
 
     const { error } = await client
@@ -355,7 +365,7 @@ export const dbService = {
   },
 
   getMarketingContent: async (ownerId: string) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return [];
 
     const { data, error } = await client
@@ -372,7 +382,7 @@ export const dbService = {
   },
 
   deleteMarketingContent: async (id: string) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return;
 
     await client
@@ -384,7 +394,7 @@ export const dbService = {
   // --- TEMPLATES ---
 
   getTemplates: async () => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return [];
 
     const { data, error } = await client
@@ -402,7 +412,7 @@ export const dbService = {
   // --- USAGE TRACKING ---
 
   trackUsage: async (ownerId: string, eventType: string, botId?: string, quantity: number = 1) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return;
 
     await client
@@ -416,7 +426,7 @@ export const dbService = {
   },
 
   getUsageStats: async (ownerId: string) => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return null;
 
     const startOfMonth = new Date();
@@ -435,14 +445,15 @@ export const dbService = {
       return null;
     }
 
-    const totalConversations = data?.reduce((sum, event) => sum + event.quantity, 0) || 0;
+      const totalConversations =
+        data?.reduce((sum: number, event: { quantity: number }) => sum + event.quantity, 0) || 0;
     return { conversationsUsed: totalConversations };
   },
 
   // --- ADMIN FUNCTIONS (Bypass RLS) ---
 
   getAllBots: async (): Promise<Bot[]> => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return [];
     const { data, error } = await client
       .from('bots')
@@ -456,7 +467,7 @@ export const dbService = {
   },
 
   getAllLeads: async (): Promise<Lead[]> => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return [];
     const { data, error } = await client
       .from('leads')
@@ -471,7 +482,7 @@ export const dbService = {
   },
 
   getAllConversations: async (): Promise<Conversation[]> => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return [];
     const { data, error } = await client
       .from('conversations')
@@ -487,7 +498,7 @@ export const dbService = {
 
   // Platform-wide statistics for admin dashboard
   getPlatformStats: async () => {
-    const client = supabase;
+    const client = getClient();
     if (!client) return null;
 
     const { data: users } = await client.from('profiles').select('id', { count: 'exact' });

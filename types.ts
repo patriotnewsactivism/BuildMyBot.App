@@ -56,13 +56,19 @@ export interface Bot {
 
 export interface Lead {
   id: string;
+  ownerId: string;
+  botId: string;
   name: string;
   email: string;
   phone?: string;
+  company?: string;
   score: number;
   status: 'New' | 'Contacted' | 'Qualified' | 'Closed';
-  sourceBotId: string;
+  sourceBotId?: string;
+  notes?: string;
+  metadata?: Record<string, unknown>;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Conversation {
