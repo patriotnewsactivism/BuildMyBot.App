@@ -1,6 +1,8 @@
 // PDF Processing Service with OCR Support
 // This service extracts text from PDFs using browser-based libraries
 
+import { pdfRateLimiter, getSessionIdentifier } from './rateLimiter';
+
 interface PDFParseResult {
   text: string;
   pageCount: number;
@@ -103,8 +105,22 @@ export const extractTextFromPDF = async (
  */
 export const processPDFForKnowledgeBase = async (
   file: File,
-  onProgress?: (progress: number, stage: string) => void
+  onProgress?: (progress: number, stage: string) => void,
+  options?: { userId?: string; bypassRateLimit?: boolean }
 ): Promise<string> => {
+  // Rate limiting check
+  if (!options?.bypassRateLimit) {
+    const identifier = getSessionIdentifier(options?.userId);
+    const rateCheck = pdfRateLimiter.checkLimit(identifier);
+
+    if (!rateCheck.allowed) {
+      const waitTime = Math.ceil((rateCheck.resetTime - Date.now()) / 1000);
+      throw new Error(`Rate limit exceeded. Too many PDF uploads. Please wait ${waitTime} seconds.`);
+    }
+
+    onProgress?.(5, `Rate limit: ${rateCheck.remaining} uploads remaining`);
+  }
+
   const result = await extractTextFromPDF(file, onProgress);
 
   // Format for knowledge base

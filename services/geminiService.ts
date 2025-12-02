@@ -1,6 +1,8 @@
 // NOTE: Filename retained as geminiService.ts to prevent breaking imports,
 // but implementation uses OpenAI GPT-4o Mini as configured in the project.
 
+import { scraperRateLimiter, aiGenerationRateLimiter, getSessionIdentifier } from './rateLimiter';
+
 const API_KEY = process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY || process.env.REACT_APP_OPENAI_API_KEY || '';
 
 interface Message {
@@ -72,12 +74,29 @@ export const scrapeWebsiteContent = async (
   options?: {
     maxLength?: number;
     onProgress?: (stage: string) => void;
+    userId?: string;
+    bypassRateLimit?: boolean;
   }
 ): Promise<string> => {
   const maxLength = options?.maxLength || 30000; // Increased default limit
   const onProgress = options?.onProgress;
+  const userId = options?.userId;
+  const bypassRateLimit = options?.bypassRateLimit || false;
 
   try {
+    // 0. Rate Limiting Check
+    if (!bypassRateLimit) {
+      const identifier = getSessionIdentifier(userId);
+      const rateCheck = scraperRateLimiter.checkLimit(identifier);
+
+      if (!rateCheck.allowed) {
+        const waitTime = Math.ceil((rateCheck.resetTime - Date.now()) / 1000);
+        throw new Error(`Rate limit exceeded. ${rateCheck.message} Please wait ${waitTime} seconds.`);
+      }
+
+      onProgress?.(`Rate limit: ${rateCheck.remaining} requests remaining`);
+    }
+
     // 1. Validate URL
     let targetUrl = url.trim();
     if (!targetUrl.startsWith('http')) {
@@ -171,16 +190,47 @@ export const scrapeWebsiteContent = async (
 // Legacy alias for compatibility
 export const simulateWebScrape = scrapeWebsiteContent;
 
-export const generateMarketingContent = async (type: string, topic: string, tone: string): Promise<string> => {
+export const generateMarketingContent = async (
+  type: string,
+  topic: string,
+  tone: string,
+  options?: { userId?: string; bypassRateLimit?: boolean }
+): Promise<string> => {
+  // Rate limiting check
+  if (!options?.bypassRateLimit) {
+    const identifier = getSessionIdentifier(options?.userId);
+    const rateCheck = aiGenerationRateLimiter.checkLimit(identifier);
+
+    if (!rateCheck.allowed) {
+      const waitTime = Math.ceil((rateCheck.resetTime - Date.now()) / 1000);
+      throw new Error(`Rate limit exceeded. Please wait ${waitTime} seconds.`);
+    }
+  }
+
   const prompt = `Write a ${tone} ${type} about ${topic}. Keep it engaging, high-converting, and formatted correctly for the platform.`;
   return await generateBotResponse("You are a world-class Copywriter.", [], prompt);
 };
 
-export const generateWebsiteStructure = async (businessName: string, description: string): Promise<string> => {
+export const generateWebsiteStructure = async (
+  businessName: string,
+  description: string,
+  options?: { userId?: string; bypassRateLimit?: boolean }
+): Promise<string> => {
+  // Rate limiting check
+  if (!options?.bypassRateLimit) {
+    const identifier = getSessionIdentifier(options?.userId);
+    const rateCheck = aiGenerationRateLimiter.checkLimit(identifier);
+
+    if (!rateCheck.allowed) {
+      const waitTime = Math.ceil((rateCheck.resetTime - Date.now()) / 1000);
+      throw new Error(`Rate limit exceeded. Please wait ${waitTime} seconds.`);
+    }
+  }
+
   const prompt = `Generate a JSON structure for a landing page for "${businessName}". Description: ${description}.
   Return ONLY valid JSON with no markdown formatting.
   Format: { "headline": "...", "subheadline": "...", "features": ["...", "...", "..."], "ctaText": "..." }`;
-  
+
   const response = await callOpenAI([{ role: 'user', content: prompt }]);
   // Clean up code blocks if present
   return response.replace(/```json/g, '').replace(/```/g, '').trim();

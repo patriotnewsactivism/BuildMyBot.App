@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Scraping & PDF Test Suite</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1e3a8a;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+        }
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input, select {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #1e3a8a;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #1e40af;
+        }
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+        .result {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            min-height: 100px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .progress {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        .success {
+            background: #dcfce7;
+            color: #166534;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 2px solid #e2e8f0;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e3a8a;
+        }
+        .stat-label {
+            color: #64748b;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+        .test-urls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .test-url-btn {
+            padding: 6px 12px;
+            background: #e0f2fe;
+            color: #075985;
+            border: 1px solid #bae6fd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .test-url-btn:hover {
+            background: #bae6fd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 URL Scraping & PDF Test Suite</h1>
+        <p class="subtitle">Test the enhanced URL scraping, PDF parsing, and website generation features</p>
+
+        <!-- URL Scraping Tests -->
+        <div class="test-section">
+            <h2>🌐 URL Scraping Tests</h2>
+            <p>Test scraping real websites with progress tracking and error handling</p>
+
+            <div class="test-urls">
+                <button class="test-url-btn" onclick="testUrl('https://example.com')">Test example.com</button>
+                <button class="test-url-btn" onclick="testUrl('https://anthropic.com')">Test Anthropic</button>
+                <button class="test-url-btn" onclick="testUrl('https://invalid-url-404')">Test 404 Error</button>
+                <button class="test-url-btn" onclick="testUrl('not-a-url')">Test Invalid Format</button>
+            </div>
+
+            <div class="test-controls">
+                <input type="url" id="urlInput" placeholder="Enter URL to test (e.g., https://example.com)">
+                <button onclick="testUrlScraping()" id="urlTestBtn">Test Scraping</button>
+            </div>
+            <div id="urlProgress"></div>
+            <div id="urlResult" class="result"></div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="urlTestCount">0</div>
+                    <div class="stat-label">URLs Tested</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="urlSuccessCount">0</div>
+                    <div class="stat-label">Successful</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="urlErrorCount">0</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PDF Parsing Tests -->
+        <div class="test-section">
+            <h2>📄 PDF Parsing Tests</h2>
+            <p>Test PDF text extraction with progress tracking</p>
+
+            <div class="test-controls">
+                <input type="file" id="pdfInput" accept="application/pdf">
+                <button onclick="testPdfParsing()" id="pdfTestBtn">Test PDF Extraction</button>
+            </div>
+            <div id="pdfProgress"></div>
+            <div id="pdfResult" class="result"></div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="pdfTestCount">0</div>
+                    <div class="stat-label">PDFs Tested</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="pdfSuccessCount">0</div>
+                    <div class="stat-label">Successful</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="pdfErrorCount">0</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Website Generation Tests -->
+        <div class="test-section">
+            <h2>🎨 AI Website Generation Tests</h2>
+            <p>Test AI-powered website structure generation</p>
+
+            <div class="test-controls">
+                <input type="text" id="businessName" placeholder="Business Name (e.g., Joe's Coffee)">
+                <select id="businessIndustry">
+                    <option>Coffee Shop</option>
+                    <option>Real Estate</option>
+                    <option>Gym</option>
+                    <option>Consulting</option>
+                    <option>City Government</option>
+                    <option>Restaurant</option>
+                    <option>Law Firm</option>
+                </select>
+                <button onclick="testWebsiteGen()" id="siteTestBtn">Generate Website</button>
+            </div>
+            <div id="siteProgress"></div>
+            <div id="siteResult" class="result"></div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="siteTestCount">0</div>
+                    <div class="stat-label">Sites Generated</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="siteSuccessCount">0</div>
+                    <div class="stat-label">Successful</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import functions (you'll need to adjust these paths based on your build setup)
+        // For testing, we'll simulate the functions
+
+        let stats = {
+            url: { total: 0, success: 0, error: 0 },
+            pdf: { total: 0, success: 0, error: 0 },
+            site: { total: 0, success: 0 }
+        };
+
+        // Simulate scrapeWebsiteContent
+        async function scrapeWebsiteContent(url, options = {}) {
+            const { onProgress } = options;
+
+            // Simulate progress
+            onProgress?.("Fetching website content...");
+            await new Promise(r => setTimeout(r, 1000));
+
+            // Basic URL validation
+            if (!url.includes('http')) {
+                url = 'https://' + url;
+            }
+
+            try {
+                new URL(url);
+            } catch {
+                throw new Error(`Invalid URL format: ${url}`);
+            }
+
+            onProgress?.("Analyzing content with AI...");
+            await new Promise(r => setTimeout(r, 1500));
+
+            // Simulate Jina Reader + AI extraction
+            const mockData = `Business/Organization Name & Description:
+- Website: ${url}
+- A professional organization providing services
+
+Main Services/Products:
+- Primary service offering
+- Secondary service offering
+
+Contact Information:
+- Website: ${url}
+- Email: info@example.com
+
+---
+Source: ${url}
+Scraped: ${new Date().toLocaleString()}
+Content Size: 12.5KB`;
+
+            onProgress?.("Complete!");
+            return mockData;
+        }
+
+        // Simulate processPDFForKnowledgeBase
+        async function processPDFForKnowledgeBase(file, onProgress) {
+            onProgress?.(10, "Loading PDF...");
+            await new Promise(r => setTimeout(r, 500));
+
+            onProgress?.(30, "Parsing PDF structure...");
+            await new Promise(r => setTimeout(r, 500));
+
+            onProgress?.(60, "Extracting text content...");
+            await new Promise(r => setTimeout(r, 1000));
+
+            onProgress?.(100, "Complete!");
+
+            return `SOURCE: ${file.name}
+Pages: 5
+Title: Sample Document
+
+CONTENT:
+This is extracted text from the PDF document.
+It includes multiple paragraphs and sections.
+
+---
+Uploaded: ${new Date().toLocaleString()}
+File Size: ${(file.size / 1024).toFixed(1)}KB`;
+        }
+
+        // Simulate generateWebsiteStructure
+        async function generateWebsiteStructure(businessName, description) {
+            await new Promise(r => setTimeout(r, 2000));
+
+            return JSON.stringify({
+                headline: `Welcome to ${businessName}`,
+                subheadline: `The best ${description} in town`,
+                features: [
+                    "Premium Quality Service",
+                    "Expert Team",
+                    "Customer Satisfaction Guaranteed"
+                ],
+                ctaText: "Get Started Today"
+            });
+        }
+
+        // Test URL Scraping
+        window.testUrlScraping = async function() {
+            const url = document.getElementById('urlInput').value;
+            if (!url) {
+                alert('Please enter a URL');
+                return;
+            }
+
+            stats.url.total++;
+            updateStats();
+
+            const btn = document.getElementById('urlTestBtn');
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+
+            const progressEl = document.getElementById('urlProgress');
+            const resultEl = document.getElementById('urlResult');
+
+            progressEl.innerHTML = '';
+            resultEl.textContent = 'Starting test...';
+
+            try {
+                const result = await scrapeWebsiteContent(url, {
+                    onProgress: (stage) => {
+                        progressEl.innerHTML = `<div class="progress">⏳ ${stage}</div>`;
+                    }
+                });
+
+                stats.url.success++;
+                updateStats();
+
+                progressEl.innerHTML = '<div class="success">✅ Scraping completed successfully!</div>';
+                resultEl.textContent = result;
+            } catch (error) {
+                stats.url.error++;
+                updateStats();
+
+                progressEl.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+                resultEl.textContent = error.stack || error.message;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test Scraping';
+            }
+        };
+
+        window.testUrl = function(url) {
+            document.getElementById('urlInput').value = url;
+            testUrlScraping();
+        };
+
+        // Test PDF Parsing
+        window.testPdfParsing = async function() {
+            const fileInput = document.getElementById('pdfInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a PDF file');
+                return;
+            }
+
+            if (file.type !== 'application/pdf') {
+                alert('Please select a valid PDF file');
+                return;
+            }
+
+            stats.pdf.total++;
+            updateStats();
+
+            const btn = document.getElementById('pdfTestBtn');
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+
+            const progressEl = document.getElementById('pdfProgress');
+            const resultEl = document.getElementById('pdfResult');
+
+            progressEl.innerHTML = '';
+            resultEl.textContent = 'Starting extraction...';
+
+            try {
+                const result = await processPDFForKnowledgeBase(file, (progress, stage) => {
+                    progressEl.innerHTML = `<div class="progress">⏳ ${stage} (${progress}%)</div>`;
+                });
+
+                stats.pdf.success++;
+                updateStats();
+
+                progressEl.innerHTML = '<div class="success">✅ PDF extraction completed successfully!</div>';
+                resultEl.textContent = result;
+            } catch (error) {
+                stats.pdf.error++;
+                updateStats();
+
+                progressEl.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+                resultEl.textContent = error.stack || error.message;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test PDF Extraction';
+            }
+        };
+
+        // Test Website Generation
+        window.testWebsiteGen = async function() {
+            const businessName = document.getElementById('businessName').value;
+            const industry = document.getElementById('businessIndustry').value;
+
+            if (!businessName) {
+                alert('Please enter a business name');
+                return;
+            }
+
+            stats.site.total++;
+            updateStats();
+
+            const btn = document.getElementById('siteTestBtn');
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+
+            const progressEl = document.getElementById('siteProgress');
+            const resultEl = document.getElementById('siteResult');
+
+            progressEl.innerHTML = '<div class="progress">⏳ Generating website with AI...</div>';
+            resultEl.textContent = 'Waiting for AI response...';
+
+            try {
+                const description = `A ${industry} business`;
+                const jsonResponse = await generateWebsiteStructure(businessName, description);
+                const siteData = JSON.parse(jsonResponse);
+
+                stats.site.success++;
+                updateStats();
+
+                progressEl.innerHTML = '<div class="success">✅ Website generated successfully!</div>';
+                resultEl.textContent = JSON.stringify(siteData, null, 2);
+            } catch (error) {
+                progressEl.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+                resultEl.textContent = error.stack || error.message;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generate Website';
+            }
+        };
+
+        function updateStats() {
+            document.getElementById('urlTestCount').textContent = stats.url.total;
+            document.getElementById('urlSuccessCount').textContent = stats.url.success;
+            document.getElementById('urlErrorCount').textContent = stats.url.error;
+
+            document.getElementById('pdfTestCount').textContent = stats.pdf.total;
+            document.getElementById('pdfSuccessCount').textContent = stats.pdf.success;
+            document.getElementById('pdfErrorCount').textContent = stats.pdf.error;
+
+            document.getElementById('siteTestCount').textContent = stats.site.total;
+            document.getElementById('siteSuccessCount').textContent = stats.site.success;
+        }
+    </script>
+</body>
+</html>
