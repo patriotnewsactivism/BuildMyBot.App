@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Mail, Instagram, Megaphone, Loader, Copy, Check, Twitter, Smartphone } from 'lucide-react';
-import { generateMarketingContent } from '../../services/aiService';
+import { generateMarketingContent } from '../../services/openaiService';
 
 export const MarketingTools: React.FC = () => {
   const [topic, setTopic] = useState('');
