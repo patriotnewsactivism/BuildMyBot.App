@@ -1,44 +1,12 @@
-// NOTE: Filename retained as geminiService.ts to prevent breaking imports,
-// but implementation uses OpenAI GPT-4o Mini as configured in the project.
+import { GoogleGenAI, Type } from "@google/genai";
 
-const API_KEY = process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY || process.env.REACT_APP_OPENAI_API_KEY || '';
-
-interface Message {
-  role: 'user' | 'model' | 'system';
-  text: string;
-}
-
-const callOpenAI = async (messages: any[], model: string = 'gpt-4o-mini', temperature: number = 0.7) => {
-  if (!API_KEY) throw new Error("Missing OpenAI API Key");
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_KEY}`
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: messages,
-      temperature: temperature,
-      max_tokens: 1000,
-    })
-  });
-
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error?.message || 'OpenAI API Error');
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
-};
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generateBotResponse = async (
   systemPrompt: string,
   history: { role: 'user' | 'model'; text: string }[],
   lastMessage: string,
-  modelName: string = 'gpt-4o-mini',
+  modelName: string = 'gemini-2.5-flash',
   context?: string
 ): Promise<string> => {
   try {
@@ -47,124 +15,69 @@ export const generateBotResponse = async (
       finalSystemPrompt += `\n\nCONTEXT FROM KNOWLEDGE BASE:\n${context}\n\nINSTRUCTIONS: Answer strictly based on the provided context if relevant. If the answer is not in the context, use your general knowledge but mention you are unsure.`;
     }
 
-    const messages = [
-      { role: 'system', content: finalSystemPrompt },
-      ...history.map(msg => ({
-        role: msg.role === 'model' ? 'assistant' : 'user',
-        content: msg.text
-      }))
-    ];
-
-    // Ensure the last message isn't duplicated if it's already in history
+    // Map history to Gemini format
+    // Note: Gemini 2.5 Flash supports system instructions in the config
+    // We construct the prompt by appending history
+    
+    // Construct the chat history for the prompt context
+    let promptContext = "";
+    if (history.length > 0) {
+        promptContext = history.map(msg => `${msg.role === 'model' ? 'Model' : 'User'}: ${msg.text}`).join('\n') + "\n";
+    }
+    
+    // Check if the last message is already in history to avoid duplication
     if (history.length === 0 || history[history.length - 1].text !== lastMessage) {
-        messages.push({ role: 'user', content: lastMessage });
+        promptContext += `User: ${lastMessage}`;
     }
 
-    return await callOpenAI(messages, modelName);
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: promptContext,
+      config: {
+        systemInstruction: finalSystemPrompt,
+        temperature: 0.7,
+      }
+    });
+
+    return response.text || "I'm having trouble thinking of a response right now.";
   } catch (error) {
     console.error("AI Generation Error:", error);
     return "I'm having trouble connecting to my brain right now. Please check your API configuration.";
   }
 };
 
-export const scrapeWebsiteContent = async (
-  url: string,
-  options?: {
-    maxLength?: number;
-    onProgress?: (stage: string) => void;
-  }
-): Promise<string> => {
-  const maxLength = options?.maxLength || 30000; // Increased default limit
-  const onProgress = options?.onProgress;
-
+export const scrapeWebsiteContent = async (url: string): Promise<string> => {
   try {
     // 1. Validate URL
-    let targetUrl = url.trim();
+    let targetUrl = url;
     if (!targetUrl.startsWith('http')) {
       targetUrl = 'https://' + targetUrl;
     }
 
-    // Basic URL validation
-    try {
-      new URL(targetUrl);
-    } catch {
-      throw new Error(`Invalid URL format: ${url}`);
-    }
-
-    onProgress?.("Fetching website content...");
-
     // 2. Use Jina Reader to get clean Markdown
-    const scrapeResponse = await fetch(`https://r.jina.ai/${targetUrl}`, {
-      headers: {
-        'Accept': 'text/plain',
-      },
-    });
-
+    const scrapeResponse = await fetch(`https://r.jina.ai/${targetUrl}`);
     if (!scrapeResponse.ok) {
-      if (scrapeResponse.status === 404) {
-        throw new Error(`Website not found (404): ${targetUrl}`);
-      } else if (scrapeResponse.status === 403) {
-        throw new Error(`Access forbidden (403): The website blocks automated access`);
-      } else if (scrapeResponse.status >= 500) {
-        throw new Error(`Server error (${scrapeResponse.status}): The website is temporarily unavailable`);
-      }
       throw new Error(`Scraping failed with status: ${scrapeResponse.status}`);
     }
-
+    
     const rawMarkdown = await scrapeResponse.text();
 
-    if (!rawMarkdown || rawMarkdown.length < 50) {
-      throw new Error(`Insufficient content retrieved from ${url}. The page may be empty or blocked.`);
-    }
-
-    onProgress?.("Analyzing content with AI...");
-
-    // 3. Intelligently truncate if needed (keep first and last portions)
-    let contentToAnalyze = rawMarkdown;
-    let wasTruncated = false;
-
-    if (rawMarkdown.length > maxLength) {
-      wasTruncated = true;
-      const halfMax = Math.floor(maxLength / 2);
-      contentToAnalyze = rawMarkdown.substring(0, halfMax) +
-        "\n\n[... CONTENT TRUNCATED ...]\n\n" +
-        rawMarkdown.substring(rawMarkdown.length - halfMax);
-    }
+    // 3. If content is too long, truncate it for the prompt
+    const truncatedContent = rawMarkdown.substring(0, 30000); 
 
     // 4. Use AI to summarize and structure the data for a Knowledge Base
-    const summary = await generateBotResponse(
-      "You are a Data Extraction Expert. Extract and organize key information from website content into a clear, structured format that a chatbot can use to answer questions.",
-      [],
-      `Extract and format the following information from this website:\n\n` +
-      `1. Business/Organization Name & Description\n` +
-      `2. Main Services/Products/Offerings\n` +
-      `3. Contact Information (Phone, Email, Address, Social Media)\n` +
-      `4. Operating Hours (if available)\n` +
-      `5. Pricing/Rates (if available)\n` +
-      `6. Key Features/Benefits\n` +
-      `7. Important Policies or Terms\n` +
-      `8. Any other relevant facts\n\n` +
-      `Format as clear bullet points under each category. Only include information that is actually present.\n\n` +
-      `WEBSITE CONTENT:\n${contentToAnalyze}\n\n` +
-      `${wasTruncated ? 'Note: Content was truncated due to length. Focus on the most important information.' : ''}`,
-      'gpt-4o-mini'
-    );
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Please extract the following from this website content and format it as a concise list of facts suitable for a chatbot knowledge base:\n1. Business Name & Description\n2. Key Services/Products\n3. Contact Info (Phone, Email, Address)\n4. Operating Hours\n5. Pricing/Offers (if available)\n\nWEBSITE CONTENT:\n${truncatedContent}`,
+        config: {
+            systemInstruction: "You are a Data Extraction Expert. Your job is to extract key business information from website content.",
+        }
+    });
 
-    onProgress?.("Complete!");
-
-    // Add metadata about the scrape
-    const metadata = `\n\n---\nSource: ${targetUrl}\nScraped: ${new Date().toLocaleString()}\nContent Size: ${(rawMarkdown.length / 1024).toFixed(1)}KB${wasTruncated ? ' (truncated)' : ''}`;
-
-    return summary + metadata;
-  } catch (error: any) {
+    return response.text || "Could not extract information.";
+  } catch (error) {
     console.error("Scraping Error:", error);
-    onProgress?.("Error");
-
-    // Provide specific error messages
-    if (error.message) {
-      throw new Error(error.message);
-    }
-    throw new Error(`Unable to scrape ${url}. Please check the URL and try again.`);
+    return `Unable to scrape ${url}. It might be blocked or unavailable. Please add information manually.`;
   }
 };
 
@@ -173,15 +86,56 @@ export const simulateWebScrape = scrapeWebsiteContent;
 
 export const generateMarketingContent = async (type: string, topic: string, tone: string): Promise<string> => {
   const prompt = `Write a ${tone} ${type} about ${topic}. Keep it engaging, high-converting, and formatted correctly for the platform.`;
-  return await generateBotResponse("You are a world-class Copywriter.", [], prompt);
+  
+  try {
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            systemInstruction: "You are a world-class Copywriter.",
+            temperature: 0.8
+        }
+    });
+    return response.text || "Failed to generate content.";
+  } catch (e) {
+      console.error(e);
+      return "Error generating content.";
+  }
 };
 
 export const generateWebsiteStructure = async (businessName: string, description: string): Promise<string> => {
   const prompt = `Generate a JSON structure for a landing page for "${businessName}". Description: ${description}.
-  Return ONLY valid JSON with no markdown formatting.
-  Format: { "headline": "...", "subheadline": "...", "features": ["...", "...", "..."], "ctaText": "..." }`;
+  Return ONLY valid JSON with no markdown formatting.`;
   
-  const response = await callOpenAI([{ role: 'user', content: prompt }]);
-  // Clean up code blocks if present
-  return response.replace(/```json/g, '').replace(/```/g, '').trim();
+  try {
+      const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  headline: { type: Type.STRING },
+                  subheadline: { type: Type.STRING },
+                  features: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                  },
+                  ctaText: { type: Type.STRING }
+                },
+                required: ["headline", "subheadline", "features", "ctaText"],
+              }
+          }
+      });
+      return response.text || "{}";
+  } catch (e) {
+      console.error(e);
+      return JSON.stringify({
+          headline: `Welcome to ${businessName}`,
+          subheadline: description,
+          features: ["Service 1", "Service 2", "Service 3"],
+          ctaText: "Get Started"
+      });
+  }
 };

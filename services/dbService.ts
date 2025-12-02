@@ -1,22 +1,12 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { requireSupabaseClient } from './supabaseClient';
+import { supabase } from './supabaseClient';
 import { Bot, Lead, Conversation, User, PlanType } from '../types';
-
-const getClient = (): SupabaseClient | null => {
-  try {
-    return requireSupabaseClient();
-  } catch (error) {
-    console.warn('Supabase client unavailable. Skipping database call.', error);
-    return null;
-  }
-};
 
 export const dbService = {
   // --- BOTS ---
   
   // Real-time listener for bots
   subscribeToBots: (onUpdate: (bots: Bot[]) => void) => {
-    const client = getClient();
+    const client = supabase;
     if (!client) return () => {};
 
     // Initial fetch
@@ -42,7 +32,7 @@ export const dbService = {
   },
 
   saveBot: async (bot: Bot) => {
-    const client = getClient();
+    const client = supabase;
     if (!client) return bot;
     const { data, error } = await client
       .from('bots')
@@ -55,7 +45,7 @@ export const dbService = {
   },
 
   getBotById: async (id: string): Promise<Bot | undefined> => {
-    const client = getClient();
+    const client = supabase;
     if (!client) return undefined;
     const { data, error } = await client
       .from('bots')
@@ -70,7 +60,7 @@ export const dbService = {
   // --- LEADS ---
 
   subscribeToLeads: (onUpdate: (leads: Lead[]) => void) => {
-    const client = getClient();
+    const client = supabase;
     if (!client) return () => {};
 
     const fetchLeads = async () => {
@@ -97,7 +87,7 @@ export const dbService = {
   },
 
   saveLead: async (lead: Lead) => {
-    const client = getClient();
+    const client = supabase;
     if (!client) return lead;
     
     // Upsert handles duplicate ID or we can rely on unique constraints
@@ -118,7 +108,7 @@ export const dbService = {
   // --- USER & BILLING ---
 
   getUserProfile: async (uid: string): Promise<User | null> => {
-    const client = getClient();
+    const client = supabase;
     if (!client) return null;
     const { data, error } = await client
       .from('profiles')
@@ -131,7 +121,7 @@ export const dbService = {
   },
 
   saveUserProfile: async (user: User) => {
-    const client = getClient();
+    const client = supabase;
     if (!client) return;
     const now = new Date().toISOString();
     
@@ -149,7 +139,7 @@ export const dbService = {
   },
 
   updateUserPlan: async (uid: string, plan: PlanType) => {
-    const client = getClient();
+    const client = supabase;
     if (!client) return;
     const { error } = await client
       .from('profiles')
@@ -163,7 +153,7 @@ export const dbService = {
 
   // Listen to users who were referred by this reseller code
   subscribeToReferrals: (resellerCode: string, onUpdate: (users: User[]) => void) => {
-    const client = getClient();
+    const client = supabase;
     if (!client) return () => {};
 
     const fetchReferrals = async () => {
@@ -194,7 +184,7 @@ export const dbService = {
   
   // Get ALL users for the Admin Dashboard
   getAllUsers: async (): Promise<User[]> => {
-    const client = getClient();
+    const client = supabase;
     if (!client) return [];
     const { data, error } = await client
       .from('profiles')
@@ -208,7 +198,7 @@ export const dbService = {
   },
 
   updateUserStatus: async (uid: string, status: 'Active' | 'Suspended') => {
-    const client = getClient();
+    const client = supabase;
     if (!client) return;
     await client
       .from('profiles')
@@ -217,300 +207,11 @@ export const dbService = {
   },
 
   approvePartner: async (uid: string) => {
-    const client = getClient();
+    const client = supabase;
     if (!client) return;
     await client
       .from('profiles')
       .update({ status: 'Active' })
       .eq('id', uid);
-  },
-
-  // --- CONVERSATIONS ---
-
-  subscribeToConversations: (onUpdate: (conversations: Conversation[]) => void) => {
-    const client = getClient();
-    if (!client) return () => {};
-
-    const fetchConversations = async () => {
-      const { data, error } = await client
-        .from('conversations')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        onUpdate(data as Conversation[]);
-      }
-    };
-    fetchConversations();
-
-    const channel = client.channel('public:conversations')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
-        fetchConversations();
-      })
-      .subscribe();
-
-    return () => {
-      client.removeChannel(channel);
-    };
-  },
-
-  saveConversation: async (conversation: Conversation, ownerId: string) => {
-    const client = getClient();
-    if (!client) return conversation;
-
-    const convData = {
-      id: conversation.id,
-      bot_id: conversation.botId,
-      owner_id: ownerId,
-      messages: conversation.messages,
-      sentiment: conversation.sentiment,
-      session_id: conversation.id,
-      created_at: new Date(conversation.timestamp).toISOString()
-    };
-
-    const { data, error } = await client
-      .from('conversations')
-      .upsert(convData)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error saving conversation:", error);
-      return conversation;
-    }
-    return conversation;
-  },
-
-  // --- ANALYTICS ---
-
-  getAnalytics: async (ownerId: string, days: number = 7) => {
-    const client = getClient();
-    if (!client) return [];
-
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-
-    const { data: conversations, error: convError } = await client
-      .from('conversations')
-      .select('created_at')
-      .eq('owner_id', ownerId)
-      .gte('created_at', startDate.toISOString());
-
-    const { data: leads, error: leadsError } = await client
-      .from('leads')
-      .select('created_at')
-      .eq('owner_id', ownerId)
-      .gte('created_at', startDate.toISOString());
-
-    if (convError || leadsError) {
-      console.error("Error fetching analytics:", convError || leadsError);
-      return [];
-    }
-
-    // Group by day
-    const analytics: { [key: string]: { conversations: number; leads: number } } = {};
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    // Initialize all days
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dayName = dayNames[date.getDay()];
-      analytics[dayName] = { conversations: 0, leads: 0 };
-    }
-
-    // Count conversations
-    conversations?.forEach(conv => {
-      const date = new Date(conv.created_at);
-      const dayName = dayNames[date.getDay()];
-      if (analytics[dayName]) {
-        analytics[dayName].conversations++;
-      }
-    });
-
-    // Count leads
-    leads?.forEach(lead => {
-      const date = new Date(lead.created_at);
-      const dayName = dayNames[date.getDay()];
-      if (analytics[dayName]) {
-        analytics[dayName].leads++;
-      }
-    });
-
-    return Object.entries(analytics).map(([date, data]) => ({
-      date,
-      conversations: data.conversations,
-      leads: data.leads
-    }));
-  },
-
-  // --- MARKETING CONTENT ---
-
-  saveMarketingContent: async (ownerId: string, type: string, title: string, content: string, topic: string, tone: string) => {
-    const client = getClient();
-    if (!client) return;
-
-    const { error } = await client
-      .from('marketing_content')
-      .insert({
-        owner_id: ownerId,
-        type,
-        title,
-        content,
-        topic,
-        tone
-      });
-
-    if (error) console.error("Error saving marketing content:", error);
-  },
-
-  getMarketingContent: async (ownerId: string) => {
-    const client = getClient();
-    if (!client) return [];
-
-    const { data, error } = await client
-      .from('marketing_content')
-      .select('*')
-      .eq('owner_id', ownerId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error("Error fetching marketing content:", error);
-      return [];
-    }
-    return data;
-  },
-
-  deleteMarketingContent: async (id: string) => {
-    const client = getClient();
-    if (!client) return;
-
-    await client
-      .from('marketing_content')
-      .delete()
-      .eq('id', id);
-  },
-
-  // --- TEMPLATES ---
-
-  getTemplates: async () => {
-    const client = getClient();
-    if (!client) return [];
-
-    const { data, error } = await client
-      .from('templates')
-      .select('*')
-      .order('featured', { ascending: false });
-
-    if (error) {
-      console.error("Error fetching templates:", error);
-      return [];
-    }
-    return data;
-  },
-
-  // --- USAGE TRACKING ---
-
-  trackUsage: async (ownerId: string, eventType: string, botId?: string, quantity: number = 1) => {
-    const client = getClient();
-    if (!client) return;
-
-    await client
-      .from('usage_events')
-      .insert({
-        owner_id: ownerId,
-        event_type: eventType,
-        bot_id: botId,
-        quantity
-      });
-  },
-
-  getUsageStats: async (ownerId: string) => {
-    const client = getClient();
-    if (!client) return null;
-
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    const { data, error } = await client
-      .from('usage_events')
-      .select('quantity')
-      .eq('owner_id', ownerId)
-      .eq('event_type', 'conversation')
-      .gte('created_at', startOfMonth.toISOString());
-
-    if (error) {
-      console.error("Error fetching usage:", error);
-      return null;
-    }
-
-      const totalConversations =
-        data?.reduce((sum: number, event: { quantity: number }) => sum + event.quantity, 0) || 0;
-    return { conversationsUsed: totalConversations };
-  },
-
-  // --- ADMIN FUNCTIONS (Bypass RLS) ---
-
-  getAllBots: async (): Promise<Bot[]> => {
-    const client = getClient();
-    if (!client) return [];
-    const { data, error } = await client
-      .from('bots')
-      .select('*');
-
-    if (error) {
-      console.error("Error fetching all bots:", error);
-      return [];
-    }
-    return data as Bot[];
-  },
-
-  getAllLeads: async (): Promise<Lead[]> => {
-    const client = getClient();
-    if (!client) return [];
-    const { data, error } = await client
-      .from('leads')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error("Error fetching all leads:", error);
-      return [];
-    }
-    return data as Lead[];
-  },
-
-  getAllConversations: async (): Promise<Conversation[]> => {
-    const client = getClient();
-    if (!client) return [];
-    const { data, error } = await client
-      .from('conversations')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error("Error fetching all conversations:", error);
-      return [];
-    }
-    return data as Conversation[];
-  },
-
-  // Platform-wide statistics for admin dashboard
-  getPlatformStats: async () => {
-    const client = getClient();
-    if (!client) return null;
-
-    const { data: users } = await client.from('profiles').select('id', { count: 'exact' });
-    const { data: bots } = await client.from('bots').select('id', { count: 'exact' });
-    const { data: conversations } = await client.from('conversations').select('id', { count: 'exact' });
-    const { data: leads } = await client.from('leads').select('id', { count: 'exact' });
-
-    return {
-      totalUsers: users?.length || 0,
-      totalBots: bots?.length || 0,
-      totalConversations: conversations?.length || 0,
-      totalLeads: leads?.length || 0
-    };
   }
 };

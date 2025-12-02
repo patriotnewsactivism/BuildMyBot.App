@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign } from 'lucide-react';
 import { Bot as BotType } from '../../types';
-import { generateBotResponse, scrapeWebsiteContent } from '../../services/geminiService';
+import { generateBotResponse, scrapeWebsiteContent } from '../../services/openaiService';
 import { AVAILABLE_MODELS } from '../../constants';
 import { dbService } from '../../services/dbService';
 
@@ -62,7 +62,6 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   const [kbInput, setKbInput] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [isScraping, setIsScraping] = useState(false);
-  const [scrapeProgress, setScrapeProgress] = useState('');
   
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -145,24 +144,17 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   const handleScrapeUrl = async () => {
     if (!urlInput.trim()) return;
     setIsScraping(true);
-    setScrapeProgress('Starting...');
-
+    
     try {
-        const extractedData = await scrapeWebsiteContent(urlInput, {
-            onProgress: (stage) => setScrapeProgress(stage)
-        });
+        const extractedData = await scrapeWebsiteContent(urlInput);
         setActiveBot({
             ...activeBot,
             knowledgeBase: [...(activeBot.knowledgeBase || []), extractedData]
         });
         setUrlInput('');
-        setScrapeProgress('Added to knowledge base!');
-        setTimeout(() => setScrapeProgress(''), 2000);
-    } catch (error: any) {
+    } catch (error) {
         console.error("Scrape failed", error);
-        const errorMsg = error?.message || "Failed to scrape website. Please check the URL and try again.";
-        alert(errorMsg);
-        setScrapeProgress('');
+        alert("Failed to scrape website. Please check the URL and try again.");
     } finally {
         setIsScraping(false);
     }
@@ -449,11 +441,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                            Train Bot
                          </button>
                       </div>
-                      {scrapeProgress ? (
-                        <p className="text-xs text-blue-600 mt-2 font-medium">{scrapeProgress}</p>
-                     ) : (
-                        <p className="text-xs text-slate-500 mt-2">We will scrape this URL and add key info to the bot's memory.</p>
-                     )}
+                      <p className="text-xs text-slate-500 mt-2">We will scrape this URL and add key info to the bot's memory.</p>
                    </div>
 
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
