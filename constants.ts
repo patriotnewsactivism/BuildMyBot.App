@@ -81,8 +81,8 @@ export const RESELLER_TIERS = [
 ];
 
 export const AVAILABLE_MODELS = [
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Ultra-fast, low cost. Best for high-volume tasks.' },
-  { id: 'gpt-4o', name: 'GPT-4o (Omni)', description: 'Flagship intelligence. Best for complex reasoning.' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast, cost-effective. Best for most business tasks.' },
+  { id: 'gpt-4o', name: 'GPT-4o', description: 'High intelligence. Best for complex reasoning and creative tasks.' },
 ];
 
 export const MOCK_ANALYTICS_DATA = [

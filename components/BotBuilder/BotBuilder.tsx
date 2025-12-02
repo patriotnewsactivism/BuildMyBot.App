@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign } from 'lucide-react';
 import { Bot as BotType } from '../../types';
-import { generateBotResponse, uploadKnowledgeBase } from '../../services/aiService';
+import { generateBotResponse, scrapeWebsiteContent } from '../../services/openaiService';
 import { AVAILABLE_MODELS } from '../../constants';
 import { dbService } from '../../services/dbService';
 
@@ -141,17 +141,23 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     setKbInput('');
   };
 
-  const handleScrapeUrl = () => {
+  const handleScrapeUrl = async () => {
     if (!urlInput.trim()) return;
     setIsScraping(true);
-    setTimeout(() => {
-        setIsScraping(false);
+    
+    try {
+        const extractedData = await scrapeWebsiteContent(urlInput);
         setActiveBot({
             ...activeBot,
-            knowledgeBase: [...(activeBot.knowledgeBase || []), `[SCRAPED CONTENT FROM ${urlInput}]: This business offers premium services. Hours are 9-5. Contact us at 555-0123.`]
+            knowledgeBase: [...(activeBot.knowledgeBase || []), extractedData]
         });
         setUrlInput('');
-    }, 2000);
+    } catch (error) {
+        console.error("Scrape failed", error);
+        alert("Failed to scrape website. Please check the URL and try again.");
+    } finally {
+        setIsScraping(false);
+    }
   };
 
   const handleTestSend = async () => {
@@ -435,7 +441,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                            Train Bot
                          </button>
                       </div>
-                      <p className="text-xs text-slate-500 mt-2">We will scrape this URL and add it to the bot's memory.</p>
+                      <p className="text-xs text-slate-500 mt-2">We will scrape this URL and add key info to the bot's memory.</p>
                    </div>
 
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
@@ -466,7 +472,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                          )}
                          {activeBot.knowledgeBase.map((item, i) => (
                             <div key={i} className="flex items-start justify-between bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm">
-                               <p className="text-slate-700">{item}</p>
+                               <p className="text-slate-700 whitespace-pre-wrap">{item}</p>
                                <button 
                                  onClick={() => {
                                      const newKb = [...activeBot.knowledgeBase];
