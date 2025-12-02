@@ -178,8 +178,8 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
 
     try {
         const context = activeBot.knowledgeBase.join('\n\n');
-        const response = await generateBotResponse(activeBot.systemPrompt, updatedHistory, newMessage.text, activeBot.model, context);
-        
+        const response = await generateBotResponse(activeBot.systemPrompt, updatedHistory, newMessage.text, activeBot.model, context, activeBot.id);
+
         // Use configured delay
         setTimeout(() => {
             setTestHistory(prev => [...prev, { role: 'model', text: response, timestamp: Date.now() }]);
