@@ -31,7 +31,7 @@ export const dbService = {
         },
         async () => {
           // Fetch updated bots
-          const { data, error } = await supabase
+          const { data, error } = await supabase!
             .from(TABLES.BOTS)
             .select('*')
             .order('created_at', { ascending: false });
@@ -84,7 +84,7 @@ export const dbService = {
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase!.removeChannel(channel);
     };
   },
 
@@ -172,7 +172,7 @@ export const dbService = {
           table: TABLES.LEADS,
         },
         async () => {
-          const { data, error } = await supabase
+          const { data, error } = await supabase!
             .from(TABLES.LEADS)
             .select('*')
             .order('created_at', { ascending: false });
@@ -220,7 +220,7 @@ export const dbService = {
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase!.removeChannel(channel);
     };
   },
 
@@ -348,7 +348,7 @@ export const dbService = {
           filter: `referred_by=eq.${resellerCode}`,
         },
         async () => {
-          const { data, error } = await supabase
+          const { data, error } = await supabase!
             .from(TABLES.PROFILES)
             .select('*')
             .eq('referred_by', resellerCode);
@@ -371,7 +371,7 @@ export const dbService = {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase!.removeChannel(channel);
     };
   },
 

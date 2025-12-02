@@ -45,8 +45,8 @@ export const initSentry = () => {
             // Remove sensitive keys
             const sensitiveKeys = ['password', 'apiKey', 'token', 'secret'];
             sensitiveKeys.forEach(key => {
-              if (key in breadcrumb.data) {
-                breadcrumb.data[key] = '[Filtered]';
+              if (key in breadcrumb.data!) {
+                breadcrumb.data![key] = '[Filtered]';
               }
             });
           }
