@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Check, Shield, Zap, Star, Crown, Loader, TrendingUp } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, Shield, Zap, Star, Crown, Loader } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType, User } from '../../types';
 import { dbService } from '../../services/dbService';
@@ -11,17 +11,6 @@ interface BillingProps {
 export const Billing: React.FC<BillingProps> = ({ user }) => {
   const currentPlan = user?.plan || PlanType.FREE;
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
-  const [usageStats, setUsageStats] = useState<{ conversationsUsed: number } | null>(null);
-
-  useEffect(() => {
-    const loadUsage = async () => {
-      if (user?.id) {
-        const stats = await dbService.getUsageStats(user.id);
-        setUsageStats(stats);
-      }
-    };
-    loadUsage();
-  }, [user?.id]);
 
   const handleUpgrade = async (planId: string) => {
     if (!user) return;
@@ -42,52 +31,11 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
     }, 2000);
   };
 
-  const planLimit = PLANS[currentPlan]?.conversations || 60;
-  const conversationsUsed = usageStats?.conversationsUsed || 0;
-  const percentageUsed = (conversationsUsed / planLimit) * 100;
-
   return (
     <div className="space-y-8 animate-fade-in max-w-[95rem] mx-auto pb-10">
       <div className="text-center">
         <h2 className="text-3xl font-bold text-slate-800">Upgrade your Plan</h2>
         <p className="text-slate-500 mt-2">Scale your business with our power-packed tiers. Cancel anytime.</p>
-      </div>
-
-      {/* Usage Stats Card */}
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 p-6 max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-900 text-white rounded-lg">
-              <TrendingUp size={20} />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-800">Usage This Month</h3>
-              <p className="text-xs text-slate-500">Resets on the 1st of each month</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-slate-900">{conversationsUsed}</div>
-            <div className="text-xs text-slate-500">of {planLimit.toLocaleString()} conversations</div>
-          </div>
-        </div>
-        <div className="w-full bg-white rounded-full h-3 overflow-hidden shadow-inner">
-          <div
-            className={`h-full transition-all duration-500 ${
-              percentageUsed > 90 ? 'bg-red-500' : percentageUsed > 70 ? 'bg-yellow-500' : 'bg-emerald-500'
-            }`}
-            style={{ width: `${Math.min(percentageUsed, 100)}%` }}
-          />
-        </div>
-        <div className="flex justify-between mt-2 text-xs text-slate-500">
-          <span>0</span>
-          <span>{percentageUsed.toFixed(1)}% used</span>
-          <span>{planLimit.toLocaleString()}</span>
-        </div>
-        {percentageUsed > 80 && (
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-            <strong>Warning:</strong> You've used {percentageUsed.toFixed(0)}% of your monthly limit. Consider upgrading to avoid service interruption.
-          </div>
-        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">

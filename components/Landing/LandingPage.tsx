@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus, Loader, RefreshCcw, Send } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
-import { generateBotResponse, generateMarketingContent, scrapeWebsiteContent, generateWebsiteStructure } from '../../services/geminiService';
-import { processPDFForKnowledgeBase } from '../../services/pdfService';
+import { generateBotResponse, generateMarketingContent, scrapeWebsiteContent, generateWebsiteStructure } from '../../services/openaiService';
 
 interface LandingProps {
   onLogin: () => void;
@@ -27,43 +26,23 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   const hasGreeted = useRef(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Live Demos State
-  const [activeDemo, setActiveDemo] = useState<'training' | 'phone' | 'viral' | 'site' | 'crm'>('training');
-  
-  // Training Demo State
-  const [trainingStep, setTrainingStep] = useState(0); // 0: Input, 1: Scanning, 2: Ready/Chat
-  const [trainingType, setTrainingType] = useState<'pdf' | 'url'>('url');
+  // Demo States for New Features
   const [trainingUrl, setTrainingUrl] = useState('');
-  const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
-  const [scrapedContent, setScrapedContent] = useState('');
-  const [trainingChatInput, setTrainingChatInput] = useState('');
-  const [trainingChatHistory, setTrainingChatHistory] = useState<{role: 'user'|'model', text: string}[]>([]);
-  const [isTrainingChatTyping, setIsTrainingChatTyping] = useState(false);
-  const [trainingProgress, setTrainingProgress] = useState('');
-  const [trainingError, setTrainingError] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapedData, setScrapedData] = useState<string | null>(null);
+  const [scrapingChatHistory, setScrapingChatHistory] = useState<{role: 'user'|'model', text: string}[]>([]);
+  const [scrapingChatInput, setScrapingChatInput] = useState('');
+  const [isScrapingChatTyping, setIsScrapingChatTyping] = useState(false);
 
-  // Phone Demo State
-  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'calling' | 'connected'>('idle');
-  const [phoneTranscript, setPhoneTranscript] = useState<string[]>([]);
+  const [marketingTopic, setMarketingTopic] = useState('');
+  const [marketingResult, setMarketingResult] = useState('');
+  const [isMarketingLoading, setIsMarketingLoading] = useState(false);
 
-  // Viral Demo State
-  const [viralTopic, setViralTopic] = useState('');
-  const [viralResult, setViralResult] = useState<any>(null);
-  const [isGeneratingViral, setIsGeneratingViral] = useState(false);
-
-  // Site Demo State
   const [siteName, setSiteName] = useState('');
-  const [siteIndustry, setSiteIndustry] = useState('Coffee Shop');
-  const [generatedSite, setGeneratedSite] = useState<any>(null);
-  const [isBuildingSite, setIsBuildingSite] = useState(false);
+  const [siteDesc, setSiteDesc] = useState('');
+  const [siteResult, setSiteResult] = useState<any>(null);
+  const [isSiteBuilding, setIsSiteBuilding] = useState(false);
 
-  // CRM Demo State
-  const [crmLeads, setCrmLeads] = useState<any[]>([
-      { name: 'Sarah Miller', email: 'sarah.m@gmail.com', status: 'New', score: 45, time: '2m ago' },
-      { name: 'Mike Ross', email: 'mike.ross@law.com', status: 'Qualified', score: 88, time: '15m ago' },
-  ]);
-  const [isSimulatingLead, setIsSimulatingLead] = useState(false);
 
   // Initialize random identity on mount
   useEffect(() => {
@@ -89,206 +68,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         }, 1500);
     }
   }, [isChatOpen, demoIdentity]);
-
-  // --- DEMO HANDLERS ---
-
-  const handlePdfFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type === 'application/pdf') {
-      setSelectedPdfFile(file);
-      handleTrainingDemo();
-    } else if (file) {
-      setTrainingError('Please select a valid PDF file');
-      setTimeout(() => setTrainingError(''), 3000);
-    }
-  };
-
-  const handleTrainingDemo = async () => {
-    if (trainingType === 'url' && !trainingUrl) return;
-    if (trainingType === 'pdf' && !selectedPdfFile) {
-      // Trigger file input
-      fileInputRef.current?.click();
-      return;
-    }
-
-    setTrainingStep(1);
-    setTrainingChatHistory([]);
-    setTrainingError('');
-    setTrainingProgress('Starting...');
-
-    let content = "";
-    if (trainingType === 'pdf' && selectedPdfFile) {
-       // Real PDF extraction
-       try {
-         content = await processPDFForKnowledgeBase(selectedPdfFile, (progress, stage) => {
-           setTrainingProgress(`${stage} (${progress}%)`);
-         });
-         setScrapedContent(content);
-         setTrainingProgress('Complete!');
-         setTrainingStep(2);
-       } catch (e: any) {
-         const errorMsg = e?.message || "Error processing PDF. Please try another file.";
-         setTrainingError(errorMsg);
-         setTrainingProgress('');
-         setSelectedPdfFile(null);
-         setTimeout(() => {
-           setTrainingStep(0);
-           setTrainingError('');
-         }, 5000);
-       }
-    } else {
-       // Real URL Scrape with progress tracking
-       try {
-         content = await scrapeWebsiteContent(trainingUrl, {
-           onProgress: (stage) => setTrainingProgress(stage)
-         });
-         setScrapedContent(content);
-         setTrainingStep(2);
-       } catch (e: any) {
-         const errorMsg = e?.message || "Error scraping website. Please check the URL and try again.";
-         setTrainingError(errorMsg);
-         setTrainingProgress('');
-         setTimeout(() => {
-           setTrainingStep(0);
-           setTrainingError('');
-         }, 5000); // Show error for 5 seconds
-       }
-    }
-  };
-
-  const handleTrainingChatSend = async () => {
-    if (!trainingChatInput.trim()) return;
-    
-    const userMsg = { role: 'user' as const, text: trainingChatInput };
-    setTrainingChatHistory(prev => [...prev, userMsg]);
-    setTrainingChatInput('');
-    setIsTrainingChatTyping(true);
-
-    try {
-        const response = await generateBotResponse(
-            "You are a helpful AI assistant trained on the provided context. Answer the user's question accurately based ONLY on the context.", 
-            [...trainingChatHistory, userMsg], 
-            userMsg.text, 
-            'gpt-4o-mini', 
-            scrapedContent
-        );
-        setTrainingChatHistory(prev => [...prev, { role: 'model', text: response }]);
-    } catch (e) {
-        setTrainingChatHistory(prev => [...prev, { role: 'model', text: "Error connecting to AI." }]);
-    } finally {
-        setIsTrainingChatTyping(false);
-    }
-  };
-
-  const handlePhoneDemoCall = () => {
-    setPhoneStatus('calling');
-    setPhoneTranscript([]);
-    
-    setTimeout(() => {
-        setPhoneStatus('connected');
-        const lines = [
-            "AI Agent: Hi there! Thanks for calling Apex Services. How can I help you?",
-            "You: I'd like to book an appointment for next Tuesday.",
-            "AI Agent: I can help with that. I have an opening at 10 AM or 2 PM. Which works best?",
-            "You: Let's do 10 AM.",
-            "AI Agent: Perfect. You are booked for Tuesday at 10 AM. I've sent a confirmation SMS. Anything else?"
-        ];
-        
-        let i = 0;
-        const interval = setInterval(() => {
-            setPhoneTranscript(prev => [...prev, lines[i]]);
-            
-            // Simple speech synthesis for demo
-            if ('speechSynthesis' in window && lines[i].startsWith('AI Agent')) {
-                const utterance = new SpeechSynthesisUtterance(lines[i].replace('AI Agent: ', ''));
-                utterance.rate = 1.1;
-                window.speechSynthesis.speak(utterance);
-            }
-
-            i++;
-            if (i >= lines.length) {
-                clearInterval(interval);
-                setTimeout(() => setPhoneStatus('idle'), 3000);
-            }
-        }, 2500);
-    }, 1500);
-  };
-
-  const handleViralGenerate = async () => {
-    if (!viralTopic) return;
-    setIsGeneratingViral(true);
-    setViralResult(null);
-    
-    try {
-        const content = await generateMarketingContent('viral-thread', viralTopic, 'engaging');
-        setViralResult({
-            user: 'Alex Founder',
-            handle: '@alex_builds',
-            content: content.substring(0, 280) + '...', // Truncate for preview
-            fullContent: content,
-            likes: Math.floor(Math.random() * 1000) + 100,
-            retweets: Math.floor(Math.random() * 200) + 20
-        });
-    } catch (e) {
-        setViralResult({
-             user: 'Alex Founder',
-             handle: '@alex_builds',
-             content: "Error generating content. Please check API configuration.",
-             likes: 0,
-             retweets: 0
-        });
-    } finally {
-        setIsGeneratingViral(false);
-    }
-  };
-
-  const handleSiteBuild = async () => {
-    if (!siteName) return;
-    setIsBuildingSite(true);
-    setGeneratedSite(null);
-
-    try {
-        const description = `A ${siteIndustry} business that provides excellent service and quality.`;
-        const jsonResponse = await generateWebsiteStructure(siteName, description);
-        const siteData = JSON.parse(jsonResponse);
-
-        setGeneratedSite({
-            name: siteName,
-            headline: siteData.headline || `Welcome to ${siteName}`,
-            subheadline: siteData.subheadline || `The Best ${siteIndustry}`,
-            cta: siteData.ctaText || siteData.cta || 'Get Started',
-            features: siteData.features || []
-        });
-    } catch (e) {
-        console.error("Website generation error:", e);
-        // Fallback to basic template on error
-        setGeneratedSite({
-            name: siteName,
-            headline: siteIndustry === 'City Government' ? `Welcome to the City of ${siteName}` : `The Best ${siteIndustry} in Town`,
-            subheadline: siteIndustry === 'City Government'
-                ? `Official portal for residents. Pay bills, report issues, and access city services online.`
-                : `Experience premium quality and service at ${siteName}. We are dedicated to excellence.`,
-            cta: siteIndustry === 'City Government' ? 'Access Services' : 'Book Now'
-        });
-    } finally {
-        setIsBuildingSite(false);
-    }
-  };
-
-  const handleSimulateLead = () => {
-    setIsSimulatingLead(true);
-    setTimeout(() => {
-        const newLead = { 
-            name: 'John Resident', 
-            email: 'john.d@email.com', 
-            status: 'Hot Lead', 
-            score: 95, 
-            time: 'Just now' 
-        };
-        setCrmLeads(prev => [newLead, ...prev]);
-        setIsSimulatingLead(false);
-    }, 1500);
-  };
 
   const handleDemoSend = async () => {
     if (!chatInput.trim()) return;
@@ -328,6 +107,78 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     } catch (e) {
         setIsTyping(false);
         setChatHistory(prev => [...prev, { role: 'model', text: "I'm having a bit of trouble connecting right now. Try again in a moment!" }]);
+    }
+  };
+
+  const handleTrainingDemo = async () => {
+    if (!trainingUrl) return;
+    setIsScraping(true);
+    setScrapedData(null);
+    setScrapingChatHistory([]);
+    try {
+      // Use the real scraper service
+      const data = await scrapeWebsiteContent(trainingUrl);
+      setScrapedData(data);
+      // Auto-start chat with context
+      setScrapingChatHistory([{ role: 'model', text: `I've learned everything about ${trainingUrl}. Ask me anything!` }]);
+    } catch (e) {
+      setScrapedData("Error scraping website. Please try a different URL.");
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
+  const handleScrapingChatSend = async () => {
+    if (!scrapingChatInput.trim() || !scrapedData) return;
+    const userMsg = { role: 'user' as const, text: scrapingChatInput };
+    setScrapingChatHistory(prev => [...prev, userMsg]);
+    setScrapingChatInput('');
+    setIsScrapingChatTyping(true);
+    
+    try {
+      const response = await generateBotResponse(
+        "You are a helpful assistant trained on the provided website content.", 
+        [...scrapingChatHistory, userMsg], 
+        userMsg.text, 
+        'gpt-4o-mini', 
+        scrapedData
+      );
+      setScrapingChatHistory(prev => [...prev, { role: 'model', text: response }]);
+    } catch(e) {
+      setScrapingChatHistory(prev => [...prev, { role: 'model', text: "Error generating response." }]);
+    } finally {
+      setIsScrapingChatTyping(false);
+    }
+  };
+
+  const handleViralGenerate = async () => {
+    if (!marketingTopic) return;
+    setIsMarketingLoading(true);
+    try {
+      const content = await generateMarketingContent('viral-thread', marketingTopic, 'Witty');
+      setMarketingResult(content);
+    } catch (e) {
+      setMarketingResult("Error generating content.");
+    } finally {
+      setIsMarketingLoading(false);
+    }
+  };
+
+  const handleSiteBuild = async () => {
+    if (!siteName || !siteDesc) return;
+    setIsSiteBuilding(true);
+    try {
+      const result = await generateWebsiteStructure(siteName, siteDesc);
+      setSiteResult(JSON.parse(result));
+    } catch (e) {
+       setSiteResult({
+          headline: "Welcome to " + siteName,
+          subheadline: siteDesc,
+          features: ["Quality Service", "Expert Team", "24/7 Support"],
+          ctaText: "Get Started Now"
+       });
+    } finally {
+      setIsSiteBuilding(false);
     }
   };
 
@@ -392,39 +243,14 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
             );
             break;
         case 'features':
-            title = 'Full Feature List';
+            title = 'Platform Features';
             content = (
-                <div className="space-y-6">
-                    <div>
-                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Bot size={18}/> AI Chatbots</h4>
-                        <ul className="space-y-2 text-sm text-slate-600">
-                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>GPT-4o Intelligence:</strong> Powered by the world's smartest AI model.</li>
-                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>RAG Knowledge Base:</strong> Train on your website, PDFs, and docs.</li>
-                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>Multi-Persona:</strong> Switch between Sales, Support, and HR modes instantly.</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Phone size={18}/> AI Phone Agent</h4>
-                        <ul className="space-y-2 text-sm text-slate-600">
-                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>24/7 Receptionist:</strong> Answers calls, takes messages, and routes urgent issues.</li>
-                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>Human-like Voice:</strong> Uses advanced neural speech for natural conversations.</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Layout size={18}/> Website & Marketing</h4>
-                        <ul className="space-y-2 text-sm text-slate-600">
-                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>Instant Site Builder:</strong> Generate a full landing page in 30 seconds.</li>
-                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>Viral Content:</strong> Auto-generate social posts, emails, and ad copy.</li>
-                        </ul>
-                    </div>
-                     <div>
-                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Flame size={18}/> Lead Growth</h4>
-                        <ul className="space-y-2 text-sm text-slate-600">
-                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>Hot Lead Detection:</strong> Scores leads and alerts you via SMS instantly.</li>
-                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>Built-in CRM:</strong> Track, tag, and export your leads.</li>
-                        </ul>
-                    </div>
-                </div>
+                <ul className="space-y-3">
+                    <li className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-1"/> <strong>GPT-4o Mini Intelligence:</strong> Understands nuance, sarcasm, and intent better than any other model.</li>
+                    <li className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-1"/> <strong>Hot Lead Detection:</strong> Automatically scores leads based on conversation quality.</li>
+                    <li className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-1"/> <strong>Instant Alerts:</strong> Get an SMS or Email the second a lead is qualified.</li>
+                    <li className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-1"/> <strong>Visual Builder:</strong> Drag-and-drop customization. No coding required.</li>
+                </ul>
             );
             break;
         default:
@@ -433,7 +259,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
     return (
       <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col animate-fade-in">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col animate-fade-in">
           <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-white rounded-t-xl sticky top-0 z-10">
             <h3 className="text-xl font-bold text-slate-800">{title}</h3>
             <button onClick={closeModal} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition"><X size={20} /></button>
@@ -450,12 +276,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   };
 
   const industries = [
-    {
-      title: 'City Government',
-      icon: Landmark,
-      color: 'slate',
-      desc: 'Automate 311 calls. Handle utility payments, permit questions, and community announcements instantly.'
-    },
     {
       title: 'Home Services',
       icon: Wrench,
@@ -527,45 +347,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       icon: Briefcase,
       color: 'sky',
       desc: 'White-label our platform. Sell AI chatbots to your own clients under your brand and create a new recurring revenue stream.'
-    }
-  ];
-
-  const featureCards = [
-    {
-        title: "AI Chatbots",
-        desc: "Custom trained on your website data. Handles sales, support, and bookings 24/7.",
-        icon: Bot,
-        color: "blue"
-    },
-    {
-        title: "AI Phone Agent",
-        desc: "A voice assistant that answers calls, takes messages, and routes urgent issues.",
-        icon: Phone,
-        color: "emerald"
-    },
-    {
-        title: "Website Builder",
-        desc: "Generate a high-converting landing page with built-in chat in under 30 seconds.",
-        icon: Layout,
-        color: "purple"
-    },
-    {
-        title: "Viral Marketing",
-        desc: "Auto-generate social posts, email campaigns, and ad copy that converts.",
-        icon: Megaphone,
-        color: "pink"
-    },
-    {
-        title: "Lead CRM",
-        desc: "Track every lead. Identify 'Hot Leads' automatically based on conversation score.",
-        icon: Users,
-        color: "orange"
-    },
-    {
-        title: "Reseller Platform",
-        desc: "White-label the entire system. Sell AI services to your clients under your brand.",
-        icon: Briefcase,
-        color: "slate"
     }
   ];
 
@@ -666,7 +447,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
           
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-            <button onClick={() => openModal('features')} className="hover:text-blue-900 transition font-semibold">Platform Features</button>
+            <button onClick={() => openModal('features')} className="hover:text-blue-900 transition">Features</button>
             <a href="#industries" className="hover:text-blue-900 transition">Who is this for?</a>
             <a href="#pricing" className="hover:text-blue-900 transition">Pricing</a>
             {onNavigateToPartner && (
@@ -691,7 +472,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         {/* Mobile Menu Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-slate-100 absolute w-full px-6 py-4 flex flex-col gap-4 shadow-xl">
-             <button onClick={() => {openModal('features'); setMobileMenuOpen(false);}} className="text-left font-medium text-slate-600 py-2">Platform Features</button>
+             <button onClick={() => {openModal('features'); setMobileMenuOpen(false);}} className="text-left font-medium text-slate-600 py-2">Features</button>
              <a href="#industries" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-600 py-2">Who is this for?</a>
              <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-600 py-2">Pricing</a>
              {onNavigateToPartner && (
@@ -724,7 +505,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
            </h1>
            
            <h2 className="text-xl md:text-2xl font-semibold text-slate-500 tracking-wide mb-10 max-w-3xl mx-auto">
-             Stop trading time for money. The ultimate AI workforce including <strong>Chatbots</strong>, <strong>Phone Agents</strong>, and <strong>Websites</strong>.
+             Stop trading time for money. The ultimate AI workforce that answers questions, books appointments, and identifies hot leads 24/7.
            </h2>
 
            <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-20">
@@ -747,7 +528,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                        <div className="w-3 h-3 rounded-full bg-slate-300"></div>
                        <div className="w-3 h-3 rounded-full bg-slate-300"></div>
                    </div>
-                   <div className="bg-white border border-slate-200 px-3 py-1 rounded text-[10px] text-slate-400 font-mono w-64 text-center">app.buildmybot.app/dashboard</div>
+                   <div className="bg-white border border-slate-200 px-3 py-1 rounded text-[10px] text-slate-400 font-mono w-64 text-center">app.buildmybot.io/dashboard</div>
                    <div className="w-10"></div>
                 </div>
                 
@@ -762,9 +543,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                       <div className="space-y-1">
                          <div className="bg-blue-900 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-3"><LayoutDashboard size={16}/> Dashboard</div>
                          <div className="text-slate-400 px-3 py-2 rounded-lg text-sm flex items-center gap-3"><Bot size={16}/> My Bots</div>
-                         <div className="text-slate-400 px-3 py-2 rounded-lg text-sm flex items-center gap-3"><Phone size={16}/> Phone Agent</div>
+                         <div className="text-slate-400 px-3 py-2 rounded-lg text-sm flex items-center gap-3"><MessageSquare size={16}/> Conversations</div>
                          <div className="text-slate-400 px-3 py-2 rounded-lg text-sm flex items-center gap-3"><Users size={16}/> Lead CRM</div>
-                         <div className="text-slate-400 px-3 py-2 rounded-lg text-sm flex items-center gap-3"><Megaphone size={16}/> Marketing</div>
                       </div>
                    </div>
                    
@@ -786,9 +566,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                             {l: 'Revenue', v: '$4,200', i: TrendingUp, c: 'emerald'}
                          ].map((s, i) => (
                             <div key={i} className="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
-                                <div className={`w-8 h-8 rounded-lg bg-${s.c}-50 text-${s.c}-600 flex items-center justify-center mb-3`}><s.i size={16}/></div>
-                                <div className="text-xl md:text-2xl font-bold text-slate-800">{s.v}</div>
-                                <div className="text-xs text-slate-500">{s.l}</div>
+                               <div className={`w-8 h-8 rounded-lg bg-${s.c}-50 text-${s.c}-600 flex items-center justify-center mb-3`}><s.i size={16}/></div>
+                               <div className="text-xl md:text-2xl font-bold text-slate-800">{s.v}</div>
+                               <div className="text-xs text-slate-500">{s.l}</div>
                             </div>
                          ))}
                       </div>
@@ -811,542 +591,193 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         </div>
       </section>
 
-       {/* All-In-One Feature Grid */}
-       <section className="py-24 px-6 bg-white">
-          <div className="max-w-7xl mx-auto">
-             <div className="text-center mb-16">
-               <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">The All-In-One AI Operating System</h2>
-               <p className="text-lg text-slate-600 max-w-2xl mx-auto">Replace 5 different tools with one platform.</p>
-             </div>
-
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {featureCards.map((feat, idx) => (
-                   <div key={idx} className="p-8 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-xl hover:border-blue-200 transition duration-300 group">
-                      <div className={`w-14 h-14 rounded-2xl bg-${feat.color}-50 text-${feat.color}-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                         <feat.icon size={28} />
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-900 mb-3">{feat.title}</h3>
-                      <p className="text-slate-600 leading-relaxed">
-                         {feat.desc}
-                      </p>
-                   </div>
-                ))}
-             </div>
-          </div>
-       </section>
-
-      {/* NEW: Interactive Live Demos Section */}
-      <section className="py-24 px-6 bg-slate-900 text-white relative overflow-hidden">
-         <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/50 to-transparent"></div>
-         <div className="max-w-6xl mx-auto relative z-10">
-            <div className="text-center mb-12">
-               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-blue-300 text-xs font-bold uppercase tracking-wide mb-6">
-                  <Zap size={12} fill="currentColor" /> Live Interactive Demo
-               </div>
-               <h2 className="text-3xl md:text-5xl font-extrabold mb-6">Experience the Power.</h2>
-               <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-                  Don't just take our word for it. Try our most powerful features right here.
-               </p>
+      {/* Feature Demos */}
+      <section className="py-24 bg-white border-t border-slate-100">
+         <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center mb-16">
+               <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">See the Magic in Action</h2>
+               <p className="text-lg text-slate-600">Real, live examples of our AI capabilities.</p>
             </div>
 
-            {/* Tab Nav */}
-            <div className="flex flex-wrap justify-center gap-4 mb-12">
-               {[
-                  { id: 'training', label: 'Instant Training', icon: FileText },
-                  { id: 'phone', label: 'AI Phone Agent', icon: Phone },
-                  { id: 'crm', label: 'Lead CRM', icon: Users },
-                  { id: 'viral', label: 'Viral Post Creator', icon: Search },
-                  { id: 'site', label: 'Instant Website', icon: Layout }
-               ].map((tab) => (
-                  <button
-                     key={tab.id}
-                     onClick={() => setActiveDemo(tab.id as any)}
-                     className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold transition-all duration-300 ${
-                        activeDemo === tab.id 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-105' 
-                        : 'bg-white/5 text-slate-400 hover:bg-white/10'
-                     }`}
-                  >
-                     <tab.icon size={18} /> {tab.label}
-                  </button>
-               ))}
-            </div>
-
-            {/* Demo Container */}
-            <div className="bg-slate-800 rounded-3xl border border-slate-700 shadow-2xl overflow-hidden min-h-[500px] flex flex-col md:flex-row">
-               
-               {/* Instant Training Demo (PDF/URL) */}
-               {activeDemo === 'training' && (
-                  <div className="w-full h-full flex flex-col md:flex-row animate-fade-in">
-                     <div className="flex-1 p-8 md:p-12 flex flex-col justify-center border-b md:border-b-0 md:border-r border-slate-700 bg-slate-800/50">
-                        <h3 className="text-2xl font-bold mb-4">Train on your Data in Seconds</h3>
-                        <p className="text-slate-400 mb-8">
-                           Upload a lengthy PDF or paste your website URL. The bot absorbs every detail instantly.
-                        </p>
-                        
-                        {trainingStep === 0 && (
-                           <div className="bg-slate-900 rounded-xl p-6 border border-slate-700 space-y-4">
-                              <input
-                                 type="file"
-                                 ref={fileInputRef}
-                                 accept="application/pdf"
-                                 onChange={handlePdfFileSelect}
-                                 className="hidden"
-                              />
-                              <div className="flex gap-4 mb-4">
-                                 <button
-                                    onClick={() => { setTrainingType('pdf'); setSelectedPdfFile(null); }}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${trainingType === 'pdf' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
-                                 >
-                                    <Upload size={16} className="inline mr-2"/> Upload PDF
-                                 </button>
-                                 <button
-                                    onClick={() => setTrainingType('url')}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${trainingType === 'url' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
-                                 >
-                                    <LinkIcon size={16} className="inline mr-2"/> Scan Website
-                                 </button>
-                              </div>
-
-                              {trainingType === 'pdf' ? (
-                                 <div>
-                                    <div className="border-2 border-dashed border-slate-600 rounded-xl h-40 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-900/10 transition" onClick={handleTrainingDemo}>
-                                       <FileText size={48} className="text-slate-500 mb-2"/>
-                                       <p className="text-sm text-slate-400">
-                                          {selectedPdfFile ? selectedPdfFile.name : 'Click to Upload PDF'}
-                                       </p>
-                                       <span className="text-xs text-slate-600 mt-2">
-                                          {selectedPdfFile ? `${(selectedPdfFile.size / 1024).toFixed(1)}KB` : 'Employee Handbook, Menu, Catalog'}
-                                       </span>
-                                    </div>
-                                    {selectedPdfFile && (
-                                       <button
-                                          onClick={handleTrainingDemo}
-                                          className="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition"
-                                       >
-                                          Extract Text
-                                       </button>
-                                    )}
-                                 </div>
-                              ) : (
-                                 <div className="space-y-4">
-                                    <input 
-                                       type="text" 
-                                       value={trainingUrl}
-                                       onChange={(e) => setTrainingUrl(e.target.value)}
-                                       placeholder="https://yourbusiness.com" 
-                                       className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none" 
-                                    />
-                                    <button 
-                                       onClick={handleTrainingDemo} 
-                                       disabled={!trainingUrl}
-                                       className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition disabled:opacity-50"
-                                    >
-                                       Scan Now
-                                    </button>
-                                 </div>
-                              )}
-                           </div>
-                        )}
-
-                        {trainingStep === 1 && (
-                           <div className="h-64 flex flex-col items-center justify-center bg-slate-900 rounded-xl border border-slate-700">
-                              {trainingError ? (
-                                 <div className="text-center px-6">
-                                    <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
-                                       <X size={32} className="text-red-400" />
-                                    </div>
-                                    <p className="font-bold text-lg text-red-400 mb-2">Scraping Failed</p>
-                                    <p className="text-sm text-slate-400">{trainingError}</p>
-                                 </div>
-                              ) : (
-                                 <>
-                                    <Loader className="w-16 h-16 text-blue-500 animate-spin mb-4" />
-                                    <p className="font-bold text-lg animate-pulse">Extracting Knowledge...</p>
-                                    <p className="text-sm text-slate-500 mt-2">{trainingProgress || 'Processing...'}</p>
-                                 </>
-                              )}
-                           </div>
-                        )}
-
-                        {trainingStep === 2 && (
-                           <div className="bg-slate-900 rounded-xl p-6 border border-slate-700 h-full flex flex-col">
-                              <div className="flex items-center gap-2 text-emerald-400 mb-4 bg-emerald-500/10 p-2 rounded-lg">
-                                 <CheckCircle size={18}/> <span className="text-sm font-bold">Training Complete</span>
-                              </div>
-                              <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-2 max-h-[200px] border border-slate-800 rounded p-2 bg-slate-950/50">
-                                 <p className="text-xs text-slate-400 whitespace-pre-wrap">{scrapedContent}</p>
-                              </div>
-                              
-                              {/* Mini Chat Interface */}
-                              <div className="space-y-3 border-t border-slate-800 pt-3">
-                                 <div className="space-y-2 max-h-[150px] overflow-y-auto">
-                                    {trainingChatHistory.map((m, i) => (
-                                       <div key={i} className={`text-xs p-2 rounded ${m.role === 'user' ? 'bg-blue-600 ml-8' : 'bg-slate-700 mr-8'}`}>
-                                          {m.text}
-                                       </div>
-                                    ))}
-                                    {isTrainingChatTyping && <div className="text-xs text-slate-500">Bot typing...</div>}
-                                 </div>
-                                 <div className="flex gap-2">
-                                    <input 
-                                       value={trainingChatInput}
-                                       onChange={(e) => setTrainingChatInput(e.target.value)}
-                                       placeholder="Ask a question about this data..."
-                                       className="flex-1 bg-slate-800 border border-slate-600 rounded text-xs px-2 py-1.5 focus:border-blue-500 outline-none text-white"
-                                       onKeyDown={(e) => e.key === 'Enter' && handleTrainingChatSend()}
-                                    />
-                                    <button onClick={handleTrainingChatSend} className="bg-blue-600 p-1.5 rounded hover:bg-blue-500">
-                                       <Send size={14} />
-                                    </button>
-                                 </div>
-                              </div>
-
-                              <button onClick={() => { setTrainingStep(0); setTrainingUrl(''); }} className="w-full mt-4 py-2 text-sm text-slate-400 hover:text-white flex items-center justify-center gap-1">
-                                 <RefreshCcw size={14} /> Try Another URL
-                              </button>
-                           </div>
-                        )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+               {/* 1. Instant Training Demo */}
+               <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col shadow-sm hover:shadow-md transition">
+                  <div className="p-6 border-b border-slate-100 bg-white">
+                     <div className="flex items-center gap-2 mb-2">
+                        <div className="p-2 bg-blue-100 text-blue-700 rounded-lg"><Globe size={20} /></div>
+                        <h3 className="font-bold text-lg text-slate-800">Instant Training</h3>
                      </div>
-                     <div className="w-full md:w-1/3 bg-slate-900/50 p-8 flex flex-col justify-center gap-6">
-                        <div className="flex items-start gap-4">
-                           <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><FileText size={20} /></div>
-                           <div>
-                              <h4 className="font-bold text-sm">Any Document</h4>
-                              <p className="text-xs text-slate-400 mt-1">PDF, DOCX, TXT. Manuals, menus, policies.</p>
-                           </div>
-                        </div>
-                        <div className="flex items-start gap-4">
-                           <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400"><Globe size={20} /></div>
-                           <div>
-                              <h4 className="font-bold text-sm">Full Website Crawl</h4>
-                              <p className="text-xs text-slate-400 mt-1">We scrape your entire site structure.</p>
-                           </div>
-                        </div>
-                        <div className="flex items-start gap-4">
-                           <div className="p-2 bg-orange-500/20 rounded-lg text-orange-400"><Zap size={20} /></div>
-                           <div>
-                              <h4 className="font-bold text-sm">Instant Recall</h4>
-                              <p className="text-xs text-slate-400 mt-1">No hallucination. Answers based purely on your data.</p>
-                           </div>
-                        </div>
-                     </div>
+                     <p className="text-sm text-slate-500">Enter a website URL to instantly train an AI agent on that business.</p>
                   </div>
-               )}
-
-               {/* Phone Agent Demo */}
-               {activeDemo === 'phone' && (
-                  <div className="w-full h-full flex flex-col md:flex-row animate-fade-in">
-                     <div className="flex-1 p-8 md:p-12 flex flex-col justify-center border-b md:border-b-0 md:border-r border-slate-700">
-                        <h3 className="text-2xl font-bold mb-4">Talk to your AI Receptionist</h3>
-                        <p className="text-slate-400 mb-8">
-                           Our Phone Agent answers calls, books appointments, and captures leads with a human-like voice.
-                        </p>
-                        <div className="bg-black/30 rounded-2xl p-6 border border-slate-600/50 relative overflow-hidden">
-                           <div className="flex items-center justify-between mb-6">
-                              <div className="flex items-center gap-3">
-                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 ${phoneStatus === 'connected' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
-                                    <Phone size={24} className={phoneStatus === 'calling' ? 'animate-pulse' : ''} />
-                                 </div>
-                                 <div>
-                                    <div className="font-bold">Apex Services</div>
-                                    <div className="text-xs text-slate-400 capitalize">{phoneStatus === 'idle' ? 'Ready to Call' : phoneStatus}</div>
-                                 </div>
-                              </div>
-                              <div className="text-xs text-slate-500 font-mono">00:{phoneStatus === 'connected' ? '12' : '00'}</div>
+                  <div className="p-6 flex-1 flex flex-col gap-4">
+                     <div className="flex gap-2">
+                        <input 
+                          type="url" 
+                          placeholder="https://example.com" 
+                          value={trainingUrl}
+                          onChange={(e) => setTrainingUrl(e.target.value)}
+                          className="flex-1 rounded-lg border-slate-200 text-sm"
+                        />
+                        <button 
+                          onClick={handleTrainingDemo}
+                          disabled={isScraping || !trainingUrl}
+                          className="bg-blue-900 text-white px-4 rounded-lg text-sm font-bold disabled:opacity-50 flex items-center gap-2"
+                        >
+                           {isScraping ? <RefreshCcw className="animate-spin" size={16}/> : <Zap size={16}/>} Train
+                        </button>
+                     </div>
+                     
+                     <div className="flex-1 bg-white border border-slate-200 rounded-xl p-4 h-64 overflow-y-auto space-y-3 shadow-inner">
+                        {isScraping && (
+                           <div className="flex items-center justify-center h-full text-slate-400 text-sm gap-2">
+                              <Loader className="animate-spin" size={16}/> Reading website content...
                            </div>
-                           
-                           <div className="space-y-3 max-h-48 overflow-y-auto pr-2 mb-6">
-                              {phoneTranscript.length === 0 && (
-                                 <div className="text-center text-slate-500 text-sm py-4 italic">Call to see transcript...</div>
-                              )}
-                              {phoneTranscript.map((line, i) => (
-                                 <div key={i} className={`p-2 rounded-lg text-sm ${line.startsWith('You') ? 'bg-blue-900/30 text-blue-200 ml-8' : 'bg-slate-700/30 text-slate-300 mr-8'}`}>
-                                    {line}
+                        )}
+                        {!isScraping && !scrapedData && (
+                           <div className="flex items-center justify-center h-full text-slate-400 text-xs text-center">
+                              Enter a URL above to see the AI learn in real-time.
+                           </div>
+                        )}
+                        {scrapedData && (
+                           <>
+                              {scrapingChatHistory.map((msg, i) => (
+                                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[90%] px-3 py-2 rounded-xl text-xs ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                                       {msg.text}
+                                    </div>
                                  </div>
                               ))}
-                           </div>
+                              {isScrapingChatTyping && (
+                                 <div className="text-xs text-slate-400 animate-pulse">AI is typing...</div>
+                              )}
+                           </>
+                        )}
+                     </div>
+                     
+                     <div className="relative">
+                        <input 
+                           disabled={!scrapedData}
+                           placeholder={scrapedData ? "Ask about the website..." : "Train first to chat"}
+                           value={scrapingChatInput}
+                           onChange={(e) => setScrapingChatInput(e.target.value)}
+                           onKeyDown={(e) => e.key === 'Enter' && handleScrapingChatSend()}
+                           className="w-full pr-10 rounded-lg border-slate-200 text-sm disabled:bg-slate-100"
+                        />
+                        <button 
+                           onClick={handleScrapingChatSend}
+                           disabled={!scrapedData || !scrapingChatInput}
+                           className="absolute right-2 top-2 text-blue-900 disabled:text-slate-300"
+                        >
+                           <Send size={16} />
+                        </button>
+                     </div>
+                  </div>
+               </div>
 
+               {/* 2. Viral Post Generator Demo */}
+               <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col shadow-sm hover:shadow-md transition">
+                  <div className="p-6 border-b border-slate-100 bg-white">
+                     <div className="flex items-center gap-2 mb-2">
+                        <div className="p-2 bg-purple-100 text-purple-700 rounded-lg"><Megaphone size={20} /></div>
+                        <h3 className="font-bold text-lg text-slate-800">Viral Post Creator</h3>
+                     </div>
+                     <p className="text-sm text-slate-500">Generate high-engagement social media content in seconds.</p>
+                  </div>
+                  <div className="p-6 flex-1 flex flex-col gap-4">
+                     <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Topic</label>
+                        <div className="flex gap-2">
+                           <input 
+                             placeholder="e.g. AI is changing marketing" 
+                             value={marketingTopic}
+                             onChange={(e) => setMarketingTopic(e.target.value)}
+                             className="flex-1 rounded-lg border-slate-200 text-sm"
+                           />
                            <button 
-                              onClick={handlePhoneDemoCall}
-                              disabled={phoneStatus !== 'idle'}
-                              className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
-                                 phoneStatus === 'idle' 
-                                 ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' 
-                                 : 'bg-red-500/20 text-red-400 cursor-not-allowed'
-                              }`}
+                             onClick={handleViralGenerate}
+                             disabled={isMarketingLoading || !marketingTopic}
+                             className="bg-purple-600 text-white px-4 rounded-lg text-sm font-bold disabled:opacity-50"
                            >
-                              {phoneStatus === 'idle' ? <><Phone size={20} /> Call Now</> : 'Call in Progress...'}
+                              {isMarketingLoading ? <Loader className="animate-spin" size={16}/> : 'Generate'}
                            </button>
                         </div>
                      </div>
-                     <div className="w-full md:w-1/3 bg-slate-900/50 p-8 flex flex-col justify-center gap-6">
-                        <div className="flex items-start gap-4">
-                           <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><Zap size={20} /></div>
-                           <div>
-                              <h4 className="font-bold text-sm">Instant Response</h4>
-                              <p className="text-xs text-slate-400 mt-1">Zero latency. Answers immediately, 24/7.</p>
+                     
+                     <div className="flex-1 bg-white border border-slate-200 rounded-xl p-4 h-48 overflow-y-auto shadow-inner">
+                        {marketingResult ? (
+                           <pre className="whitespace-pre-wrap text-xs text-slate-600 font-sans">{marketingResult}</pre>
+                        ) : (
+                           <div className="flex items-center justify-center h-full text-slate-400 text-xs">
+                              Result will appear here...
                            </div>
-                        </div>
-                        <div className="flex items-start gap-4">
-                           <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400"><Smartphone size={20} /></div>
-                           <div>
-                              <h4 className="font-bold text-sm">Human Voice</h4>
-                              <p className="text-xs text-slate-400 mt-1">Indistinguishable from a real person.</p>
-                           </div>
-                        </div>
-                        <div className="flex items-start gap-4">
-                           <div className="p-2 bg-orange-500/20 rounded-lg text-orange-400"><LayoutDashboard size={20} /></div>
-                           <div>
-                              <h4 className="font-bold text-sm">Auto-Logging</h4>
-                              <p className="text-xs text-slate-400 mt-1">Call transcripts saved to CRM automatically.</p>
-                           </div>
-                        </div>
+                        )}
                      </div>
                   </div>
-               )}
+               </div>
 
-               {/* Lead CRM Demo */}
-               {activeDemo === 'crm' && (
-                  <div className="w-full h-full flex flex-col md:flex-row animate-fade-in">
-                     <div className="w-full md:w-1/3 bg-slate-900 p-8 border-b md:border-b-0 md:border-r border-slate-700 flex flex-col justify-center gap-6">
+               {/* 3. Instant Website Builder */}
+               <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col shadow-sm hover:shadow-md transition lg:col-span-2">
+                  <div className="p-6 border-b border-slate-100 bg-white flex justify-between items-center">
+                     <div>
+                        <div className="flex items-center gap-2 mb-2">
+                           <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg"><Layout size={20} /></div>
+                           <h3 className="font-bold text-lg text-slate-800">Instant Website Builder</h3>
+                        </div>
+                        <p className="text-sm text-slate-500">Create a landing page for any business instantly.</p>
+                     </div>
+                  </div>
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                     <div className="space-y-4">
                         <div>
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-900/50 border border-orange-500/50 text-orange-300 text-xs font-bold uppercase tracking-wide mb-4">
-                                <Flame size={12} fill="currentColor" /> Lead Intelligence
-                            </div>
-                            <h3 className="text-2xl font-bold mb-4">Never Miss a Lead</h3>
-                            <p className="text-slate-400 text-sm mb-6">
-                                The AI scores every conversation. If a lead shows buying intent, it is instantly tagged as "Hot" and you get notified.
-                            </p>
-                            <button 
-                                onClick={handleSimulateLead}
-                                disabled={isSimulatingLead}
-                                className="w-full bg-orange-600 text-white py-3 rounded-lg font-bold hover:bg-orange-500 transition shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2"
-                            >
-                                {isSimulatingLead ? <Zap className="animate-spin" size={18}/> : <Plus size={18}/>} Simulate Incoming Lead
-                            </button>
+                           <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Business Name</label>
+                           <input 
+                             value={siteName}
+                             onChange={(e) => setSiteName(e.target.value)}
+                             className="w-full rounded-lg border-slate-200 text-sm" placeholder="e.g. Apex Plumbing" 
+                           />
                         </div>
-                        
-                        <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                             <h4 className="font-bold text-sm mb-2 flex items-center gap-2"><Bell size={14}/> Live Notifications</h4>
-                             <p className="text-xs text-slate-400">You receive alerts via:</p>
-                             <div className="flex gap-2 mt-2">
-                                <span className="bg-slate-700 px-2 py-1 rounded text-xs">SMS</span>
-                                <span className="bg-slate-700 px-2 py-1 rounded text-xs">Email</span>
-                                <span className="bg-slate-700 px-2 py-1 rounded text-xs">Slack</span>
-                             </div>
+                        <div>
+                           <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Description</label>
+                           <textarea 
+                             value={siteDesc}
+                             onChange={(e) => setSiteDesc(e.target.value)}
+                             className="w-full rounded-lg border-slate-200 text-sm h-20" placeholder="Emergency 24/7 plumbing services..."
+                           />
                         </div>
+                        <button 
+                           onClick={handleSiteBuild}
+                           disabled={isSiteBuilding || !siteName}
+                           className="w-full bg-emerald-600 text-white py-2 rounded-lg font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                           {isSiteBuilding ? <Loader className="animate-spin" size={16}/> : 'Build Website'}
+                        </button>
                      </div>
-
-                     <div className="flex-1 bg-slate-800 p-8 relative">
-                        {/* Mock CRM UI */}
-                        <div className="bg-white rounded-xl shadow-2xl overflow-hidden h-full flex flex-col">
-                            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white">
-                                <div className="font-bold text-slate-800 flex items-center gap-2"><Users size={16}/> Lead Pipeline</div>
-                                <div className="flex gap-1">
-                                    <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                                    <div className="w-2 h-2 rounded-full bg-yellow-400"></div>
-                                    <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                                </div>
-                            </div>
-                            <div className="flex-1 bg-slate-50 p-4 overflow-y-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="text-slate-400 text-xs uppercase font-semibold">
-                                        <tr>
-                                            <th className="pb-2">Lead Name</th>
-                                            <th className="pb-2">Status</th>
-                                            <th className="pb-2 text-right">Score</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="space-y-2">
-                                        {crmLeads.map((lead, i) => (
-                                            <tr key={i} className={`bg-white border-b-4 border-slate-50 shadow-sm rounded-lg overflow-hidden animate-fade-in ${i === 0 && isSimulatingLead ? 'opacity-50' : 'opacity-100'}`}>
-                                                <td className="p-3">
-                                                    <div className="font-bold text-slate-800">{lead.name}</div>
-                                                    <div className="text-xs text-slate-400">{lead.email}</div>
-                                                </td>
-                                                <td className="p-3">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                                        lead.status === 'Hot Lead' ? 'bg-orange-100 text-orange-600' :
-                                                        lead.status === 'Qualified' ? 'bg-emerald-100 text-emerald-600' :
-                                                        'bg-blue-100 text-blue-600'
-                                                    }`}>
-                                                        {lead.status === 'Hot Lead' && <Flame size={10} className="inline mr-1 fill-orange-500" />}
-                                                        {lead.status}
-                                                    </span>
-                                                </td>
-                                                <td className="p-3 text-right">
-                                                    <span className="font-bold text-slate-700">{lead.score}</span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                            {/* Notification Toast Mock */}
-                            {crmLeads.length > 2 && (
-                                <div className="absolute bottom-4 right-4 bg-slate-900 text-white p-3 rounded-lg shadow-xl flex items-center gap-3 animate-bounce-slow text-sm max-w-xs">
-                                    <div className="bg-red-500 p-2 rounded-full"><Bell size={14}/></div>
-                                    <div>
-                                        <div className="font-bold">Hot Lead Detected!</div>
-                                        <div className="text-xs text-slate-300">John Resident just scored 95/100.</div>
+                     
+                     <div className="md:col-span-2 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-inner relative h-64 md:h-auto">
+                        {siteResult ? (
+                           <div className="h-full overflow-y-auto">
+                              <div className="bg-slate-900 text-white p-8 text-center">
+                                 <h1 className="text-2xl font-bold mb-2">{siteResult.headline}</h1>
+                                 <p className="text-slate-300 text-sm mb-4">{siteResult.subheadline}</p>
+                                 <button className="bg-emerald-500 text-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide">{siteResult.ctaText}</button>
+                              </div>
+                              <div className="p-6 grid grid-cols-3 gap-4 bg-slate-50">
+                                 {siteResult.features.map((f: string, i: number) => (
+                                    <div key={i} className="bg-white p-3 rounded-lg border border-slate-100 text-center shadow-sm">
+                                       <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2"><CheckCircle size={14}/></div>
+                                       <p className="text-xs font-bold text-slate-700">{f}</p>
                                     </div>
-                                </div>
-                            )}
-                        </div>
-                     </div>
-                  </div>
-               )}
-
-               {/* Viral Post Demo */}
-               {activeDemo === 'viral' && (
-                  <div className="w-full h-full flex flex-col md:flex-row animate-fade-in">
-                     <div className="flex-1 p-8 md:p-12 flex flex-col justify-center border-b md:border-b-0 md:border-r border-slate-700">
-                        <h3 className="text-2xl font-bold mb-4">Generate Viral Content</h3>
-                        <p className="text-slate-400 mb-8">
-                           Turn any topic into a high-engagement Twitter thread or LinkedIn post in seconds.
-                        </p>
-                        
-                        <div className="bg-white rounded-xl p-1 shadow-lg">
-                           <div className="flex gap-2 p-2">
-                              <input 
-                                 type="text" 
-                                 placeholder="Enter a topic (e.g. Remote Work, Coffee, AI)"
-                                 value={viralTopic}
-                                 onChange={(e) => setViralTopic(e.target.value)}
-                                 className="flex-1 bg-slate-50 border border-slate-200 text-slate-900 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                              />
-                              <button 
-                                 onClick={handleViralGenerate}
-                                 disabled={isGeneratingViral || !viralTopic}
-                                 className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition disabled:opacity-50"
-                              >
-                                 {isGeneratingViral ? <Zap className="animate-spin" size={16}/> : 'Generate'}
-                              </button>
-                           </div>
-                        </div>
-
-                        {viralResult && (
-                           <div className="mt-6 bg-black rounded-xl p-6 border border-slate-800 animate-fade-in">
-                              <div className="flex gap-3 mb-3">
-                                 <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold">AF</div>
-                                 <div>
-                                    <div className="font-bold text-white flex items-center gap-1">{viralResult.user} <span className="text-blue-400"><CheckCircle size={12} fill="currentColor" /></span></div>
-                                    <div className="text-slate-500 text-xs">{viralResult.handle}</div>
-                                 </div>
-                              </div>
-                              <p className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed mb-4">
-                                 {viralResult.content}
-                              </p>
-                              <div className="flex items-center justify-between text-slate-500 text-xs border-t border-slate-800 pt-3">
-                                 <span className="flex items-center gap-1 hover:text-pink-500 transition"><Flame size={14} /> {viralResult.likes}</span>
-                                 <span className="flex items-center gap-1 hover:text-green-500 transition"><TrendingUp size={14} /> {viralResult.retweets}</span>
-                                 <span className="flex items-center gap-1 hover:text-blue-500 transition"><Megaphone size={14} /> Share</span>
+                                 ))}
                               </div>
                            </div>
-                        )}
-                     </div>
-                     <div className="w-full md:w-1/3 bg-slate-900/50 p-8 flex flex-col justify-center">
-                        <div className="text-center">
-                           <div className="w-16 h-16 bg-blue-600/20 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                              <Target size={32} />
-                           </div>
-                           <h4 className="font-bold text-lg mb-2">Platform Optimized</h4>
-                           <p className="text-sm text-slate-400">
-                              Our AI understands the algorithm. It writes hooks, threads, and CTAs that actually convert.
-                           </p>
-                        </div>
-                     </div>
-                  </div>
-               )}
-
-               {/* Website Demo */}
-               {activeDemo === 'site' && (
-                  <div className="w-full h-full flex flex-col md:flex-row animate-fade-in">
-                     <div className="w-full md:w-1/3 bg-slate-800 p-8 border-b md:border-b-0 md:border-r border-slate-700 flex flex-col justify-center">
-                        <h3 className="text-2xl font-bold mb-6">Instant Website</h3>
-                        <div className="space-y-4">
-                           <div>
-                              <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Business Name</label>
-                              <input 
-                                 type="text" 
-                                 value={siteName}
-                                 onChange={(e) => setSiteName(e.target.value)}
-                                 placeholder="e.g. Joe's Coffee"
-                                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white focus:border-blue-500 outline-none"
-                              />
-                           </div>
-                           <div>
-                              <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Industry</label>
-                              <select 
-                                 value={siteIndustry}
-                                 onChange={(e) => setSiteIndustry(e.target.value)}
-                                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white focus:border-blue-500 outline-none"
-                              >
-                                 <option>Coffee Shop</option>
-                                 <option>Real Estate</option>
-                                 <option>Gym</option>
-                                 <option>Consulting</option>
-                                 <option>City Government</option>
-                              </select>
-                           </div>
-                           <button 
-                              onClick={handleSiteBuild}
-                              disabled={isBuildingSite || !siteName}
-                              className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition disabled:opacity-50 mt-2"
-                           >
-                              {isBuildingSite ? 'Building...' : 'Generate Site'}
-                           </button>
-                        </div>
-                     </div>
-                     <div className="flex-1 bg-slate-900 p-8 flex items-center justify-center relative">
-                        {/* Mock Browser Window */}
-                        <div className="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden transform transition-all duration-500 hover:scale-105">
-                           <div className="bg-slate-100 p-2 flex items-center gap-2 border-b border-slate-200">
-                              <div className="flex gap-1">
-                                 <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
-                                 <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
-                                 <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
-                              </div>
-                              <div className="bg-white px-2 py-0.5 rounded text-[8px] text-slate-400 flex-1 text-center font-mono">
-                                 {siteName ? `${siteName.toLowerCase().replace(/\s/g,'')}.com` : 'your-site.com'}
-                              </div>
-                           </div>
-                           
-                           {generatedSite ? (
-                              <div className="animate-fade-in">
-                                 <div className={`h-32 text-white flex flex-col items-center justify-center text-center p-4 ${siteIndustry === 'City Government' ? 'bg-slate-800' : 'bg-blue-900'}`}>
-                                    {siteIndustry === 'City Government' && <Landmark size={24} className="mb-2 text-white/80"/>}
-                                    <h1 className="text-xl font-bold mb-2">{generatedSite.name}</h1>
-                                    <p className="text-[10px] opacity-80 max-w-[200px]">{generatedSite.headline}</p>
-                                 </div>
-                                 <div className="p-6">
-                                    <h2 className="text-sm font-bold text-slate-800 mb-2">{siteIndustry === 'City Government' ? 'City Services' : 'About Us'}</h2>
-                                    <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                                       {generatedSite.subheadline}
-                                    </p>
-                                    <button className={`w-full text-white py-2 rounded text-xs font-bold shadow-md ${siteIndustry === 'City Government' ? 'bg-slate-700' : 'bg-emerald-500'}`}>
-                                       {generatedSite.cta}
-                                    </button>
-                                 </div>
-                              </div>
-                           ) : (
-                              <div className="h-64 flex flex-col items-center justify-center text-slate-300">
-                                 <Layout size={48} className="mb-2 opacity-20" />
-                                 <p className="text-xs">Waiting to generate...</p>
-                              </div>
-                           )}
-                        </div>
-                        
-                        {generatedSite && (
-                           <div className="absolute bottom-10 right-10 bg-emerald-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg animate-bounce-slow flex items-center gap-2">
-                              <CheckCircle size={14} /> Site Ready!
+                        ) : (
+                           <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm bg-slate-50">
+                              Preview Area
                            </div>
                         )}
                      </div>
                   </div>
-               )}
-
+               </div>
             </div>
          </div>
       </section>
