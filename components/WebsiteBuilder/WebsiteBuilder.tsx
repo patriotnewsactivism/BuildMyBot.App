@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Layout, Rocket, Monitor, Smartphone, CheckCircle, RefreshCcw } from 'lucide-react';
-import { generateWebsiteStructure } from '../../services/geminiService';
+import { generateWebsiteStructure } from '../../services/aiService';
 
 export const WebsiteBuilder: React.FC = () => {
   const [businessName, setBusinessName] = useState('');
