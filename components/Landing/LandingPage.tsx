@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus, Loader, RefreshCcw, Send } from 'lucide-react';
+import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus, Loader, RefreshCcw, Send, Mic, PhoneCall } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
 import { generateBotResponse, generateMarketingContent, scrapeWebsiteContent, generateWebsiteStructure } from '../../services/openaiService';
@@ -33,6 +34,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   const [scrapingChatHistory, setScrapingChatHistory] = useState<{role: 'user'|'model', text: string}[]>([]);
   const [scrapingChatInput, setScrapingChatInput] = useState('');
   const [isScrapingChatTyping, setIsScrapingChatTyping] = useState(false);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
 
   const [marketingTopic, setMarketingTopic] = useState('');
   const [marketingResult, setMarketingResult] = useState('');
@@ -106,7 +108,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         }, remainingDelay);
     } catch (e) {
         setIsTyping(false);
-        setChatHistory(prev => [...prev, { role: 'model', text: "I'm having a bit of trouble connecting right now. Try again in a moment!" }]);
+        setChatHistory(prev => [...prev, { role: 'model', text: "I'm unable to connect to my brain (OpenAI). Please check the API Key configuration." }]);
     }
   };
 
@@ -114,15 +116,16 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     if (!trainingUrl) return;
     setIsScraping(true);
     setScrapedData(null);
+    setScrapeError(null);
     setScrapingChatHistory([]);
     try {
       // Use the real scraper service
       const data = await scrapeWebsiteContent(trainingUrl);
       setScrapedData(data);
       // Auto-start chat with context
-      setScrapingChatHistory([{ role: 'model', text: `I've learned everything about ${trainingUrl}. Ask me anything!` }]);
-    } catch (e) {
-      setScrapedData("Error scraping website. Please try a different URL.");
+      setScrapingChatHistory([{ role: 'model', text: `I've successfully scraped ${trainingUrl}. I am now trained on its real content. Ask me anything!` }]);
+    } catch (e: any) {
+      setScrapeError(e.message || "Error scraping website.");
     } finally {
       setIsScraping(false);
     }
@@ -137,7 +140,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     
     try {
       const response = await generateBotResponse(
-        "You are a helpful assistant trained on the provided website content.", 
+        "You are a helpful assistant trained on the provided website content. Answer strictly based on the real data provided.", 
         [...scrapingChatHistory, userMsg], 
         userMsg.text, 
         'gpt-4o-mini', 
@@ -145,7 +148,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       );
       setScrapingChatHistory(prev => [...prev, { role: 'model', text: response }]);
     } catch(e) {
-      setScrapingChatHistory(prev => [...prev, { role: 'model', text: "Error generating response." }]);
+      setScrapingChatHistory(prev => [...prev, { role: 'model', text: "Error generating response. Check API Key." }]);
     } finally {
       setIsScrapingChatTyping(false);
     }
@@ -158,7 +161,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       const content = await generateMarketingContent('viral-thread', marketingTopic, 'Witty');
       setMarketingResult(content);
     } catch (e) {
-      setMarketingResult("Error generating content.");
+      setMarketingResult("Error: Missing API Key.");
     } finally {
       setIsMarketingLoading(false);
     }
@@ -171,12 +174,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       const result = await generateWebsiteStructure(siteName, siteDesc);
       setSiteResult(JSON.parse(result));
     } catch (e) {
-       setSiteResult({
-          headline: "Welcome to " + siteName,
-          subheadline: siteDesc,
-          features: ["Quality Service", "Expert Team", "24/7 Support"],
-          ctaText: "Get Started Now"
-       });
+       // Only fail if API is missing, no mock fallback
+       alert("Failed to generate site. Please check API Key.");
     } finally {
       setIsSiteBuilding(false);
     }
@@ -448,7 +447,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
             <button onClick={() => openModal('features')} className="hover:text-blue-900 transition">Features</button>
-            <a href="#industries" className="hover:text-blue-900 transition">Who is this for?</a>
+            <a href="#voice" className="hover:text-blue-900 transition">Voice AI</a>
             <a href="#pricing" className="hover:text-blue-900 transition">Pricing</a>
             {onNavigateToPartner && (
               <button onClick={onNavigateToPartner} className="text-blue-900 font-bold hover:text-blue-700 transition">Partner Program</button>
@@ -473,7 +472,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-slate-100 absolute w-full px-6 py-4 flex flex-col gap-4 shadow-xl">
              <button onClick={() => {openModal('features'); setMobileMenuOpen(false);}} className="text-left font-medium text-slate-600 py-2">Features</button>
-             <a href="#industries" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-600 py-2">Who is this for?</a>
+             <a href="#voice" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-600 py-2">Voice AI</a>
              <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-600 py-2">Pricing</a>
              {onNavigateToPartner && (
                <button onClick={() => {onNavigateToPartner(); setMobileMenuOpen(false);}} className="text-left font-bold text-blue-900 py-2">Partner Program</button>
@@ -591,23 +590,96 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         </div>
       </section>
 
-      {/* Feature Demos */}
-      <section className="py-24 bg-white border-t border-slate-100">
-         <div className="max-w-7xl mx-auto px-6">
+      {/* NEW: AI Phone Agent Feature */}
+      <section id="voice" className="py-24 px-6 bg-slate-50">
+        <div className="max-w-7xl mx-auto">
+           <div className="flex flex-col lg:flex-row items-center gap-16">
+              <div className="flex-1 space-y-8">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-xs font-bold uppercase tracking-wide">
+                     <Mic size={14} /> New: AI Phone Receptionist
+                  </div>
+                  <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight">
+                     Never Miss a Call Again.
+                  </h2>
+                  <p className="text-xl text-slate-600 leading-relaxed">
+                     Deploy an AI receptionist that picks up instantly, 24/7. It handles bookings, answers FAQs, and routes urgent calls to you—all with a human-like voice.
+                  </p>
+                  
+                  <ul className="space-y-4">
+                     {[
+                        "Answers instantly with zero hold time",
+                        "Books appointments directly into your calendar",
+                        "Sends SMS recaps of every conversation",
+                        "Understands accents and complex queries"
+                     ].map((item, i) => (
+                        <li key={i} className="flex items-center gap-3">
+                           <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white"><CheckCircle size={14}/></div>
+                           <span className="font-medium text-slate-700">{item}</span>
+                        </li>
+                     ))}
+                  </ul>
+
+                  <button onClick={onLogin} className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition shadow-xl shadow-indigo-900/20 flex items-center gap-3">
+                     <PhoneCall size={20} /> Deploy Voice Agent
+                  </button>
+              </div>
+
+              <div className="flex-1 relative">
+                 <div className="absolute -inset-4 bg-indigo-500/10 rounded-full blur-3xl"></div>
+                 <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 p-8 relative z-10">
+                    <div className="flex items-center justify-center mb-8">
+                       <div className="w-24 h-24 rounded-full bg-indigo-100 flex items-center justify-center relative">
+                          <Mic size={40} className="text-indigo-600" />
+                          <div className="absolute inset-0 rounded-full border-2 border-indigo-400 animate-ping opacity-20"></div>
+                       </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                       <div className="bg-slate-50 p-4 rounded-xl rounded-tl-none border border-slate-100">
+                          <p className="text-xs font-bold text-slate-400 mb-1">Incoming Call • 2m ago</p>
+                          <p className="text-slate-700 font-medium">"Hi, do you have any appointments available for a consultation this Tuesday?"</p>
+                       </div>
+                       <div className="bg-indigo-50 p-4 rounded-xl rounded-tr-none border border-indigo-100 text-right">
+                          <p className="text-xs font-bold text-indigo-400 mb-1">AI Agent (Sarah)</p>
+                          <p className="text-slate-800 font-medium">"Yes! We have a slot open at 2:00 PM or 4:30 PM. Which works best for you?"</p>
+                       </div>
+                       <div className="bg-slate-50 p-4 rounded-xl rounded-tl-none border border-slate-100">
+                          <p className="text-slate-700 font-medium">"2:00 PM is perfect."</p>
+                       </div>
+                       <div className="bg-indigo-50 p-4 rounded-xl rounded-tr-none border border-indigo-100 text-right">
+                          <p className="text-slate-800 font-medium">"Great, I've booked you for Tuesday at 2:00 PM. Is there anything else I can help with?"</p>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </div>
+      </section>
+
+      {/* Feature Demos - Dark Theme */}
+      <section className="py-24 bg-slate-900 text-white border-t border-slate-800 relative overflow-hidden">
+         {/* Glow Effects */}
+         <div className="absolute top-0 left-0 w-1/3 h-full bg-blue-600/10 blur-3xl rounded-r-full"></div>
+         <div className="absolute bottom-0 right-0 w-1/3 h-full bg-emerald-600/10 blur-3xl rounded-l-full"></div>
+
+         <div className="max-w-7xl mx-auto px-6 relative z-10">
             <div className="text-center mb-16">
-               <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">See the Magic in Action</h2>
-               <p className="text-lg text-slate-600">Real, live examples of our AI capabilities.</p>
+               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-blue-300 text-xs font-bold uppercase tracking-wide mb-6">
+                 Live Interactive Demos
+               </div>
+               <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">See the Magic in Action</h2>
+               <p className="text-lg text-slate-400">Try our AI capabilities right here, right now.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                {/* 1. Instant Training Demo */}
-               <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col shadow-sm hover:shadow-md transition">
-                  <div className="p-6 border-b border-slate-100 bg-white">
+               <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col shadow-2xl hover:shadow-blue-900/20 transition-all duration-300">
+                  <div className="p-6 border-b border-slate-700 bg-slate-800/50">
                      <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 bg-blue-100 text-blue-700 rounded-lg"><Globe size={20} /></div>
-                        <h3 className="font-bold text-lg text-slate-800">Instant Training</h3>
+                        <div className="p-2 bg-blue-900/50 text-blue-400 rounded-lg border border-blue-500/20"><Globe size={20} /></div>
+                        <h3 className="font-bold text-lg text-white">Instant Training</h3>
                      </div>
-                     <p className="text-sm text-slate-500">Enter a website URL to instantly train an AI agent on that business.</p>
+                     <p className="text-sm text-slate-400">Enter a website URL to instantly train an AI agent on that business.</p>
                   </div>
                   <div className="p-6 flex-1 flex flex-col gap-4">
                      <div className="flex gap-2">
@@ -616,39 +688,44 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                           placeholder="https://example.com" 
                           value={trainingUrl}
                           onChange={(e) => setTrainingUrl(e.target.value)}
-                          className="flex-1 rounded-lg border-slate-200 text-sm"
+                          className="flex-1 rounded-lg border-slate-600 bg-slate-900 text-white text-sm focus:ring-blue-500 focus:border-blue-500 placeholder-slate-500"
                         />
                         <button 
                           onClick={handleTrainingDemo}
                           disabled={isScraping || !trainingUrl}
-                          className="bg-blue-900 text-white px-4 rounded-lg text-sm font-bold disabled:opacity-50 flex items-center gap-2"
+                          className="bg-blue-600 text-white px-4 rounded-lg text-sm font-bold disabled:opacity-50 flex items-center gap-2 hover:bg-blue-500 transition"
                         >
                            {isScraping ? <RefreshCcw className="animate-spin" size={16}/> : <Zap size={16}/>} Train
                         </button>
                      </div>
                      
-                     <div className="flex-1 bg-white border border-slate-200 rounded-xl p-4 h-64 overflow-y-auto space-y-3 shadow-inner">
+                     <div className="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-4 h-64 overflow-y-auto space-y-3 shadow-inner custom-scrollbar">
                         {isScraping && (
                            <div className="flex items-center justify-center h-full text-slate-400 text-sm gap-2">
                               <Loader className="animate-spin" size={16}/> Reading website content...
                            </div>
                         )}
-                        {!isScraping && !scrapedData && (
-                           <div className="flex items-center justify-center h-full text-slate-400 text-xs text-center">
+                        {!isScraping && !scrapedData && !scrapeError && (
+                           <div className="flex items-center justify-center h-full text-slate-500 text-xs text-center">
                               Enter a URL above to see the AI learn in real-time.
                            </div>
+                        )}
+                        {scrapeError && (
+                            <div className="flex items-center justify-center h-full text-red-400 text-xs text-center px-4">
+                                {scrapeError}
+                            </div>
                         )}
                         {scrapedData && (
                            <>
                               {scrapingChatHistory.map((msg, i) => (
                                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[90%] px-3 py-2 rounded-xl text-xs ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                                    <div className={`max-w-[90%] px-3 py-2 rounded-xl text-xs ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-200'}`}>
                                        {msg.text}
                                     </div>
                                  </div>
                               ))}
                               {isScrapingChatTyping && (
-                                 <div className="text-xs text-slate-400 animate-pulse">AI is typing...</div>
+                                 <div className="text-xs text-slate-500 animate-pulse">AI is typing...</div>
                               )}
                            </>
                         )}
@@ -661,12 +738,12 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                            value={scrapingChatInput}
                            onChange={(e) => setScrapingChatInput(e.target.value)}
                            onKeyDown={(e) => e.key === 'Enter' && handleScrapingChatSend()}
-                           className="w-full pr-10 rounded-lg border-slate-200 text-sm disabled:bg-slate-100"
+                           className="w-full pr-10 rounded-lg border-slate-600 bg-slate-900 text-white text-sm disabled:opacity-50 focus:ring-blue-500 focus:border-blue-500 placeholder-slate-500"
                         />
                         <button 
                            onClick={handleScrapingChatSend}
                            disabled={!scrapedData || !scrapingChatInput}
-                           className="absolute right-2 top-2 text-blue-900 disabled:text-slate-300"
+                           className="absolute right-2 top-2 text-blue-400 disabled:text-slate-600 hover:text-blue-300"
                         >
                            <Send size={16} />
                         </button>
@@ -675,13 +752,13 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                </div>
 
                {/* 2. Viral Post Generator Demo */}
-               <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col shadow-sm hover:shadow-md transition">
-                  <div className="p-6 border-b border-slate-100 bg-white">
+               <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col shadow-2xl hover:shadow-purple-900/20 transition-all duration-300">
+                  <div className="p-6 border-b border-slate-700 bg-slate-800/50">
                      <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 bg-purple-100 text-purple-700 rounded-lg"><Megaphone size={20} /></div>
-                        <h3 className="font-bold text-lg text-slate-800">Viral Post Creator</h3>
+                        <div className="p-2 bg-purple-900/50 text-purple-400 rounded-lg border border-purple-500/20"><Megaphone size={20} /></div>
+                        <h3 className="font-bold text-lg text-white">Viral Post Creator</h3>
                      </div>
-                     <p className="text-sm text-slate-500">Generate high-engagement social media content in seconds.</p>
+                     <p className="text-sm text-slate-400">Generate high-engagement social media content in seconds.</p>
                   </div>
                   <div className="p-6 flex-1 flex flex-col gap-4">
                      <div>
@@ -691,23 +768,23 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                              placeholder="e.g. AI is changing marketing" 
                              value={marketingTopic}
                              onChange={(e) => setMarketingTopic(e.target.value)}
-                             className="flex-1 rounded-lg border-slate-200 text-sm"
+                             className="flex-1 rounded-lg border-slate-600 bg-slate-900 text-white text-sm focus:ring-purple-500 focus:border-purple-500 placeholder-slate-500"
                            />
                            <button 
                              onClick={handleViralGenerate}
                              disabled={isMarketingLoading || !marketingTopic}
-                             className="bg-purple-600 text-white px-4 rounded-lg text-sm font-bold disabled:opacity-50"
+                             className="bg-purple-600 text-white px-4 rounded-lg text-sm font-bold disabled:opacity-50 hover:bg-purple-500 transition"
                            >
                               {isMarketingLoading ? <Loader className="animate-spin" size={16}/> : 'Generate'}
                            </button>
                         </div>
                      </div>
                      
-                     <div className="flex-1 bg-white border border-slate-200 rounded-xl p-4 h-48 overflow-y-auto shadow-inner">
+                     <div className="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-4 h-48 overflow-y-auto shadow-inner custom-scrollbar">
                         {marketingResult ? (
-                           <pre className="whitespace-pre-wrap text-xs text-slate-600 font-sans">{marketingResult}</pre>
+                           <pre className="whitespace-pre-wrap text-xs text-slate-300 font-sans">{marketingResult}</pre>
                         ) : (
-                           <div className="flex items-center justify-center h-full text-slate-400 text-xs">
+                           <div className="flex items-center justify-center h-full text-slate-500 text-xs">
                               Result will appear here...
                            </div>
                         )}
@@ -716,14 +793,14 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                </div>
 
                {/* 3. Instant Website Builder */}
-               <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col shadow-sm hover:shadow-md transition lg:col-span-2">
-                  <div className="p-6 border-b border-slate-100 bg-white flex justify-between items-center">
+               <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col shadow-2xl hover:shadow-emerald-900/20 transition-all duration-300 lg:col-span-2">
+                  <div className="p-6 border-b border-slate-700 bg-slate-800/50 flex justify-between items-center">
                      <div>
                         <div className="flex items-center gap-2 mb-2">
-                           <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg"><Layout size={20} /></div>
-                           <h3 className="font-bold text-lg text-slate-800">Instant Website Builder</h3>
+                           <div className="p-2 bg-emerald-900/50 text-emerald-400 rounded-lg border border-emerald-500/20"><Layout size={20} /></div>
+                           <h3 className="font-bold text-lg text-white">Instant Website Builder</h3>
                         </div>
-                        <p className="text-sm text-slate-500">Create a landing page for any business instantly.</p>
+                        <p className="text-sm text-slate-400">Create a landing page for any business instantly.</p>
                      </div>
                   </div>
                   <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -733,7 +810,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                            <input 
                              value={siteName}
                              onChange={(e) => setSiteName(e.target.value)}
-                             className="w-full rounded-lg border-slate-200 text-sm" placeholder="e.g. Apex Plumbing" 
+                             className="w-full rounded-lg border-slate-600 bg-slate-900 text-white text-sm focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-500" 
+                             placeholder="e.g. Apex Plumbing" 
                            />
                         </div>
                         <div>
@@ -741,37 +819,38 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                            <textarea 
                              value={siteDesc}
                              onChange={(e) => setSiteDesc(e.target.value)}
-                             className="w-full rounded-lg border-slate-200 text-sm h-20" placeholder="Emergency 24/7 plumbing services..."
+                             className="w-full rounded-lg border-slate-600 bg-slate-900 text-white text-sm h-20 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-500" 
+                             placeholder="Emergency 24/7 plumbing services..."
                            />
                         </div>
                         <button 
                            onClick={handleSiteBuild}
                            disabled={isSiteBuilding || !siteName}
-                           className="w-full bg-emerald-600 text-white py-2 rounded-lg font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                           className="w-full bg-emerald-600 text-white py-2 rounded-lg font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2 hover:bg-emerald-500 transition"
                         >
                            {isSiteBuilding ? <Loader className="animate-spin" size={16}/> : 'Build Website'}
                         </button>
                      </div>
                      
-                     <div className="md:col-span-2 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-inner relative h-64 md:h-auto">
+                     <div className="md:col-span-2 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-inner relative h-64 md:h-auto">
                         {siteResult ? (
-                           <div className="h-full overflow-y-auto">
-                              <div className="bg-slate-900 text-white p-8 text-center">
+                           <div className="h-full overflow-y-auto custom-scrollbar">
+                              <div className="bg-slate-950 text-white p-8 text-center">
                                  <h1 className="text-2xl font-bold mb-2">{siteResult.headline}</h1>
-                                 <p className="text-slate-300 text-sm mb-4">{siteResult.subheadline}</p>
-                                 <button className="bg-emerald-500 text-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide">{siteResult.ctaText}</button>
+                                 <p className="text-slate-400 text-sm mb-4">{siteResult.subheadline}</p>
+                                 <button className="bg-emerald-500 text-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide hover:bg-emerald-400">{siteResult.ctaText}</button>
                               </div>
-                              <div className="p-6 grid grid-cols-3 gap-4 bg-slate-50">
+                              <div className="p-6 grid grid-cols-3 gap-4 bg-slate-900">
                                  {siteResult.features.map((f: string, i: number) => (
-                                    <div key={i} className="bg-white p-3 rounded-lg border border-slate-100 text-center shadow-sm">
-                                       <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2"><CheckCircle size={14}/></div>
-                                       <p className="text-xs font-bold text-slate-700">{f}</p>
+                                    <div key={i} className="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center shadow-sm">
+                                       <div className="w-8 h-8 bg-blue-900/50 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-2"><CheckCircle size={14}/></div>
+                                       <p className="text-xs font-bold text-slate-300">{f}</p>
                                     </div>
                                  ))}
                               </div>
                            </div>
                         ) : (
-                           <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm bg-slate-50">
+                           <div className="absolute inset-0 flex items-center justify-center text-slate-600 text-sm bg-slate-900">
                               Preview Area
                            </div>
                         )}
@@ -780,30 +859,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                </div>
             </div>
          </div>
-      </section>
-
-      {/* Value Prop: Industries */}
-      <section id="industries" className="py-24 bg-white border-y border-slate-100">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Who is this for?</h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">BuildMyBot powers the immediate response engine for thousands of industries.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {industries.map((ind, i) => (
-              <div key={i} className="p-8 rounded-2xl bg-slate-50 hover:bg-white hover:shadow-xl transition-all duration-300 border border-slate-100 group">
-                <div className={`w-12 h-12 bg-${ind.color}-100 text-${ind.color}-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                  <ind.icon size={24} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">{ind.title}</h3>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  {ind.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* Feature Highlight: Hot Leads */}
