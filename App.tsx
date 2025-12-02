@@ -17,7 +17,7 @@ import { PartnerSignup } from './components/Auth/PartnerSignup';
 import { FullPageChat } from './components/Chat/FullPageChat';
 import { AuthModal } from './components/Auth/AuthModal';
 import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation } from './types';
-import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
+import { PLANS } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame } from 'lucide-react';
 import { supabase } from './services/supabaseClient';
@@ -45,6 +45,7 @@ function App() {
   const [bots, setBots] = useState<BotType[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [chatLogs, setChatLogs] = useState<Conversation[]>(INITIAL_CHAT_LOGS);
+  const [analyticsData, setAnalyticsData] = useState<any[]>([]);
   
   // UI State
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -127,10 +128,30 @@ function App() {
        setLeads(updatedLeads);
     });
 
+    // Subscribe to Conversations
+    const unsubscribeConversations = dbService.subscribeToConversations((updatedConversations) => {
+       setChatLogs(updatedConversations);
+    });
+
+    // Load analytics data when user is available
+    if (session?.user) {
+      dbService.getAnalytics(session.user.id, 7).then(data => {
+        if (data.length > 0) {
+          setAnalyticsData(data);
+        } else {
+          // Fallback to empty data structure
+          const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const emptyData = dayNames.map(date => ({ date, conversations: 0, leads: 0 }));
+          setAnalyticsData(emptyData);
+        }
+      });
+    }
+
     return () => {
       authListener.subscription.unsubscribe();
       unsubscribeBots();
       unsubscribeLeads();
+      unsubscribeConversations();
     };
   }, [user]); // Add user to dependancy array to prevent clobbering demo user
 
@@ -351,7 +372,7 @@ function App() {
                   <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80">
                      <h3 className="font-bold text-slate-800 mb-4">Conversation Volume</h3>
                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={MOCK_ANALYTICS_DATA}>
+                        <AreaChart data={analyticsData.length > 0 ? analyticsData : [{ date: 'Mon', conversations: 0, leads: 0 }]}>
                           <defs>
                             <linearGradient id="colorConvos" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#1e3a8a" stopOpacity={0.1}/>
@@ -391,7 +412,7 @@ function App() {
           
           {currentView === 'reseller' && <ResellerDashboard user={user} stats={INITIAL_RESELLER_STATS} />}
           
-          {currentView === 'marketing' && <MarketingTools />}
+          {currentView === 'marketing' && <MarketingTools userId={user?.id} />}
           
           {currentView === 'leads' && <LeadsCRM leads={leads} onUpdateLead={handleUpdateLead} />}
           

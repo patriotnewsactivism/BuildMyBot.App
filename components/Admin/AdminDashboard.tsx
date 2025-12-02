@@ -13,7 +13,9 @@ export const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState({
       totalMRR: 0,
       totalUsers: 0,
-      activeBots: 3850, // Mock for now until we query all bots
+      activeBots: 0,
+      totalConversations: 0,
+      totalLeads: 0,
       partnerCount: 0
   });
 
@@ -21,20 +23,23 @@ export const AdminDashboard: React.FC = () => {
     const fetchData = async () => {
         try {
             const allUsers = await dbService.getAllUsers();
-            
+            const platformStats = await dbService.getPlatformStats();
+
             // Calculate MRR
             const mrr = allUsers.reduce((acc, u) => acc + (PLANS[u.plan]?.price || 0), 0);
-            
+
             // Segregate Partners
             const partnerList = allUsers.filter(u => u.role === UserRole.RESELLER);
-            
+
             setUsers(allUsers);
             setPartners(partnerList);
-            
+
             setStats({
                 totalMRR: mrr,
-                totalUsers: allUsers.length,
-                activeBots: 3850, // Placeholder
+                totalUsers: platformStats?.totalUsers || allUsers.length,
+                activeBots: platformStats?.totalBots || 0,
+                totalConversations: platformStats?.totalConversations || 0,
+                totalLeads: platformStats?.totalLeads || 0,
                 partnerCount: partnerList.length
             });
 
