@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus } from 'lucide-react';
+import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus, Loader, RefreshCcw, Send } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
-import { generateBotResponse } from '../../services/geminiService';
+import { generateBotResponse, generateMarketingContent, scrapeWebsiteContent, generateWebsiteStructure } from '../../services/geminiService';
+import { processPDFForKnowledgeBase } from '../../services/pdfService';
 
 interface LandingProps {
   onLogin: () => void;
@@ -31,7 +32,16 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   
   // Training Demo State
   const [trainingStep, setTrainingStep] = useState(0); // 0: Input, 1: Scanning, 2: Ready/Chat
-  const [trainingType, setTrainingType] = useState<'pdf' | 'url'>('pdf');
+  const [trainingType, setTrainingType] = useState<'pdf' | 'url'>('url');
+  const [trainingUrl, setTrainingUrl] = useState('');
+  const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
+  const [scrapedContent, setScrapedContent] = useState('');
+  const [trainingChatInput, setTrainingChatInput] = useState('');
+  const [trainingChatHistory, setTrainingChatHistory] = useState<{role: 'user'|'model', text: string}[]>([]);
+  const [isTrainingChatTyping, setIsTrainingChatTyping] = useState(false);
+  const [trainingProgress, setTrainingProgress] = useState('');
+  const [trainingError, setTrainingError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Phone Demo State
   const [phoneStatus, setPhoneStatus] = useState<'idle' | 'calling' | 'connected'>('idle');
@@ -82,11 +92,92 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
   // --- DEMO HANDLERS ---
 
-  const handleTrainingDemo = () => {
+  const handlePdfFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedPdfFile(file);
+      handleTrainingDemo();
+    } else if (file) {
+      setTrainingError('Please select a valid PDF file');
+      setTimeout(() => setTrainingError(''), 3000);
+    }
+  };
+
+  const handleTrainingDemo = async () => {
+    if (trainingType === 'url' && !trainingUrl) return;
+    if (trainingType === 'pdf' && !selectedPdfFile) {
+      // Trigger file input
+      fileInputRef.current?.click();
+      return;
+    }
+
     setTrainingStep(1);
-    setTimeout(() => {
-        setTrainingStep(2);
-    }, 2500);
+    setTrainingChatHistory([]);
+    setTrainingError('');
+    setTrainingProgress('Starting...');
+
+    let content = "";
+    if (trainingType === 'pdf' && selectedPdfFile) {
+       // Real PDF extraction
+       try {
+         content = await processPDFForKnowledgeBase(selectedPdfFile, (progress, stage) => {
+           setTrainingProgress(`${stage} (${progress}%)`);
+         });
+         setScrapedContent(content);
+         setTrainingProgress('Complete!');
+         setTrainingStep(2);
+       } catch (e: any) {
+         const errorMsg = e?.message || "Error processing PDF. Please try another file.";
+         setTrainingError(errorMsg);
+         setTrainingProgress('');
+         setSelectedPdfFile(null);
+         setTimeout(() => {
+           setTrainingStep(0);
+           setTrainingError('');
+         }, 5000);
+       }
+    } else {
+       // Real URL Scrape with progress tracking
+       try {
+         content = await scrapeWebsiteContent(trainingUrl, {
+           onProgress: (stage) => setTrainingProgress(stage)
+         });
+         setScrapedContent(content);
+         setTrainingStep(2);
+       } catch (e: any) {
+         const errorMsg = e?.message || "Error scraping website. Please check the URL and try again.";
+         setTrainingError(errorMsg);
+         setTrainingProgress('');
+         setTimeout(() => {
+           setTrainingStep(0);
+           setTrainingError('');
+         }, 5000); // Show error for 5 seconds
+       }
+    }
+  };
+
+  const handleTrainingChatSend = async () => {
+    if (!trainingChatInput.trim()) return;
+    
+    const userMsg = { role: 'user' as const, text: trainingChatInput };
+    setTrainingChatHistory(prev => [...prev, userMsg]);
+    setTrainingChatInput('');
+    setIsTrainingChatTyping(true);
+
+    try {
+        const response = await generateBotResponse(
+            "You are a helpful AI assistant trained on the provided context. Answer the user's question accurately based ONLY on the context.", 
+            [...trainingChatHistory, userMsg], 
+            userMsg.text, 
+            'gpt-4o-mini', 
+            scrapedContent
+        );
+        setTrainingChatHistory(prev => [...prev, { role: 'model', text: response }]);
+    } catch (e) {
+        setTrainingChatHistory(prev => [...prev, { role: 'model', text: "Error connecting to AI." }]);
+    } finally {
+        setIsTrainingChatTyping(false);
+    }
   };
 
   const handlePhoneDemoCall = () => {
@@ -123,37 +214,65 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     }, 1500);
   };
 
-  const handleViralGenerate = () => {
+  const handleViralGenerate = async () => {
     if (!viralTopic) return;
     setIsGeneratingViral(true);
     setViralResult(null);
-    setTimeout(() => {
+    
+    try {
+        const content = await generateMarketingContent('viral-thread', viralTopic, 'engaging');
         setViralResult({
             user: 'Alex Founder',
             handle: '@alex_builds',
-            content: `Here is why ${viralTopic} is changing the game forever 🧵👇\n\n1. It saves time.\n2. It scales effortlessly.\n3. The ROI is undeniable.\n\nI implemented ${viralTopic} last week and revenue is up 30%. Don't sleep on this.`,
-            likes: 452,
-            retweets: 89
+            content: content.substring(0, 280) + '...', // Truncate for preview
+            fullContent: content,
+            likes: Math.floor(Math.random() * 1000) + 100,
+            retweets: Math.floor(Math.random() * 200) + 20
         });
+    } catch (e) {
+        setViralResult({
+             user: 'Alex Founder',
+             handle: '@alex_builds',
+             content: "Error generating content. Please check API configuration.",
+             likes: 0,
+             retweets: 0
+        });
+    } finally {
         setIsGeneratingViral(false);
-    }, 1500);
+    }
   };
 
-  const handleSiteBuild = () => {
+  const handleSiteBuild = async () => {
     if (!siteName) return;
     setIsBuildingSite(true);
     setGeneratedSite(null);
-    setTimeout(() => {
+
+    try {
+        const description = `A ${siteIndustry} business that provides excellent service and quality.`;
+        const jsonResponse = await generateWebsiteStructure(siteName, description);
+        const siteData = JSON.parse(jsonResponse);
+
+        setGeneratedSite({
+            name: siteName,
+            headline: siteData.headline || `Welcome to ${siteName}`,
+            subheadline: siteData.subheadline || `The Best ${siteIndustry}`,
+            cta: siteData.ctaText || siteData.cta || 'Get Started',
+            features: siteData.features || []
+        });
+    } catch (e) {
+        console.error("Website generation error:", e);
+        // Fallback to basic template on error
         setGeneratedSite({
             name: siteName,
             headline: siteIndustry === 'City Government' ? `Welcome to the City of ${siteName}` : `The Best ${siteIndustry} in Town`,
-            subheadline: siteIndustry === 'City Government' 
+            subheadline: siteIndustry === 'City Government'
                 ? `Official portal for residents. Pay bills, report issues, and access city services online.`
                 : `Experience premium quality and service at ${siteName}. We are dedicated to excellence.`,
             cta: siteIndustry === 'City Government' ? 'Access Services' : 'Book Now'
         });
+    } finally {
         setIsBuildingSite(false);
-    }, 2000);
+    }
   };
 
   const handleSimulateLead = () => {
@@ -287,7 +406,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                     <div>
                         <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Phone size={18}/> AI Phone Agent</h4>
                         <ul className="space-y-2 text-sm text-slate-600">
-                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>24/7 Receptionist:</strong> Answers calls, takes messages, and routes urgencies.</li>
+                            <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>24/7 Receptionist:</strong> Answers calls, takes messages, and routes urgent issues.</li>
                             <li className="flex items-start gap-2"><CheckCircle size={14} className="text-emerald-500 mt-0.5"/> <strong>Human-like Voice:</strong> Uses advanced neural speech for natural conversations.</li>
                         </ul>
                     </div>
@@ -767,31 +886,64 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                         
                         {trainingStep === 0 && (
                            <div className="bg-slate-900 rounded-xl p-6 border border-slate-700 space-y-4">
+                              <input
+                                 type="file"
+                                 ref={fileInputRef}
+                                 accept="application/pdf"
+                                 onChange={handlePdfFileSelect}
+                                 className="hidden"
+                              />
                               <div className="flex gap-4 mb-4">
-                                 <button 
-                                    onClick={() => setTrainingType('pdf')}
+                                 <button
+                                    onClick={() => { setTrainingType('pdf'); setSelectedPdfFile(null); }}
                                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${trainingType === 'pdf' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
                                  >
                                     <Upload size={16} className="inline mr-2"/> Upload PDF
                                  </button>
-                                 <button 
+                                 <button
                                     onClick={() => setTrainingType('url')}
                                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${trainingType === 'url' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
                                  >
                                     <LinkIcon size={16} className="inline mr-2"/> Scan Website
                                  </button>
                               </div>
-                              
+
                               {trainingType === 'pdf' ? (
-                                 <div className="border-2 border-dashed border-slate-600 rounded-xl h-40 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-900/10 transition" onClick={handleTrainingDemo}>
-                                    <FileText size={48} className="text-slate-500 mb-2"/>
-                                    <p className="text-sm text-slate-400">Drag & Drop Business PDF</p>
-                                    <span className="text-xs text-slate-600 mt-2">Employee Handbook, Menu, Catalog</span>
+                                 <div>
+                                    <div className="border-2 border-dashed border-slate-600 rounded-xl h-40 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-900/10 transition" onClick={handleTrainingDemo}>
+                                       <FileText size={48} className="text-slate-500 mb-2"/>
+                                       <p className="text-sm text-slate-400">
+                                          {selectedPdfFile ? selectedPdfFile.name : 'Click to Upload PDF'}
+                                       </p>
+                                       <span className="text-xs text-slate-600 mt-2">
+                                          {selectedPdfFile ? `${(selectedPdfFile.size / 1024).toFixed(1)}KB` : 'Employee Handbook, Menu, Catalog'}
+                                       </span>
+                                    </div>
+                                    {selectedPdfFile && (
+                                       <button
+                                          onClick={handleTrainingDemo}
+                                          className="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition"
+                                       >
+                                          Extract Text
+                                       </button>
+                                    )}
                                  </div>
                               ) : (
                                  <div className="space-y-4">
-                                    <input type="text" placeholder="https://yourbusiness.com" className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none" />
-                                    <button onClick={handleTrainingDemo} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition">Scan Now</button>
+                                    <input 
+                                       type="text" 
+                                       value={trainingUrl}
+                                       onChange={(e) => setTrainingUrl(e.target.value)}
+                                       placeholder="https://yourbusiness.com" 
+                                       className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none" 
+                                    />
+                                    <button 
+                                       onClick={handleTrainingDemo} 
+                                       disabled={!trainingUrl}
+                                       className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition disabled:opacity-50"
+                                    >
+                                       Scan Now
+                                    </button>
                                  </div>
                               )}
                            </div>
@@ -799,9 +951,21 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
                         {trainingStep === 1 && (
                            <div className="h-64 flex flex-col items-center justify-center bg-slate-900 rounded-xl border border-slate-700">
-                              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                              <p className="font-bold text-lg animate-pulse">Ingesting Knowledge...</p>
-                              <p className="text-sm text-slate-500">Reading 42 pages...</p>
+                              {trainingError ? (
+                                 <div className="text-center px-6">
+                                    <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                                       <X size={32} className="text-red-400" />
+                                    </div>
+                                    <p className="font-bold text-lg text-red-400 mb-2">Scraping Failed</p>
+                                    <p className="text-sm text-slate-400">{trainingError}</p>
+                                 </div>
+                              ) : (
+                                 <>
+                                    <Loader className="w-16 h-16 text-blue-500 animate-spin mb-4" />
+                                    <p className="font-bold text-lg animate-pulse">Extracting Knowledge...</p>
+                                    <p className="text-sm text-slate-500 mt-2">{trainingProgress || 'Processing...'}</p>
+                                 </>
+                              )}
                            </div>
                         )}
 
@@ -810,20 +974,37 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                               <div className="flex items-center gap-2 text-emerald-400 mb-4 bg-emerald-500/10 p-2 rounded-lg">
                                  <CheckCircle size={18}/> <span className="text-sm font-bold">Training Complete</span>
                               </div>
-                              <div className="space-y-4 flex-1">
-                                 <div className="flex justify-end">
-                                    <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-sm max-w-[90%]">
-                                       What is your return policy for damaged items?
-                                    </div>
+                              <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-2 max-h-[200px] border border-slate-800 rounded p-2 bg-slate-950/50">
+                                 <p className="text-xs text-slate-400 whitespace-pre-wrap">{scrapedContent}</p>
+                              </div>
+                              
+                              {/* Mini Chat Interface */}
+                              <div className="space-y-3 border-t border-slate-800 pt-3">
+                                 <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                                    {trainingChatHistory.map((m, i) => (
+                                       <div key={i} className={`text-xs p-2 rounded ${m.role === 'user' ? 'bg-blue-600 ml-8' : 'bg-slate-700 mr-8'}`}>
+                                          {m.text}
+                                       </div>
+                                    ))}
+                                    {isTrainingChatTyping && <div className="text-xs text-slate-500">Bot typing...</div>}
                                  </div>
-                                 <div className="flex justify-start">
-                                    <div className="bg-slate-700 text-white p-3 rounded-2xl rounded-bl-none text-sm max-w-[90%] border border-slate-600">
-                                       <span className="text-xs text-blue-300 block mb-1 font-bold">Source: Employee_Handbook.pdf (Page 12)</span>
-                                       According to our policy, damaged items can be returned within 30 days for a full refund or exchange. The customer must provide a photo of the damage.
-                                    </div>
+                                 <div className="flex gap-2">
+                                    <input 
+                                       value={trainingChatInput}
+                                       onChange={(e) => setTrainingChatInput(e.target.value)}
+                                       placeholder="Ask a question about this data..."
+                                       className="flex-1 bg-slate-800 border border-slate-600 rounded text-xs px-2 py-1.5 focus:border-blue-500 outline-none text-white"
+                                       onKeyDown={(e) => e.key === 'Enter' && handleTrainingChatSend()}
+                                    />
+                                    <button onClick={handleTrainingChatSend} className="bg-blue-600 p-1.5 rounded hover:bg-blue-500">
+                                       <Send size={14} />
+                                    </button>
                                  </div>
                               </div>
-                              <button onClick={() => setTrainingStep(0)} className="w-full mt-4 py-2 text-sm text-slate-400 hover:text-white">Try Another</button>
+
+                              <button onClick={() => { setTrainingStep(0); setTrainingUrl(''); }} className="w-full mt-4 py-2 text-sm text-slate-400 hover:text-white flex items-center justify-center gap-1">
+                                 <RefreshCcw size={14} /> Try Another URL
+                              </button>
                            </div>
                         )}
                      </div>
@@ -1171,7 +1352,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       </section>
 
       {/* Value Prop: Industries */}
-      <section id="industries" className="py-24 bg-slate-50 border-y border-slate-200">
+      <section id="industries" className="py-24 bg-white border-y border-slate-100">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Who is this for?</h2>
@@ -1180,7 +1361,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {industries.map((ind, i) => (
-              <div key={i} className="p-8 rounded-2xl bg-white hover:shadow-xl transition-all duration-300 border border-slate-200 group">
+              <div key={i} className="p-8 rounded-2xl bg-slate-50 hover:bg-white hover:shadow-xl transition-all duration-300 border border-slate-100 group">
                 <div className={`w-12 h-12 bg-${ind.color}-100 text-${ind.color}-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
                   <ind.icon size={24} />
                 </div>
@@ -1271,7 +1452,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-24 px-6 bg-white">
+      <section id="pricing" className="py-24 px-6 bg-slate-50">
         <div className="max-w-[90rem] mx-auto">
            <div className="text-center mb-16">
              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Pricing that Scales with You</h2>
