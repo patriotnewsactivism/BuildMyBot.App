@@ -67,37 +67,104 @@ export const generateBotResponse = async (
   }
 };
 
-export const scrapeWebsiteContent = async (url: string): Promise<string> => {
+export const scrapeWebsiteContent = async (
+  url: string,
+  options?: {
+    maxLength?: number;
+    onProgress?: (stage: string) => void;
+  }
+): Promise<string> => {
+  const maxLength = options?.maxLength || 30000; // Increased default limit
+  const onProgress = options?.onProgress;
+
   try {
     // 1. Validate URL
-    let targetUrl = url;
+    let targetUrl = url.trim();
     if (!targetUrl.startsWith('http')) {
       targetUrl = 'https://' + targetUrl;
     }
 
+    // Basic URL validation
+    try {
+      new URL(targetUrl);
+    } catch {
+      throw new Error(`Invalid URL format: ${url}`);
+    }
+
+    onProgress?.("Fetching website content...");
+
     // 2. Use Jina Reader to get clean Markdown
-    const scrapeResponse = await fetch(`https://r.jina.ai/${targetUrl}`);
+    const scrapeResponse = await fetch(`https://r.jina.ai/${targetUrl}`, {
+      headers: {
+        'Accept': 'text/plain',
+      },
+    });
+
     if (!scrapeResponse.ok) {
+      if (scrapeResponse.status === 404) {
+        throw new Error(`Website not found (404): ${targetUrl}`);
+      } else if (scrapeResponse.status === 403) {
+        throw new Error(`Access forbidden (403): The website blocks automated access`);
+      } else if (scrapeResponse.status >= 500) {
+        throw new Error(`Server error (${scrapeResponse.status}): The website is temporarily unavailable`);
+      }
       throw new Error(`Scraping failed with status: ${scrapeResponse.status}`);
     }
-    
+
     const rawMarkdown = await scrapeResponse.text();
 
-    // 3. If content is too long, truncate it for the prompt
-    const truncatedContent = rawMarkdown.substring(0, 15000); 
+    if (!rawMarkdown || rawMarkdown.length < 50) {
+      throw new Error(`Insufficient content retrieved from ${url}. The page may be empty or blocked.`);
+    }
+
+    onProgress?.("Analyzing content with AI...");
+
+    // 3. Intelligently truncate if needed (keep first and last portions)
+    let contentToAnalyze = rawMarkdown;
+    let wasTruncated = false;
+
+    if (rawMarkdown.length > maxLength) {
+      wasTruncated = true;
+      const halfMax = Math.floor(maxLength / 2);
+      contentToAnalyze = rawMarkdown.substring(0, halfMax) +
+        "\n\n[... CONTENT TRUNCATED ...]\n\n" +
+        rawMarkdown.substring(rawMarkdown.length - halfMax);
+    }
 
     // 4. Use AI to summarize and structure the data for a Knowledge Base
     const summary = await generateBotResponse(
-      "You are a Data Extraction Expert. Your job is to extract key business information from website content.",
+      "You are a Data Extraction Expert. Extract and organize key information from website content into a clear, structured format that a chatbot can use to answer questions.",
       [],
-      `Please extract the following from this website content and format it as a concise list of facts suitable for a chatbot knowledge base:\n1. Business Name & Description\n2. Key Services/Products\n3. Contact Info (Phone, Email, Address)\n4. Operating Hours\n5. Pricing/Offers (if available)\n\nWEBSITE CONTENT:\n${truncatedContent}`,
+      `Extract and format the following information from this website:\n\n` +
+      `1. Business/Organization Name & Description\n` +
+      `2. Main Services/Products/Offerings\n` +
+      `3. Contact Information (Phone, Email, Address, Social Media)\n` +
+      `4. Operating Hours (if available)\n` +
+      `5. Pricing/Rates (if available)\n` +
+      `6. Key Features/Benefits\n` +
+      `7. Important Policies or Terms\n` +
+      `8. Any other relevant facts\n\n` +
+      `Format as clear bullet points under each category. Only include information that is actually present.\n\n` +
+      `WEBSITE CONTENT:\n${contentToAnalyze}\n\n` +
+      `${wasTruncated ? 'Note: Content was truncated due to length. Focus on the most important information.' : ''}`,
       'gpt-4o-mini'
     );
 
-    return summary;
-  } catch (error) {
+    onProgress?.("Complete!");
+
+    // Add metadata about the scrape
+    const metadata = `\n\n---\nSource: ${targetUrl}\nScraped: ${new Date().toLocaleString()}\nContent Size: ${(rawMarkdown.length / 1024).toFixed(1)}KB${wasTruncated ? ' (truncated)' : ''}`;
+
+    return summary + metadata;
+  } catch (error: any) {
     console.error("Scraping Error:", error);
-    return `Unable to scrape ${url}. It might be blocked or unavailable. Please add information manually.`;
+    onProgress?.("Error");
+
+    // Provide specific error messages
+    if (error.message) {
+      throw new Error(error.message);
+    }
+    throw new Error(`Unable to scrape ${url}. Please check the URL and try again.`);
   }
 };
 
