@@ -9,10 +9,11 @@ interface FullPageChatProps {
 }
 
 export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
-  const [messages, setMessages] = useState<{role: 'user'|'model', text: string}[]>([]);
+  const [messages, setMessages] = useState<{role: 'user'|'model', text: string, timestamp: number}[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [bot, setBot] = useState<BotType | null>(null);
+  const [conversationId] = useState(`conv-${Date.now()}`);
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Check for embed mode in URL params
@@ -26,7 +27,7 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
         if (foundBot) {
           setBot(foundBot);
           setTimeout(() => {
-             setMessages([{ role: 'model', text: "Hello! How can I help you today?" }]);
+             setMessages([{ role: 'model', text: "Hello! How can I help you today?", timestamp: Date.now() }]);
           }, 500);
         }
       } catch (e) {
@@ -45,26 +46,46 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
   const handleSend = async () => {
     if (!input.trim() || !bot) return;
 
-    const userMsg = { role: 'user' as const, text: input };
+    const userMsg = { role: 'user' as const, text: input, timestamp: Date.now() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
 
     try {
         const response = await generateBotResponse(
-            bot.systemPrompt, 
-            messages, 
-            userMsg.text, 
+            bot.systemPrompt,
+            messages,
+            userMsg.text,
             bot.model,
             bot.knowledgeBase ? bot.knowledgeBase.join('\n') : ''
         );
-        
+
         // Simulating network delay based on bot config if available, else 1s
         const delay = bot.responseDelay || 1000;
-        
-        setTimeout(() => {
-            setMessages(prev => [...prev, { role: 'model', text: response }]);
+
+        setTimeout(async () => {
+            const botMsg = { role: 'model' as const, text: response, timestamp: Date.now() };
+            const updatedMessages = [...messages, userMsg, botMsg];
+            setMessages(prev => [...prev, botMsg]);
             setIsTyping(false);
+
+            // Save conversation to database
+            try {
+              // Get bot owner_id from the bot object
+              const ownerId = (bot as any).owner_id || (bot as any).ownerId;
+              if (ownerId) {
+                const conversation = {
+                  id: conversationId,
+                  botId: bot.id,
+                  messages: updatedMessages,
+                  sentiment: 'Neutral' as const,
+                  timestamp: Date.now()
+                };
+                await dbService.saveConversation(conversation, ownerId);
+              }
+            } catch (err) {
+              console.error("Failed to save conversation:", err);
+            }
         }, delay);
     } catch (e) {
         setIsTyping(false);

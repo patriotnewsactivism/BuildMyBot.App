@@ -1,19 +1,38 @@
-import React, { useState } from 'react';
-import { Mail, Instagram, Megaphone, Loader, Copy, Check, Twitter, Smartphone } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mail, Instagram, Megaphone, Loader, Copy, Check, Twitter, Smartphone, Save } from 'lucide-react';
 import { generateMarketingContent } from '../../services/geminiService';
+import { dbService } from '../../services/dbService';
 
-export const MarketingTools: React.FC = () => {
+interface MarketingToolsProps {
+  userId?: string;
+}
+
+export const MarketingTools: React.FC<MarketingToolsProps> = ({ userId }) => {
   const [topic, setTopic] = useState('');
   const [tone, setTone] = useState('Professional');
   const [activeType, setActiveType] = useState<'email'|'social'|'ad'|'viral-thread'|'story'>('email');
   const [generatedContent, setGeneratedContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [savedContent, setSavedContent] = useState<any[]>([]);
+
+  // Load saved content on mount
+  useEffect(() => {
+    const loadSaved = async () => {
+      if (userId) {
+        const content = await dbService.getMarketingContent(userId);
+        setSavedContent(content);
+      }
+    };
+    loadSaved();
+  }, [userId]);
 
   const handleGenerate = async () => {
     if (!topic) return;
     setLoading(true);
     setGeneratedContent('');
+    setSaved(false);
     try {
       const content = await generateMarketingContent(activeType, topic, tone);
       setGeneratedContent(content);
@@ -21,6 +40,20 @@ export const MarketingTools: React.FC = () => {
       setGeneratedContent("Error generating content. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!userId || !generatedContent) return;
+    try {
+      await dbService.saveMarketingContent(userId, activeType, topic, generatedContent, topic, tone);
+      setSaved(true);
+      // Reload saved content
+      const content = await dbService.getMarketingContent(userId);
+      setSavedContent(content);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      console.error("Failed to save content:", e);
     }
   };
 
@@ -109,13 +142,46 @@ export const MarketingTools: React.FC = () => {
          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in">
            <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex justify-between items-center">
              <h3 className="font-medium text-slate-700">Generated Result</h3>
-             <button onClick={copyToClipboard} className="text-sm text-blue-900 hover:text-blue-950 flex items-center gap-1">
-               {copied ? <Check size={16} /> : <Copy size={16} />}
-               {copied ? 'Copied' : 'Copy Text'}
-             </button>
+             <div className="flex gap-2">
+               {userId && (
+                 <button onClick={handleSave} className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                   {saved ? <Check size={16} /> : <Save size={16} />}
+                   {saved ? 'Saved' : 'Save'}
+                 </button>
+               )}
+               <button onClick={copyToClipboard} className="text-sm text-blue-900 hover:text-blue-950 flex items-center gap-1">
+                 {copied ? <Check size={16} /> : <Copy size={16} />}
+                 {copied ? 'Copied' : 'Copy Text'}
+               </button>
+             </div>
            </div>
            <div className="p-6 whitespace-pre-wrap text-slate-600 text-sm leading-relaxed">
              {generatedContent}
+           </div>
+         </div>
+       )}
+
+       {savedContent.length > 0 && (
+         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+           <div className="bg-slate-50 px-6 py-3 border-b border-slate-100">
+             <h3 className="font-medium text-slate-700">Saved Content ({savedContent.length})</h3>
+           </div>
+           <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+             {savedContent.slice(0, 5).map((item) => (
+               <div key={item.id} className="p-4 hover:bg-slate-50 transition">
+                 <div className="flex justify-between items-start gap-3">
+                   <div className="flex-1 min-w-0">
+                     <div className="flex items-center gap-2 mb-1">
+                       <span className="text-xs font-medium text-blue-900 uppercase">{item.type}</span>
+                       <span className="text-xs text-slate-400">•</span>
+                       <span className="text-xs text-slate-500">{item.tone}</span>
+                     </div>
+                     <div className="text-sm font-medium text-slate-800 mb-1">{item.title}</div>
+                     <div className="text-xs text-slate-500 truncate">{item.content.substring(0, 100)}...</div>
+                   </div>
+                 </div>
+               </div>
+             ))}
            </div>
          </div>
        )}
