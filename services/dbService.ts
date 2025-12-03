@@ -3,7 +3,7 @@ import { Bot, Lead, Conversation, User, PlanType } from '../types';
 
 export const dbService = {
   // --- BOTS ---
-  
+
   // Real-time listener for bots
   subscribeToBots: (onUpdate: (bots: Bot[]) => void) => {
     if (!supabase) {
@@ -11,43 +11,7 @@ export const dbService = {
       return () => {};
     }
 
-    const channel = supabase
-      .channel('bots-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: TABLES.BOTS,
-        },
-        async () => {
-          // Fetch updated bots
-          const { data, error } = await supabase!
-            .from(TABLES.BOTS)
-            .select('*')
-            .order('created_at', { ascending: false });
-
-          if (!error && data) {
-            // Transform snake_case to camelCase
-            const bots = data.map(bot => ({
-              id: bot.id,
-              name: bot.name,
-              type: bot.type,
-              systemPrompt: bot.system_prompt,
-              model: bot.model,
-              temperature: bot.temperature,
-              knowledgeBase: [], // Will be loaded separately if needed
-              active: bot.active,
-              conversationsCount: bot.conversations_count || 0,
-              themeColor: bot.theme_color,
-              maxMessages: bot.max_messages,
-              randomizeIdentity: bot.randomize_identity,
-            }));
-            onUpdate(bots);
-          }
-        }
-      )
-      .subscribe();
+    const client = supabase;
 
     // Initial fetch
     const fetchBots = async () => {
@@ -105,21 +69,22 @@ export const dbService = {
       return () => {};
     }
 
-    const channel = supabase
-      .channel('leads-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: TABLES.LEADS,
-        },
-        async () => {
-          const { data, error } = await supabase!
-            .from(TABLES.LEADS)
-            .select('*')
-            .order('created_at', { ascending: false });
+    const client = supabase;
 
+    // Initial fetch
+    const fetchLeads = async () => {
+      const { data, error } = await client
+        .from('leads')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        onUpdate(data as Lead[]);
+      }
+    };
+    fetchLeads();
+
+    // Subscribe to changes
     const channel = client.channel('public:leads')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
         fetchLeads();
@@ -203,23 +168,22 @@ export const dbService = {
       return () => {};
     }
 
-    const channel = supabase
-      .channel('referrals-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: TABLES.PROFILES,
-          filter: `referred_by=eq.${resellerCode}`,
-        },
-        async () => {
-          const { data, error } = await supabase!
-            .from(TABLES.PROFILES)
-            .select('*')
-            .eq('referred_by', resellerCode);
+    const client = supabase;
 
-    // Supabase allows filtering on channels, but simpler to just listen to table and filter in fetch or usage
+    // Initial fetch
+    const fetchReferrals = async () => {
+      const { data, error } = await client
+        .from('profiles')
+        .select('*')
+        .eq('referredBy', resellerCode);
+
+      if (!error && data) {
+        onUpdate(data as User[]);
+      }
+    };
+    fetchReferrals();
+
+    // Subscribe to changes
     const channel = client.channel('public:profiles')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `referredBy=eq.${resellerCode}` }, () => {
         fetchReferrals();

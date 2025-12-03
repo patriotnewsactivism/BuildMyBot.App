@@ -7,7 +7,8 @@ export const generateBotResponse = async (
   history: { role: 'user' | 'model'; text: string }[],
   lastMessage: string,
   modelName: string = 'gpt-4o-mini',
-  context?: string
+  context?: string,
+  botId?: string
 ): Promise<string> => {
   const apiKey = getApiKey();
   if (!apiKey) return "Error: API Key is missing. Please check your configuration.";
