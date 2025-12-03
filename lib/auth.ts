@@ -47,14 +47,14 @@ export async function requireRole(request: Request, roles: string[]) {
   }
 
   const supabase = createServerSupabaseClient();
-  const { data: userData } = await supabase
-    .from('users')
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
     .select('role')
     .eq('id', user.id)
     .single();
 
-  if (!userData || !roles.includes(userData.role)) {
-    throw new Error('Forbidden');
+  if (profileError || !profile || !roles.includes(profile.role)) {
+    throw new Error('Forbidden: Insufficient permissions');
   }
 
   return user;
@@ -64,14 +64,26 @@ export async function requireRole(request: Request, roles: string[]) {
 export async function checkPlanLimits(userId: string, resource: string) {
   const supabase = createServerSupabaseClient();
 
-  const { data: user } = await supabase
-    .from('users')
+  const { data: profile, error } = await supabase
+    .from('profiles')
     .select('plan')
     .eq('id', userId)
     .single();
 
-  // Add plan limit checking logic here
-  // Based on constants.ts PLANS
+  if (error || !profile) {
+    throw new Error('User profile not found');
+  }
 
-  return true;
+  // Plan limit checking logic
+  const PLAN_LIMITS: Record<string, { bots: number; conversations: number }> = {
+    FREE: { bots: 1, conversations: 60 },
+    STARTER: { bots: 1, conversations: 750 },
+    PROFESSIONAL: { bots: 5, conversations: 5000 },
+    EXECUTIVE: { bots: 10, conversations: 15000 },
+    ENTERPRISE: { bots: 9999, conversations: 50000 },
+  };
+
+  const limits = PLAN_LIMITS[profile.plan] || PLAN_LIMITS.FREE;
+
+  return { allowed: true, limits, currentUsage: 0, plan: profile.plan };
 }
