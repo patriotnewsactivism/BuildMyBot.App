@@ -71,12 +71,27 @@ export const scrapeWebsiteContent = async (url: string): Promise<string> => {
 
     // 1. Scrape using Jina (Free tier, robust scraping)
     const scrapeResponse = await fetch(`https://r.jina.ai/${targetUrl}`);
-    if (!scrapeResponse.ok) throw new Error("Failed to scrape website.");
-    
-    const rawText = await scrapeResponse.text();
-    const truncatedText = rawText.substring(0, 20000); // Limit context window
+    if (!scrapeResponse.ok) {
+      const statusText = scrapeResponse.statusText || 'Unknown error';
+      throw new Error(`Failed to scrape website: ${statusText}. The URL may be invalid or blocked.`);
+    }
 
-    // 2. Summarize using GPT-4o-mini
+    const rawText = await scrapeResponse.text();
+
+    // Validate we got actual content
+    if (!rawText || rawText.trim().length < 100) {
+      throw new Error("Website returned insufficient content. The page may be empty or require JavaScript.");
+    }
+
+    // Smart truncation: Try to cut at sentence boundary, not mid-sentence
+    let truncatedText = rawText;
+    if (rawText.length > 30000) {
+      // Find last period before 30000 chars to avoid cutting mid-sentence
+      const cutPoint = rawText.lastIndexOf('.', 30000);
+      truncatedText = cutPoint > 20000 ? rawText.substring(0, cutPoint + 1) : rawText.substring(0, 30000);
+    }
+
+    // 2. Extract comprehensive knowledge using GPT-4o-mini
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -86,19 +101,39 @@ export const scrapeWebsiteContent = async (url: string): Promise<string> => {
         body: JSON.stringify({
             model: 'gpt-4o-mini',
             messages: [
-                { role: 'system', content: 'You are a precise Data Extractor. Extract business facts.' },
-                { role: 'user', content: `Analyze this content and extract:\n1. Business Name & Description\n2. Key Services\n3. Contact Info\n4. Pricing/Hours\n\nCONTENT:\n${truncatedText}` }
-            ]
+                {
+                  role: 'system',
+                  content: 'You are an expert Knowledge Extraction AI. Your job is to read website content and extract ALL useful information that would help a chatbot answer customer questions accurately. Be comprehensive and thorough.'
+                },
+                {
+                  role: 'user',
+                  content: `Extract comprehensive knowledge from this website content. Include:\n\n1. Business/Organization Overview (name, description, mission)\n2. Products & Services (detailed list with descriptions)\n3. Contact Information (address, phone, email, hours)\n4. Pricing & Plans (if mentioned)\n5. Policies (shipping, returns, privacy, terms)\n6. FAQs and common customer questions\n7. Any other important facts a customer service bot should know\n\nFormat the output as clear, factual statements that can be used to train an AI assistant. Be specific and include all relevant details.\n\n=== WEBSITE CONTENT ===\n${truncatedText}\n\n=== END CONTENT ===\n\nExtracted Knowledge:`
+                }
+            ],
+            temperature: 0.3  // Lower temperature for more factual extraction
         })
     });
 
-    if (!response.ok) throw new Error("Failed to summarize content.");
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg = errorData.error?.message || response.statusText;
+      throw new Error(`AI extraction failed: ${errorMsg}`);
+    }
+
     const data = await response.json();
-    return data.choices[0]?.message?.content || rawText.substring(0, 1000);
+    const extractedContent = data.choices[0]?.message?.content;
+
+    // Validate extraction produced meaningful content
+    if (!extractedContent || extractedContent.trim().length < 50) {
+      throw new Error("Content extraction produced insufficient knowledge. The website may not contain useful information.");
+    }
+
+    return extractedContent;
 
   } catch (error: any) {
     console.error("Scrape Error:", error);
-    throw new Error("Failed to process website content.");
+    // Re-throw with original message to preserve specific error details
+    throw error;
   }
 };
 
