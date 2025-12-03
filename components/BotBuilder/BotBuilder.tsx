@@ -144,40 +144,17 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   const handleScrapeUrl = async () => {
     if (!urlInput.trim()) return;
     setIsScraping(true);
-
+    
     try {
         const extractedData = await scrapeWebsiteContent(urlInput);
-
-        // Validate we got useful content
-        if (!extractedData || extractedData.trim().length < 20) {
-            throw new Error("No useful content was extracted from the website.");
-        }
-
-        // Update bot with new knowledge
-        const updatedBot = {
+        setActiveBot({
             ...activeBot,
             knowledgeBase: [...(activeBot.knowledgeBase || []), extractedData]
-        };
-
-        setActiveBot(updatedBot);
-
-        // Auto-save the bot to persist the knowledge immediately
-        if (updatedBot.id === 'new') {
-            updatedBot.id = `b${Date.now()}`;
-        }
-        onSave(updatedBot);
-
-        // Clear input and show success
+        });
         setUrlInput('');
-
-        // Show success message with preview of extracted content
-        const preview = extractedData.substring(0, 150) + (extractedData.length > 150 ? '...' : '');
-        alert(`✅ Successfully trained bot with knowledge from website!\n\nExtracted: ${preview}\n\nThe bot has been saved automatically.`);
-
-    } catch (error: any) {
+    } catch (error) {
         console.error("Scrape failed", error);
-        const errorMessage = error.message || "Unknown error occurred";
-        alert(`❌ Failed to scrape website:\n\n${errorMessage}\n\nPlease check:\n- The URL is correct and accessible\n- The website allows scraping\n- You have a valid OpenAI API key configured`);
+        alert("Failed to scrape website. Please check the URL and try again.");
     } finally {
         setIsScraping(false);
     }
@@ -201,8 +178,8 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
 
     try {
         const context = activeBot.knowledgeBase.join('\n\n');
-        const response = await generateBotResponse(activeBot.systemPrompt, updatedHistory, newMessage.text, activeBot.model, context, activeBot.id);
-
+        const response = await generateBotResponse(activeBot.systemPrompt, updatedHistory, newMessage.text, activeBot.model, context);
+        
         // Use configured delay
         setTimeout(() => {
             setTestHistory(prev => [...prev, { role: 'model', text: response, timestamp: Date.now() }]);
@@ -455,16 +432,16 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                            placeholder="https://yourbusiness.com"
                            className="flex-1 rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900"
                          />
-                         <button
+                         <button 
                            onClick={handleScrapeUrl}
                            disabled={isScraping || !urlInput}
-                           className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-950 disabled:opacity-50 transition font-medium flex items-center gap-2 whitespace-nowrap"
+                           className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-950 disabled:opacity-50 transition font-medium flex items-center gap-2"
                          >
                            {isScraping ? <RefreshCcw className="animate-spin" size={16} /> : <Zap size={16} />}
-                           {isScraping ? 'Learning...' : 'Train Bot'}
+                           Train Bot
                          </button>
                       </div>
-                      <p className="text-xs text-slate-500 mt-2">AI will scrape the website, extract comprehensive knowledge, and train your bot instantly. The bot will be saved automatically.</p>
+                      <p className="text-xs text-slate-500 mt-2">We will scrape this URL and add key info to the bot's memory.</p>
                    </div>
 
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">

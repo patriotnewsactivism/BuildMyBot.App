@@ -3,15 +3,11 @@ import { Bot, Lead, Conversation, User, PlanType } from '../types';
 
 export const dbService = {
   // --- BOTS ---
-
+  
   // Real-time listener for bots
   subscribeToBots: (onUpdate: (bots: Bot[]) => void) => {
-    if (!supabase) {
-      console.warn('Supabase not initialized');
-      return () => {};
-    }
-
     const client = supabase;
+    if (!client) return () => {};
 
     // Initial fetch
     const fetchBots = async () => {
@@ -64,27 +60,21 @@ export const dbService = {
   // --- LEADS ---
 
   subscribeToLeads: (onUpdate: (leads: Lead[]) => void) => {
-    if (!supabase) {
-      console.warn('Supabase not initialized');
-      return () => {};
-    }
-
     const client = supabase;
+    if (!client) return () => {};
 
-    // Initial fetch
     const fetchLeads = async () => {
       const { data, error } = await client
         .from('leads')
         .select('*')
-        .order('created_at', { ascending: false });
-
+        .order('createdAt', { ascending: false });
+        
       if (!error && data) {
         onUpdate(data as Lead[]);
       }
     };
     fetchLeads();
 
-    // Subscribe to changes
     const channel = client.channel('public:leads')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
         fetchLeads();
@@ -163,27 +153,22 @@ export const dbService = {
 
   // Listen to users who were referred by this reseller code
   subscribeToReferrals: (resellerCode: string, onUpdate: (users: User[]) => void) => {
-    if (!supabase) {
-      console.warn('Supabase not initialized');
-      return () => {};
-    }
-
     const client = supabase;
+    if (!client) return () => {};
 
-    // Initial fetch
     const fetchReferrals = async () => {
       const { data, error } = await client
         .from('profiles')
         .select('*')
         .eq('referredBy', resellerCode);
-
+        
       if (!error && data) {
         onUpdate(data as User[]);
       }
     };
     fetchReferrals();
 
-    // Subscribe to changes
+    // Supabase allows filtering on channels, but simpler to just listen to table and filter in fetch or usage
     const channel = client.channel('public:profiles')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `referredBy=eq.${resellerCode}` }, () => {
         fetchReferrals();
