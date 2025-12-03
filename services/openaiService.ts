@@ -68,8 +68,13 @@ export const scrapeWebsiteContent = async (url: string): Promise<string> => {
       targetUrl = 'https://' + targetUrl;
     }
 
-    // 1. Scrape using Jina (Free tier, robust scraping)
-    const scrapeResponse = await fetch(`https://r.jina.ai/${targetUrl}`);
+    // 1. Scrape using Jina via CORS Proxy to avoid browser blocking
+    const proxyUrl = 'https://corsproxy.io/?';
+    const jinaUrl = `https://r.jina.ai/${targetUrl}`;
+    
+    // We must encode the target URL component
+    const scrapeResponse = await fetch(proxyUrl + encodeURIComponent(jinaUrl));
+    
     if (!scrapeResponse.ok) throw new Error("Failed to scrape website.");
     
     const rawText = await scrapeResponse.text();
@@ -97,7 +102,7 @@ export const scrapeWebsiteContent = async (url: string): Promise<string> => {
 
   } catch (error: any) {
     console.error("Scrape Error:", error);
-    throw new Error("Failed to process website content.");
+    throw new Error("Failed to process website content. " + error.message);
   }
 };
 
