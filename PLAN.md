@@ -198,43 +198,30 @@ Each function lives in `supabase/functions/<name>`.
 
 # 7. Operational Roadmap
 
-## ✅ Milestone 1 – Supabase Core (COMPLETED)
-- ✅ Create schema
-- ✅ Migrate data
-- ✅ Implement RLS
-- ✅ Deploy base Edge Functions
+## Milestone 1 – Supabase Core (1–2 weeks)
+- Create schema  
+- Migrate data  
+- Implement RLS  
+- Deploy base Edge Functions  
 
-**Status:** Complete - All database migrations, RLS policies, and core Edge Functions deployed.
+## Milestone 2 – Bot Builder, AI, CRM (2–3 weeks)
+- Bot builder integration  
+- Chat + AI completions  
+- CRM/lead views  
+- Billing enforcement  
 
-## ✅ Milestone 2 – Bot Builder, AI, CRM (COMPLETED)
-- ✅ Bot builder integration
-- ✅ Chat + AI completions
-- ✅ CRM/lead views
-- ✅ Billing enforcement
+## Milestone 3 – Marketplace, Website Builder, Phone Agent (3–4 weeks)
+- Template marketplace  
+- Website generator  
+- Phone agent MVP  
+- Landing page upgrades  
 
-**Status:** Complete - Unified AI service, marketplace templates, and core features integrated.
-
-## ✅ Milestone 3 – Advanced Features (COMPLETED)
-- ✅ Template marketplace seeded with 15 templates
-- ✅ Website generator (existing)
-- ✅ Phone agent MVP with Twilio integration
-- ✅ Stripe webhook handler for billing
-- ✅ Analytics dashboard with real-time metrics
-- ✅ Usage quota enforcement widget
-- ✅ Team collaboration and multi-user access
-- ✅ Comprehensive testing documentation
-
-**Status:** Complete - All advanced features implemented and tested.
-
-## ✅ Milestone 4 – Hardening & Launch (COMPLETED)
-- ✅ Testing framework (TESTING.md created)
-- ✅ Analytics dashboards (implemented)
-- ✅ Sentry integration (fully implemented with error tracking, session replay, and logging)
-- ✅ SEO & landing page polish (structured data, sitemap, robots.txt, meta tags)
-- ✅ Final deployment documentation (DEPLOYMENT.md created)
-- ✅ Production environment setup (PRODUCTION.md created with comprehensive guides)
-
-**Status:** Complete - All hardening and launch preparation tasks finished.  
+## Milestone 4 – Hardening & Launch (2–3 weeks)
+- Testing framework  
+- Logging + Analytics dashboards  
+- Sentry integration  
+- SEO & landing page polish  
+- Final docs  
 
 ---
 
@@ -287,8 +274,6 @@ Each endpoint is fully documented in the Edge Function code.
 
 # 11. Testing Strategy
 
-**Comprehensive testing documentation available in [TESTING.md](./TESTING.md)**
-
 ### Unit Tests
 - Edge Function logic
 - Utilities
@@ -305,29 +290,19 @@ Each endpoint is fully documented in the Edge Function code.
 - Template installation
 - Billing enforcement
 
-### Test Coverage
-- 50+ test cases covering all features
-- Database schema validation
-- Row-Level Security (RLS) testing
-- Edge Functions testing (8 functions)
-- Frontend component testing
-- Security & performance testing
-- Real-time subscription testing
-
 ---
 
 # 12. Release Checklist
-- [x] All migrations applied
-- [x] RLS tested (see TESTING.md)
-- [x] Edge Functions deployed (ai-complete, create-lead, embed-knowledge-base, billing-overage-check, marketplace-install-template, reseller-track-referral, phone-webhook, stripe-webhook)
-- [x] OpenAI key configured
-- [x] Embedding engine live (pgvector + OpenAI embeddings)
-- [x] Documentation complete (README.md, GETTING_STARTED.md, TESTING.md, DEPLOYMENT.md, PRODUCTION.md, MIGRATION_SUMMARY.md)
-- [x] Stripe keys configuration documented (PRODUCTION.md)
-- [x] Landing page updated with SEO enhancements (structured data, sitemap, meta tags)
-- [x] Sentry/live error tracking enabled (complete with session replay and breadcrumbs)
-- [x] Production logging configured (loggingService.ts with Sentry integration)
-- [ ] Production deployment complete (pending actual deployment to production URL)
+- [ ] All migrations applied
+- [ ] RLS tested
+- [ ] Edge Functions deployed
+- [ ] Stripe keys configured
+- [ ] OpenAI key configured
+- [ ] Embedding engine live
+- [ ] Landing page updated
+- [ ] Documentation complete
+- [ ] Sentry/live error tracking enabled
+- [ ] Production logging verified
 
 ---
 
