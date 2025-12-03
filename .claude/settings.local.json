@@ -7,7 +7,10 @@
       "Bash(git fetch:*)",
       "Bash(git pull:*)",
       "Bash(git checkout:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(Select-String -Pattern \"SUPABASE\")",
+      "Bash(cat:*)",
+      "Bash(supabase status:*)"
     ],
     "deny": [],
     "ask": []
