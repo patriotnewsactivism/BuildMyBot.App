@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient';
 import { Bot, Lead, Conversation, User, PlanType } from '../types';
 
@@ -34,13 +35,29 @@ export const dbService = {
   saveBot: async (bot: Bot) => {
     const client = supabase;
     if (!client) return bot;
+
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) {
+        console.error("Cannot save bot: User not logged in");
+        return bot;
+    }
+
+    // Prepare payload with userId
+    const payload = {
+        ...bot,
+        userId: user.id
+    };
+
     const { data, error } = await client
       .from('bots')
-      .upsert(bot)
+      .upsert(payload)
       .select()
       .single();
       
-    if (error) throw error;
+    if (error) {
+        console.error("Error saving bot to Supabase:", error);
+        throw error;
+    }
     return data as Bot;
   },
 
@@ -90,11 +107,17 @@ export const dbService = {
     const client = supabase;
     if (!client) return lead;
     
-    // Upsert handles duplicate ID or we can rely on unique constraints
-    // Assuming 'id' is the primary key or we have a unique constraint on email + bot
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return lead; // Or handle as anonymous if capturing from public widget
+
+    const payload = {
+        ...lead,
+        userId: user.id // Leads should belong to the bot owner
+    };
+    
     const { data, error } = await client
       .from('leads')
-      .upsert(lead)
+      .upsert(payload)
       .select()
       .single();
 
@@ -168,7 +191,6 @@ export const dbService = {
     };
     fetchReferrals();
 
-    // Supabase allows filtering on channels, but simpler to just listen to table and filter in fetch or usage
     const channel = client.channel('public:profiles')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `referredBy=eq.${resellerCode}` }, () => {
         fetchReferrals();
