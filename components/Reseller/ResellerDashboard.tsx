@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, Users, TrendingUp, Copy, CheckCircle, Shield, Lock, CreditCard, ChevronRight, AlertTriangle, Building, LayoutDashboard, Loader } from 'lucide-react';
 import { ResellerStats, User } from '../../types';
-import { RESELLER_TIERS, PLANS } from '../../constants';
+import { RESELLER_TIERS, PLANS, APP_DOMAIN, generateReferralLink } from '../../constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { dbService } from '../../services/dbService';
 
@@ -58,7 +58,9 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats: initia
     ? ((realStats.totalClients - currentTier.min) / (nextTier.min - currentTier.min)) * 100 
     : 100;
 
-  const displayDomain = user.customDomain || (typeof window !== 'undefined' ? window.location.host : 'buildmybot.app');
+  // Use the branded domain for referral links
+  const displayDomain = user.customDomain || APP_DOMAIN;
+  const referralLink = generateReferralLink(user.resellerCode || 'CODE', user.customDomain);
 
   const OverviewTab = () => (
     <div className="space-y-6 animate-fade-in">
@@ -99,8 +101,8 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats: initia
         <div className="bg-gradient-to-br from-blue-900 to-slate-900 p-6 rounded-xl shadow-lg text-white">
            <p className="text-blue-200 text-sm font-medium mb-1">Referral Link</p>
            <div className="flex items-center gap-2 bg-white/10 p-2 rounded-lg border border-white/20 mb-3">
-             <code className="text-xs truncate flex-1">{displayDomain}/?ref={user.resellerCode || 'CODE'}</code>
-             <Copy size={14} className="cursor-pointer hover:text-blue-300" onClick={() => navigator.clipboard.writeText(`${displayDomain}/?ref=${user.resellerCode}`)} />
+             <code className="text-xs truncate flex-1">{referralLink}</code>
+             <Copy size={14} className="cursor-pointer hover:text-blue-300" onClick={() => navigator.clipboard.writeText(referralLink)} />
            </div>
            <p className="text-xs text-blue-200">Share this link to track signups automatically.</p>
         </div>

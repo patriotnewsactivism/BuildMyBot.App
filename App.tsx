@@ -76,10 +76,30 @@ function App() {
 
   // ============================================================================
   // INITIALIZATION: Capture Referral Code
+  // Supports both clean URL format: buildmybot.app/ref=CODE
+  // And legacy query param format: buildmybot.app/?ref=CODE
   // ============================================================================
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const refCode = params.get('ref');
+    let refCode: string | null = null;
+
+    // Check for clean URL format: /ref=CODE (preferred format)
+    const pathMatch = window.location.pathname.match(/^\/ref=([a-zA-Z0-9]+)/);
+    if (pathMatch) {
+      refCode = pathMatch[1];
+      // Clean the URL without refreshing (remove /ref=CODE from path)
+      window.history.replaceState({}, '', '/');
+    }
+
+    // Fallback: Check for legacy query param format: ?ref=CODE
+    if (!refCode) {
+      const params = new URLSearchParams(window.location.search);
+      refCode = params.get('ref');
+      // Clean URL if legacy format was used
+      if (refCode && window.location.search) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+
     if (refCode) {
       localStorage.setItem('bmb_ref_code', refCode);
       console.log('[BuildMyBot] Referral code captured:', refCode);
