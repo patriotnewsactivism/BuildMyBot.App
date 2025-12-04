@@ -1,3 +1,8 @@
+// ============================================================================
+// BuildMyBot.app - Main Application Entry Point
+// Production-Ready React Application
+// ============================================================================
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Layout/Sidebar';
 import { BotBuilder } from './components/BotBuilder/BotBuilder';
@@ -19,11 +24,14 @@ import { AuthModal } from './components/Auth/AuthModal';
 import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation } from './types';
 import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame } from 'lucide-react';
+import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu } from 'lucide-react';
 import { supabase } from './services/supabaseClient';
 import { dbService } from './services/dbService';
 
-const INITIAL_CHAT_LOGS: Conversation[] = []; 
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
 const INITIAL_RESELLER_STATS: ResellerStats = {
   totalClients: 0,
   totalRevenue: 0,
@@ -31,8 +39,14 @@ const INITIAL_RESELLER_STATS: ResellerStats = {
   pendingPayout: 0,
 };
 
-// Define Master Admins here
-const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org', 'ben@texasplanninglaw.com'];
+// Master Admin Emails (Full Platform Access)
+const MASTER_EMAILS = [
+  'admin@buildmybot.app',
+  'master@buildmybot.app',
+  'ceo@buildmybot.app',
+  'mreardon@wtpnews.org',
+  'ben@texasplanninglaw.com',
+];
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -40,11 +54,12 @@ function App() {
   const [showPartnerPage, setShowPartnerPage] = useState(false);
   const [showPartnerSignup, setShowPartnerSignup] = useState(false);
   
-  // Real State
+  // ============================================================================
+  // APPLICATION STATE
+  // ============================================================================
   const [user, setUser] = useState<User | null>(null);
   const [bots, setBots] = useState<BotType[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [chatLogs, setChatLogs] = useState<Conversation[]>(INITIAL_CHAT_LOGS);
   
   // UI State
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -59,80 +74,103 @@ function App() {
      return <FullPageChat botId={botId} />;
   }
 
-  // --- Capture Referral Code ---
+  // ============================================================================
+  // INITIALIZATION: Capture Referral Code
+  // ============================================================================
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const refCode = params.get('ref');
     if (refCode) {
       localStorage.setItem('bmb_ref_code', refCode);
-      console.log('Referral captured:', refCode);
+      console.log('[BuildMyBot] Referral code captured:', refCode);
     }
   }, []);
 
-  // --- Real-time Data Subscriptions ---
+  // ============================================================================
+  // AUTHENTICATION & REAL-TIME DATA SUBSCRIPTIONS
+  // ============================================================================
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      console.warn('[BuildMyBot] Supabase not configured. Some features will be limited.');
+      return;
+    }
 
     // Supabase Auth Listener
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[BuildMyBot] Auth event:', event);
+
       if (session?.user) {
         setIsLoggedIn(true);
         const email = session.user.email;
-        
-        // CHECK FOR GOD MODE (Master Emails)
-        if (email && MASTER_EMAILS.includes(email.toLowerCase())) {
-           setUser({
-              id: session.user.id,
-              name: 'Master Admin',
-              email: email,
-              role: UserRole.ADMIN, // Grant Full Access
-              plan: PlanType.ENTERPRISE, // Grant Uncapped Limits
-              companyName: 'BuildMyBot HQ',
-              avatarUrl: session.user.user_metadata?.avatar_url
-           });
-           return;
-        }
 
-        // Standard User Flow
-        const profile = await dbService.getUserProfile(session.user.id);
-        if (profile) {
-          setUser(profile);
-        } else {
-          // Fallback if profile creation is lagging (create a basic free user in state)
+        // Master Admin Override (God Mode)
+        if (email && MASTER_EMAILS.includes(email.toLowerCase())) {
+          console.log('[BuildMyBot] Master Admin detected:', email);
           setUser({
             id: session.user.id,
-            name: email?.split('@')[0] || 'User',
-            email: email || '',
-            role: UserRole.OWNER,
-            plan: PlanType.FREE,
-            companyName: 'My Company'
+            name: 'Master Admin',
+            email: email,
+            role: UserRole.ADMIN,
+            plan: PlanType.ENTERPRISE,
+            companyName: 'BuildMyBot HQ',
+            avatarUrl: session.user.user_metadata?.avatar_url,
           });
+          return;
+        }
+
+        // Standard User Flow - Fetch Profile from Supabase
+        try {
+          const profile = await dbService.getUserProfile(session.user.id);
+          if (profile) {
+            setUser(profile);
+          } else {
+            // Profile doesn't exist yet (rare edge case)
+            console.warn('[BuildMyBot] Profile not found. Creating fallback user.');
+            const fallbackUser: User = {
+              id: session.user.id,
+              name: email?.split('@')[0] || 'User',
+              email: email || '',
+              role: UserRole.OWNER,
+              plan: PlanType.FREE,
+              companyName: 'My Company',
+            };
+            setUser(fallbackUser);
+
+            // Attempt to create profile in background
+            dbService.saveUserProfile(fallbackUser).catch((err) => {
+              console.error('[BuildMyBot] Failed to save fallback profile:', err);
+            });
+          }
+        } catch (error) {
+          console.error('[BuildMyBot] Error loading user profile:', error);
         }
       } else if (event === 'SIGNED_OUT') {
-        // Do not reset if user was set manually (Demo Mode fallback)
+        // Clear auth state (unless demo user)
         if (!user || !user.id.startsWith('demo-user')) {
-             setIsLoggedIn(false);
-             setUser(null);
+          setIsLoggedIn(false);
+          setUser(null);
+          setBots([]);
+          setLeads([]);
         }
       }
     });
 
-    // Subscribe to Bots
+    // Subscribe to Bots (user-specific)
     const unsubscribeBots = dbService.subscribeToBots((updatedBots) => {
-       setBots(updatedBots);
+      setBots(updatedBots);
     });
 
-    // Subscribe to Leads
+    // Subscribe to Leads (user-specific)
     const unsubscribeLeads = dbService.subscribeToLeads((updatedLeads) => {
-       setLeads(updatedLeads);
+      setLeads(updatedLeads);
     });
 
     return () => {
-      authListener.subscription.unsubscribe();
+      authListener?.subscription?.unsubscribe();
       unsubscribeBots();
       unsubscribeLeads();
     };
-  }, [user]); // Add user to dependancy array to prevent clobbering demo user
+  }, []); // Run once on mount
 
   // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
@@ -401,7 +439,7 @@ function App() {
           
           {currentView === 'phone' && <PhoneAgent user={user} onUpdate={(u) => { setUser(u); dbService.saveUserProfile(u); }} />}
           
-          {currentView === 'chat-logs' && <ChatLogs conversations={chatLogs} />}
+          {currentView === 'chat-logs' && <ChatLogs conversations={[]} />}
           
           {currentView === 'billing' && <Billing user={user} />}
           
