@@ -1,3 +1,4 @@
+
 export enum UserRole {
   OWNER = 'OWNER',
   ADMIN = 'ADMIN',
@@ -52,6 +53,7 @@ export interface Bot {
   randomizeIdentity?: boolean; // Human-like behavior
   avatar?: string; // Custom avatar URL/Base64
   responseDelay?: number; // Simulated typing delay in ms
+  userId?: string; // Optional during creation, required in DB
 }
 
 export interface Lead {
@@ -63,6 +65,7 @@ export interface Lead {
   status: 'New' | 'Contacted' | 'Qualified' | 'Closed';
   sourceBotId: string;
   createdAt: string;
+  userId?: string; // Optional during capture, required in DB
 }
 
 export interface Conversation {
