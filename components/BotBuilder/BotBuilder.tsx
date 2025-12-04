@@ -209,8 +209,9 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
            <h3 className="font-semibold text-slate-800">My Bots</h3>
            <button 
              onClick={() => {
-                const newBot = {
+                const newBot: BotType = {
                     id: 'new',
+                    userId: '', // Will be set by dbService.saveBot
                     name: 'New Bot',
                     type: 'Custom',
                     systemPrompt: 'You are a helpful assistant.',
@@ -223,7 +224,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                     maxMessages: 20,
                     randomizeIdentity: true,
                     responseDelay: 1500
-                } as BotType;
+                };
                 setActiveBot(newBot);
                 setSelectedBotId('new');
              }}

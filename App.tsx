@@ -227,8 +227,11 @@ function App() {
   };
 
   const handleInstallTemplate = (template: any) => {
+    if (!user) return;
+
     const newBot: BotType = {
       id: `b${Date.now()}`,
+      userId: user.id,
       name: template.name,
       type: template.category === 'All' ? 'Custom' : template.category,
       systemPrompt: `You are a helpful assistant specialized in ${template.category}. ${template.description}. Act professionally and help the user achieve their goals.`,
@@ -241,7 +244,7 @@ function App() {
       maxMessages: 20,
       randomizeIdentity: true
     };
-    
+
     // Save to DB
     dbService.saveBot(newBot);
     
@@ -255,9 +258,12 @@ function App() {
   };
 
   const handleLeadDetected = (email: string) => {
+    if (!user) return;
+
     // This is called by BotBuilder test chat
     const newLead: Lead = {
       id: Date.now().toString(),
+      userId: user.id,
       name: 'Website Visitor',
       email: email,
       score: 85,

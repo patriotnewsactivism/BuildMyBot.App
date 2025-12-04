@@ -59,7 +59,7 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
                <p className="text-xs text-slate-500 truncate mb-2">{conv.messages[conv.messages.length - 1].text}</p>
                <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-200 text-[10px] font-medium text-slate-600">
-                    {getSentimentIcon(conv.sentiment)} {conv.sentiment}
+                    {getSentimentIcon(conv.sentiment || 'Neutral')} {conv.sentiment || 'Neutral'}
                   </div>
                   <div className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
                     {conv.messages.length} msgs
@@ -89,7 +89,7 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                      <Clock size={12} /> {new Date(activeConversation.timestamp).toLocaleString()}
                      <span className="mx-1">•</span>
-                     <span className="flex items-center gap-1">{getSentimentIcon(activeConversation.sentiment)} {activeConversation.sentiment} Sentiment</span>
+                     <span className="flex items-center gap-1">{getSentimentIcon(activeConversation.sentiment || 'Neutral')} {activeConversation.sentiment || 'Neutral'} Sentiment</span>
                   </div>
                 </div>
               </div>
