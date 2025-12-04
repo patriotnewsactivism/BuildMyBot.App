@@ -69,10 +69,10 @@ export const scrapeWebsiteContent = async (url: string): Promise<string> => {
     }
 
     // 1. Scrape using Jina via CORS Proxy to avoid browser blocking
+    // Using corsproxy.io to bypass Access-Control-Allow-Origin errors in browser
     const proxyUrl = 'https://corsproxy.io/?';
     const jinaUrl = `https://r.jina.ai/${targetUrl}`;
     
-    // We must encode the target URL component
     const scrapeResponse = await fetch(proxyUrl + encodeURIComponent(jinaUrl));
     
     if (!scrapeResponse.ok) throw new Error("Failed to scrape website.");
@@ -102,7 +102,7 @@ export const scrapeWebsiteContent = async (url: string): Promise<string> => {
 
   } catch (error: any) {
     console.error("Scrape Error:", error);
-    throw new Error("Failed to process website content. " + error.message);
+    throw new Error("Failed to scrape website. " + (error.message || ""));
   }
 };
 

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Search, MessageSquare, Clock, User, Smile, Frown, Meh, Filter, Download } from 'lucide-react';
 import { Conversation } from '../../types';
@@ -54,7 +55,7 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
              >
                <div className="flex justify-between items-start mb-1">
                  <span className="font-medium text-slate-700 text-sm">Visitor #{conv.id.substring(0,4)}</span>
-                 <span className="text-[10px] text-slate-400">{new Date(conv.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                 <span className="text-[10px] text-slate-400">{new Date(conv.timestamp).toLocaleTimeString(undefined, {hour: '2-digit', minute:'2-digit'})}</span>
                </div>
                <p className="text-xs text-slate-500 truncate mb-2">{conv.messages[conv.messages.length - 1].text}</p>
                <div className="flex items-center gap-2">
