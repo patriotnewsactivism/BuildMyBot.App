@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap } from 'lucide-react';
-import { PLANS, APP_DOMAIN, APP_NAME } from '../../constants';
+import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
 import { generateBotResponse } from '../../services/openaiService';
 
@@ -439,7 +439,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                        <div className="w-3 h-3 rounded-full bg-slate-300"></div>
                        <div className="w-3 h-3 rounded-full bg-slate-300"></div>
                    </div>
-                   <div className="bg-white border border-slate-200 px-3 py-1 rounded text-[10px] text-slate-400 font-mono w-64 text-center">{APP_DOMAIN}/dashboard</div>
+                   <div className="bg-white border border-slate-200 px-3 py-1 rounded text-[10px] text-slate-400 font-mono w-64 text-center">app.buildmybot.io/dashboard</div>
                    <div className="w-10"></div>
                 </div>
                 
@@ -716,11 +716,12 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
            </div>
         </div>
         <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-slate-800 text-center text-xs flex justify-between items-center">
-          <span>© {new Date().getFullYear()} {APP_DOMAIN}. All rights reserved.</span>
+          <span>© 2024 BuildMyBot.app. All rights reserved.</span>
           <div className="flex items-center gap-4">
              {onAdminLogin && (
                 <button onClick={onAdminLogin} className="opacity-10 hover:opacity-50 transition">Admin Portal</button>
              )}
+             <span className="flex items-center gap-1 opacity-50"><Globe size={12}/> Vercel Deployed</span>
           </div>
         </div>
       </footer>
