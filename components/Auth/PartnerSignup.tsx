@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ArrowLeft, CheckCircle, Lock, Building, User, Mail, Shield } from 'lucide-react';
 
@@ -56,7 +57,7 @@ export const PartnerSignup: React.FC<PartnerSignupProps> = ({ onBack, onComplete
           </div>
           
           <div className="text-xs text-slate-500 relative z-10">
-             © 2024 BuildMyBot. Secure Enrollment.
+             © 2025 BuildMyBot. Secure Enrollment.
           </div>
        </div>
 
