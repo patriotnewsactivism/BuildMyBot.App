@@ -1,66 +1,88 @@
+// ============================================================================
+// BuildMyBot.app - OpenAI Service
+// Production-Ready: Uses Supabase Edge Functions for Security
+// ============================================================================
 
-// Use process.env provided by Vite define config to avoid import.meta issues
-const getApiKey = () => process.env.VITE_OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+import { supabase } from './supabaseClient';
+import { ConversationMessage } from '../types';
 
+// ============================================================================
+// Main Chat Completion Function
+// SECURITY: Calls Supabase Edge Function (chat-completion) instead of OpenAI directly
+// This hides the API key from the frontend
+// ============================================================================
 export const generateBotResponse = async (
   systemPrompt: string,
-  history: { role: 'user' | 'model'; text: string }[],
+  history: { role: 'user' | 'model' | 'assistant'; text: string }[],
   lastMessage: string,
   modelName: string = 'gpt-4o-mini',
   context?: string
 ): Promise<string> => {
-  const apiKey = getApiKey();
-  if (!apiKey) return "Error: API Key is missing. Please check your configuration.";
-
-  // Construct messages
-  const messages: any[] = [
-    { role: 'system', content: systemPrompt }
-  ];
-
-  if (context) {
-    messages[0].content += `\n\n### KNOWLEDGE BASE:\n${context}\n\n### INSTRUCTIONS:\nAnswer strictly based on the provided Knowledge Base. If the answer is not in the text, state that you do not have that information.`;
+  if (!supabase) {
+    return "Error: Supabase is not configured. Please check your environment variables.";
   }
 
-  history.forEach(msg => {
-    messages.push({
-      role: msg.role === 'model' ? 'assistant' : 'user',
-      content: msg.text
-    });
-  });
-
-  messages.push({ role: 'user', content: lastMessage });
-
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: modelName,
-        messages: messages,
-        temperature: 0.7
-      })
-    });
-
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error?.message || response.statusText);
+    // Enhance system prompt with knowledge base context
+    let enhancedSystemPrompt = systemPrompt;
+    if (context) {
+      enhancedSystemPrompt += `\n\n### KNOWLEDGE BASE:\n${context}\n\n### INSTRUCTIONS:\nAnswer strictly based on the provided Knowledge Base. If the answer is not in the text, state that you do not have that information.`;
     }
 
-    const data = await response.json();
-    return data.choices[0]?.message?.content || "";
-  } catch (error: any) {
-    console.error("OpenAI Error:", error);
-    return "I'm having trouble connecting to the AI service right now. Please check your internet connection or API Key.";
+    // Convert history format to OpenAI format
+    const formattedMessages = history.map((msg) => ({
+      role: msg.role === 'model' ? 'assistant' : msg.role,
+      content: msg.text,
+    }));
+
+    // Add the current user message
+    formattedMessages.push({
+      role: 'user',
+      content: lastMessage,
+    });
+
+    // Call Supabase Edge Function (chat-completion)
+    const { data, error } = await supabase.functions.invoke('chat-completion', {
+      body: {
+        systemPrompt: enhancedSystemPrompt,
+        messages: formattedMessages,
+        model: modelName,
+      },
+    });
+
+    if (error) {
+      console.error('Edge Function Error:', error);
+
+      // User-friendly error messages
+      if (error.message?.includes('quota')) {
+        return "I'm currently experiencing high demand. Please try again in a moment.";
+      }
+      if (error.message?.includes('API')) {
+        return "I'm having trouble connecting to my AI service. Please contact support if this persists.";
+      }
+
+      return "I apologize, but I'm unable to respond right now. Please try again.";
+    }
+
+    if (!data?.reply) {
+      console.error('No reply in response:', data);
+      return "I received your message but couldn't generate a response. Please try again.";
+    }
+
+    return data.reply;
+
+  } catch (error) {
+    console.error('generateBotResponse Error:', error);
+    return "I'm experiencing technical difficulties. Please try again shortly.";
   }
 };
 
+// ============================================================================
+// Website Scraping & Summarization
+// Uses Jina AI reader + OpenAI for intelligent content extraction
+// ============================================================================
 export const scrapeWebsiteContent = async (url: string): Promise<string> => {
   if (!url) return "";
-  const apiKey = getApiKey();
-  if (!apiKey) throw new Error("API Key missing");
 
   try {
     let targetUrl = url;
@@ -68,97 +90,147 @@ export const scrapeWebsiteContent = async (url: string): Promise<string> => {
       targetUrl = 'https://' + targetUrl;
     }
 
-    // 1. Scrape using Jina via CORS Proxy to avoid browser blocking
+    // Step 1: Scrape using Jina AI (via CORS proxy)
     const proxyUrl = 'https://corsproxy.io/?';
     const jinaUrl = `https://r.jina.ai/${targetUrl}`;
-    
-    // We must encode the target URL component
-    const scrapeResponse = await fetch(proxyUrl + encodeURIComponent(jinaUrl));
-    
-    if (!scrapeResponse.ok) throw new Error("Failed to scrape website.");
-    
+
+    const scrapeResponse = await fetch(proxyUrl + encodeURIComponent(jinaUrl), {
+      signal: AbortSignal.timeout(15000), // 15 second timeout
+    });
+
+    if (!scrapeResponse.ok) {
+      throw new Error(`Failed to fetch website content (Status: ${scrapeResponse.status})`);
+    }
+
     const rawText = await scrapeResponse.text();
     const truncatedText = rawText.substring(0, 20000); // Limit context window
 
-    // 2. Summarize using GPT-4o-mini
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-                { role: 'system', content: 'You are a precise Data Extractor. Extract business facts.' },
-                { role: 'user', content: `Analyze this content and extract:\n1. Business Name & Description\n2. Key Services\n3. Contact Info\n4. Pricing/Hours\n\nCONTENT:\n${truncatedText}` }
-            ]
-        })
+    // Step 2: Summarize using Edge Function
+    if (!supabase) {
+      // Fallback: Return raw text if Supabase unavailable
+      return truncatedText.substring(0, 2000);
+    }
+
+    const { data, error } = await supabase.functions.invoke('chat-completion', {
+      body: {
+        systemPrompt: 'You are a precise Data Extractor. Extract business facts from website content.',
+        messages: [
+          {
+            role: 'user',
+            content: `Analyze this content and extract:\n1. Business Name & Description\n2. Key Services/Products\n3. Contact Info\n4. Pricing/Hours (if available)\n\nCONTENT:\n${truncatedText}`,
+          },
+        ],
+        model: 'gpt-4o-mini',
+      },
     });
 
-    if (!response.ok) throw new Error("Failed to summarize content.");
-    const data = await response.json();
-    return data.choices[0]?.message?.content || rawText.substring(0, 1000);
+    if (error || !data?.reply) {
+      // Fallback: Return truncated raw text
+      return truncatedText.substring(0, 2000);
+    }
 
-  } catch (error: any) {
-    console.error("Scrape Error:", error);
-    throw new Error("Failed to process website content. " + error.message);
+    return data.reply;
+
+  } catch (error) {
+    console.error('scrapeWebsiteContent Error:', error);
+
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      throw new Error("Website took too long to respond. Please try a different URL.");
+    }
+
+    throw new Error("Failed to process website content. The site may be blocking automated access.");
   }
 };
 
-export const generateMarketingContent = async (type: string, topic: string, tone: string): Promise<string> => {
-    const apiKey = getApiKey();
-    if (!apiKey) return "Error: API Key missing.";
+// ============================================================================
+// Marketing Content Generator
+// Generates viral posts, email campaigns, etc.
+// ============================================================================
+export const generateMarketingContent = async (
+  type: string,
+  topic: string,
+  tone: string
+): Promise<string> => {
+  if (!supabase) {
+    return "Error: Marketing generator requires Supabase configuration.";
+  }
 
-    try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages: [
-                    { role: 'system', content: `You are an expert Copywriter. Tone: ${tone}.` },
-                    { role: 'user', content: `Write a ${type} about ${topic}. Return ONLY the content, no filler.` }
-                ]
-            })
-        });
-        const data = await response.json();
-        return data.choices[0]?.message?.content || "";
-    } catch (e) {
-        return "Failed to generate content.";
+  try {
+    const { data, error } = await supabase.functions.invoke('chat-completion', {
+      body: {
+        systemPrompt: `You are an expert Copywriter. Tone: ${tone}. Never include meta-commentary or explanations—only output the requested content.`,
+        messages: [
+          {
+            role: 'user',
+            content: `Write a ${type} about "${topic}". Return ONLY the content, no filler or introductions.`,
+          },
+        ],
+        model: 'gpt-4o-mini',
+      },
+    });
+
+    if (error || !data?.reply) {
+      return "Unable to generate content. Please try again.";
     }
+
+    return data.reply;
+
+  } catch (error) {
+    console.error('generateMarketingContent Error:', error);
+    return "Failed to generate marketing content.";
+  }
 };
 
-export const generateWebsiteStructure = async (businessName: string, description: string): Promise<string> => {
-    const apiKey = getApiKey();
-    if (!apiKey) throw new Error("API Key missing");
+// ============================================================================
+// Website Structure Generator
+// Creates landing page structure for AI website builder
+// ============================================================================
+export const generateWebsiteStructure = async (
+  businessName: string,
+  description: string
+): Promise<string> => {
+  if (!supabase) {
+    throw new Error("Website builder requires Supabase configuration.");
+  }
 
-    try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                response_format: { type: "json_object" },
-                messages: [
-                    { role: 'system', content: 'You are a Website Builder AI. Output JSON only with keys: headline, subheadline, features (array of strings), ctaText.' },
-                    { role: 'user', content: `Generate landing page structure for "${businessName}". Description: ${description}` }
-                ]
-            })
-        });
-        const data = await response.json();
-        return data.choices[0]?.message?.content || "{}";
-    } catch (e) {
-        console.error(e);
-        throw e;
+  try {
+    const { data, error } = await supabase.functions.invoke('chat-completion', {
+      body: {
+        systemPrompt: 'You are a Website Builder AI. Output JSON only with keys: headline, subheadline, features (array of strings), ctaText. Do not include any markdown code blocks or extra text.',
+        messages: [
+          {
+            role: 'user',
+            content: `Generate a landing page structure for "${businessName}". Description: ${description}. Return pure JSON only.`,
+          },
+        ],
+        model: 'gpt-4o-mini',
+      },
+    });
+
+    if (error || !data?.reply) {
+      throw new Error("Failed to generate website structure.");
     }
+
+    // Remove markdown code blocks if present
+    let cleanedReply = data.reply.trim();
+    if (cleanedReply.startsWith('```json')) {
+      cleanedReply = cleanedReply.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    } else if (cleanedReply.startsWith('```')) {
+      cleanedReply = cleanedReply.replace(/```\n?/g, '');
+    }
+
+    // Validate JSON
+    JSON.parse(cleanedReply);
+
+    return cleanedReply;
+
+  } catch (error) {
+    console.error('generateWebsiteStructure Error:', error);
+    throw error;
+  }
 };
 
-// Legacy alias
+// ============================================================================
+// Legacy Alias (for backwards compatibility)
+// ============================================================================
 export const simulateWebScrape = scrapeWebsiteContent;
