@@ -4,7 +4,7 @@ import { Bot, Lead, Conversation, User, PlanType } from '../types';
 
 export const dbService = {
   // --- BOTS ---
-
+  
   // Real-time listener for bots
   subscribeToBots: (onUpdate: (bots: Bot[]) => void) => {
     const client = supabase;
@@ -53,7 +53,7 @@ export const dbService = {
       .upsert(payload)
       .select()
       .single();
-
+      
     if (error) {
         console.error("Error saving bot to Supabase:", error);
         throw error;
@@ -69,23 +69,7 @@ export const dbService = {
       .select('*')
       .eq('id', id)
       .single();
-
-    if (error || !data) return undefined;
-    return data as Bot;
-  },
-
-  // Public bot fetch (no auth required - for embed/share links)
-  getPublicBotById: async (id: string): Promise<Bot | undefined> => {
-    const client = supabase;
-    if (!client) return undefined;
-
-    const { data, error } = await client
-      .from('bots')
-      .select('id, name, systemPrompt, model, temperature, knowledgeBase, themeColor, maxMessages, randomizeIdentity, responseDelay, type, active')
-      .eq('id', id)
-      .eq('active', true)
-      .single();
-
+      
     if (error || !data) return undefined;
     return data as Bot;
   },
@@ -101,7 +85,7 @@ export const dbService = {
         .from('leads')
         .select('*')
         .order('createdAt', { ascending: false });
-
+        
       if (!error && data) {
         onUpdate(data as Lead[]);
       }
@@ -122,7 +106,7 @@ export const dbService = {
   saveLead: async (lead: Lead) => {
     const client = supabase;
     if (!client) return lead;
-
+    
     const { data: { user } } = await client.auth.getUser();
     if (!user) return lead; // Or handle as anonymous if capturing from public widget
 
@@ -130,7 +114,7 @@ export const dbService = {
         ...lead,
         userId: user.id // Leads should belong to the bot owner
     };
-
+    
     const { data, error } = await client
       .from('leads')
       .upsert(payload)
@@ -144,49 +128,6 @@ export const dbService = {
     return data as Lead;
   },
 
-  // Save lead from public chat (uses bot owner's context)
-  savePublicLead: async (lead: Lead, botId: string) => {
-    const client = supabase;
-    if (!client) return lead;
-
-    // For public leads, we store them with the botId reference
-    const payload = {
-        ...lead,
-        sourceBotId: botId
-    };
-
-    const { data, error } = await client
-      .from('leads')
-      .insert(payload)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error saving public lead:", error);
-      return lead;
-    }
-    return data as Lead;
-  },
-
-  // --- CONVERSATIONS ---
-
-  saveConversation: async (conversation: Conversation) => {
-    const client = supabase;
-    if (!client) return conversation;
-
-    const { data, error } = await client
-      .from('conversations')
-      .insert(conversation)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error saving conversation:", error);
-      return conversation;
-    }
-    return data as Conversation;
-  },
-
   // --- USER & BILLING ---
 
   getUserProfile: async (uid: string): Promise<User | null> => {
@@ -197,7 +138,7 @@ export const dbService = {
       .select('*')
       .eq('id', uid)
       .single();
-
+      
     if (error || !data) return null;
     return data as User;
   },
@@ -206,17 +147,17 @@ export const dbService = {
     const client = supabase;
     if (!client) return;
     const now = new Date().toISOString();
-
+    
     const userData = {
         ...user,
         status: user.status || 'Active',
         createdAt: user.createdAt || now
     };
-
+    
     const { error } = await client
       .from('profiles')
       .upsert(userData);
-
+      
     if (error) console.error("Error saving profile:", error);
   },
 
@@ -227,7 +168,7 @@ export const dbService = {
       .from('profiles')
       .update({ plan: plan })
       .eq('id', uid);
-
+      
     if (error) console.error("Error updating plan:", error);
   },
 
@@ -243,7 +184,7 @@ export const dbService = {
         .from('profiles')
         .select('*')
         .eq('referredBy', resellerCode);
-
+        
       if (!error && data) {
         onUpdate(data as User[]);
       }
@@ -262,7 +203,7 @@ export const dbService = {
   },
 
   // --- ADMIN FUNCTIONS ---
-
+  
   // Get ALL users for the Admin Dashboard
   getAllUsers: async (): Promise<User[]> => {
     const client = supabase;
@@ -270,7 +211,7 @@ export const dbService = {
     const { data, error } = await client
       .from('profiles')
       .select('*');
-
+      
     if (error) {
       console.error("Error fetching users:", error);
       return [];
