@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CheckCircle, DollarSign, TrendingUp, Users, ArrowRight, Calculator, Shield, Zap, Globe, ArrowLeft, LayoutDashboard } from 'lucide-react';
-import { RESELLER_TIERS, APP_DOMAIN } from '../../constants';
+import { RESELLER_TIERS } from '../../constants';
 
 interface PartnerProps {
   onBack: () => void;
@@ -70,7 +70,7 @@ export const PartnerProgramPage: React.FC<PartnerProps> = ({ onBack, onLogin, on
                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
                   </div>
                   <div className="bg-slate-800 text-slate-400 text-xs px-3 py-1 rounded text-center w-64 mx-auto font-mono">
-                     {APP_DOMAIN}/partner/dashboard
+                     partner.buildmybot.app/dashboard
                   </div>
                </div>
                {/* Mock Dashboard UI */}
