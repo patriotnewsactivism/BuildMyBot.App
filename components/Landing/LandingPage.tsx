@@ -1051,7 +1051,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
            </div>
         </div>
         <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-slate-800 text-center text-xs flex justify-between items-center">
-          <span>© 2024 BuildMyBot.app. All rights reserved.</span>
+          <span>© 2025 BuildMyBot.app. All rights reserved. • Houston, TX</span>
           <div className="flex items-center gap-4">
              {onAdminLogin && (
                 <button onClick={onAdminLogin} className="opacity-10 hover:opacity-50 transition">Admin Portal</button>
