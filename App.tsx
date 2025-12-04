@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from './components/Layout/Sidebar';
 import { BotBuilder } from './components/BotBuilder/BotBuilder';
 import { ResellerDashboard } from './components/Reseller/ResellerDashboard';
@@ -39,7 +39,8 @@ function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [showPartnerPage, setShowPartnerPage] = useState(false);
   const [showPartnerSignup, setShowPartnerSignup] = useState(false);
-  
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
+
   // Real State
   const [user, setUser] = useState<User | null>(null);
   const [bots, setBots] = useState<BotType[]>([]);
@@ -52,12 +53,26 @@ function App() {
   const [notification, setNotification] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  useEffect(() => {
+    const handlePopState = () => setCurrentPath(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateToPortal = useCallback(() => {
+    if (window.location.pathname !== '/app') {
+      window.history.replaceState(null, '', '/app');
+    }
+    setCurrentPath('/app');
+  }, []);
+
   // Manual Routing Check for Full Page Chat
-  const currentPath = window.location.pathname;
   if (currentPath.startsWith('/chat/')) {
-     const botId = currentPath.split('/')[2];
-     return <FullPageChat botId={botId} />;
+    const botId = currentPath.split('/')[2];
+    return <FullPageChat botId={botId} />;
   }
+
+  const isPortalRoute = currentPath.startsWith('/app') || currentPath.startsWith('/portal');
 
   // --- Capture Referral Code ---
   useEffect(() => {
@@ -77,8 +92,11 @@ function App() {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setIsLoggedIn(true);
+        if (!currentPath.startsWith('/chat/')) {
+          navigateToPortal();
+        }
         const email = session.user.email;
-        
+
         // CHECK FOR GOD MODE (Master Emails)
         if (email && MASTER_EMAILS.includes(email.toLowerCase())) {
            setUser({
@@ -132,7 +150,7 @@ function App() {
       unsubscribeBots();
       unsubscribeLeads();
     };
-  }, [user]); // Add user to dependancy array to prevent clobbering demo user
+  }, [user, currentPath, navigateToPortal]); // Add user to dependancy array to prevent clobbering demo user
 
   // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
@@ -162,7 +180,8 @@ function App() {
       setUser(newUser);
       setIsLoggedIn(true);
       setAuthModalOpen(false);
-      
+      navigateToPortal();
+
       if (isMaster) {
           setCurrentView('admin');
       }
@@ -173,16 +192,17 @@ function App() {
 
   const handlePartnerSignup = (data: any) => {
     // In a real flow, this would create the user in DB with RESELLER role
-    setUser({ 
+    setUser({
       id: 'reseller-' + Date.now(),
       email: data.email,
       name: data.name,
-      role: UserRole.RESELLER, 
+      role: UserRole.RESELLER,
       plan: PlanType.FREE,
       companyName: data.companyName,
       resellerCode: data.companyName.substring(0,3).toUpperCase() + '2024'
     });
     setIsLoggedIn(true);
+    navigateToPortal();
     setCurrentView('reseller');
     setShowPartnerSignup(false);
     setShowPartnerPage(false);
@@ -244,7 +264,7 @@ function App() {
   };
 
   // If not logged in, show Public Landing Page or Partner Page
-  if (!isLoggedIn || !user) {
+  if (!isPortalRoute || !isLoggedIn || !user) {
     if (showPartnerSignup) {
         return <PartnerSignup onBack={() => setShowPartnerSignup(false)} onComplete={handlePartnerSignup} />;
     }
