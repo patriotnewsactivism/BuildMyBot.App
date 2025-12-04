@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign } from 'lucide-react';
 import { Bot as BotType } from '../../types';
 import { generateBotResponse, scrapeWebsiteContent } from '../../services/openaiService';
-import { AVAILABLE_MODELS } from '../../constants';
+import { AVAILABLE_MODELS, APP_DOMAIN } from '../../constants';
 import { dbService } from '../../services/dbService';
 
 interface BotBuilderProps {
@@ -75,10 +75,10 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   // Random identity for preview
   const [previewIdentity, setPreviewIdentity] = useState({ name: 'Bot', color: '#1e3a8a' });
 
-  // Determine domain for snippets
-  const displayDomain = customDomain || (typeof window !== 'undefined' ? window.location.host : 'buildmybot.app');
-  // Real working link
-  const shareLink = `${window.location.protocol}//${displayDomain}/chat/${activeBot.id}`;
+  // Determine domain for snippets - always use branded buildmybot.app unless custom domain is set
+  const displayDomain = customDomain || APP_DOMAIN;
+  // Real working link - uses HTTPS for the branded domain
+  const shareLink = `https://${displayDomain}/chat/${activeBot.id}`;
 
   useEffect(() => {
     if (activeBot.randomizeIdentity) {

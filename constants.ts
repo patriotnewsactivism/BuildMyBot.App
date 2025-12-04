@@ -1,5 +1,21 @@
 import { PlanType } from './types';
 
+// ============================================================================
+// BRANDING & DOMAIN CONFIGURATION
+// ============================================================================
+export const APP_DOMAIN = 'buildmybot.app';
+export const APP_NAME = 'BuildMyBot';
+export const APP_URL = `https://${APP_DOMAIN}`;
+
+// Referral link generator - always uses clean /ref=CODE format
+export const generateReferralLink = (referralCode: string, customDomain?: string): string => {
+  const domain = customDomain || APP_DOMAIN;
+  return `https://${domain}/ref=${referralCode}`;
+};
+
+// ============================================================================
+// PRICING PLANS
+// ============================================================================
 export const PLANS = {
   [PlanType.FREE]: { 
     price: 0, 
