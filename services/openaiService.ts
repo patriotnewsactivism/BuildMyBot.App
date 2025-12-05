@@ -1,4 +1,3 @@
-
 // Use process.env provided by Vite define config to avoid import.meta issues
 const getApiKey = () => process.env.VITE_OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
 
@@ -10,7 +9,7 @@ export const generateBotResponse = async (
   context?: string
 ): Promise<string> => {
   const apiKey = getApiKey();
-  if (!apiKey) return "Error: API Key is missing. Please check your configuration.";
+  if (!apiKey) return "Configuration Error: OpenAI API Key is missing. Please check your environment variables.";
 
   // Construct messages
   const messages: any[] = [
@@ -18,7 +17,7 @@ export const generateBotResponse = async (
   ];
 
   if (context) {
-    messages[0].content += `\n\n### KNOWLEDGE BASE:\n${context}\n\n### INSTRUCTIONS:\nAnswer strictly based on the provided Knowledge Base. If the answer is not in the text, state that you do not have that information.`;
+    messages[0].content += `\n\n### KNOWLEDGE BASE (Use this to answer):\n${context}\n\n### INSTRUCTIONS:\nAnswer strictly based on the provided Knowledge Base. If the answer is not in the text, state that you do not have that information.`;
   }
 
   history.forEach(msg => {
@@ -40,26 +39,31 @@ export const generateBotResponse = async (
       body: JSON.stringify({
         model: modelName,
         messages: messages,
-        temperature: 0.7
+        temperature: 0.7,
+        max_tokens: 500
       })
     });
 
     if (!response.ok) {
         const err = await response.json().catch(() => ({}));
+        console.error("OpenAI API Error:", err);
         throw new Error(err.error?.message || response.statusText);
     }
 
     const data = await response.json();
     return data.choices[0]?.message?.content || "";
   } catch (error: any) {
-    console.error("OpenAI Error:", error);
-    return "I'm having trouble connecting to the AI service right now. Please check your internet connection or API Key.";
+    console.error("OpenAI Service Error:", error);
+    return "I'm having trouble connecting to my AI brain right now. Please check your internet connection or API Key configuration.";
   }
 };
 
 export const scrapeWebsiteContent = async (url: string): Promise<string> => {
   if (!url) return "";
   const apiKey = getApiKey();
+  
+  // Note: Scraping does not technically require OpenAI key until the summarization step.
+  // But we check it early to fail fast if the app isn't configured.
   if (!apiKey) throw new Error("API Key missing");
 
   try {
@@ -69,18 +73,18 @@ export const scrapeWebsiteContent = async (url: string): Promise<string> => {
     }
 
     // 1. Scrape using Jina via CORS Proxy to avoid browser blocking
-    // Using corsproxy.io to bypass Access-Control-Allow-Origin errors in browser
+    // Using corsproxy.io to bypass Access-Control-Allow-Origin errors in browser environment
     const proxyUrl = 'https://corsproxy.io/?';
     const jinaUrl = `https://r.jina.ai/${targetUrl}`;
     
     const scrapeResponse = await fetch(proxyUrl + encodeURIComponent(jinaUrl));
     
-    if (!scrapeResponse.ok) throw new Error("Failed to scrape website.");
+    if (!scrapeResponse.ok) throw new Error("Failed to scrape website. The URL might be blocked or invalid.");
     
     const rawText = await scrapeResponse.text();
-    const truncatedText = rawText.substring(0, 20000); // Limit context window
+    const truncatedText = rawText.substring(0, 15000); // Limit context window for cost/speed
 
-    // 2. Summarize using GPT-4o-mini
+    // 2. Summarize using GPT-4o-mini to create structured knowledge
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -91,7 +95,7 @@ export const scrapeWebsiteContent = async (url: string): Promise<string> => {
             model: 'gpt-4o-mini',
             messages: [
                 { role: 'system', content: 'You are a precise Data Extractor. Extract business facts.' },
-                { role: 'user', content: `Analyze this content and extract:\n1. Business Name & Description\n2. Key Services\n3. Contact Info\n4. Pricing/Hours\n\nCONTENT:\n${truncatedText}` }
+                { role: 'user', content: `Analyze this content and extract key business details:\n1. Business Name & Description\n2. Key Services/Products\n3. Contact Info (Email, Phone, Address)\n4. Pricing/Hours (if available)\n\nCONTENT:\n${truncatedText}` }
             ]
         })
     });
@@ -121,7 +125,7 @@ export const generateMarketingContent = async (type: string, topic: string, tone
                 model: 'gpt-4o-mini',
                 messages: [
                     { role: 'system', content: `You are an expert Copywriter. Tone: ${tone}.` },
-                    { role: 'user', content: `Write a ${type} about ${topic}. Return ONLY the content, no filler.` }
+                    { role: 'user', content: `Write a ${type} about ${topic}. Return ONLY the content, no filler. Keep it engaging and high-converting.` }
                 ]
             })
         });
