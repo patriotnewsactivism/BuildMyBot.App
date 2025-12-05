@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(dir \"C:\\react\\BuildMyBot.App\")",
+      "Bash(findstr:*)",
+      "Bash(npm install:*)",
+      "Bash(powershell -Command \"iwr -useb https://raw.githubusercontent.com/supabase/cli/main/scripts/install.ps1 | iex\")",
+      "Bash(npx supabase:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
