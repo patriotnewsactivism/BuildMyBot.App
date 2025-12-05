@@ -1,3 +1,4 @@
+
 # BuildMyBot.app
 
 The ultimate white-label AI chatbot platform for businesses and agencies. Build, deploy, and resell intelligent bots with zero coding.
@@ -94,4 +95,4 @@ For a detailed breakdown of the engineering plan, database schema, and migration
 - **Phone Agent:** Interactive call simulator.
 
 ---
-© 2024 BuildMyBot. All rights reserved.
+© 2025 BuildMyBot. All rights reserved.
