@@ -6,7 +6,9 @@
       "Bash(findstr:*)",
       "Bash(npm install:*)",
       "Bash(powershell -Command \"iwr -useb https://raw.githubusercontent.com/supabase/cli/main/scripts/install.ps1 | iex\")",
-      "Bash(npx supabase:*)"
+      "Bash(npx supabase:*)",
+      "Bash(SUPABASE_ACCESS_TOKEN=sbp_3abacf0b2ad2becce72a3ad763a1e1a9d875bffc npx supabase projects list:*)",
+      "Bash(SUPABASE_ACCESS_TOKEN=sbp_3abacf0b2ad2becce72a3ad763a1e1a9d875bffc npx supabase:*)"
     ],
     "deny": [],
     "ask": []

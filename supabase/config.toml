@@ -1,9 +1,6 @@
 # BuildMyBot.app Supabase Configuration
 # See: https://supabase.com/docs/guides/cli/config
 
-[project]
-id = "buildmybot"
-
 [api]
 enabled = true
 port = 54321
@@ -14,7 +11,7 @@ max_rows = 1000
 [db]
 port = 54322
 shadow_port = 54320
-major_version = 15
+major_version = 17
 
 [db.pooler]
 enabled = false
@@ -66,25 +63,3 @@ enabled = false
 enabled = false
 port = 54327
 vector_port = 54328
-
-[functions]
-verify_jwt = true
-
-# Edge Function configurations
-[functions.ai-complete]
-verify_jwt = false  # Allow public access for chat widgets
-
-[functions.create-lead]
-verify_jwt = false  # Allow public lead capture from widgets
-
-[functions.embed-knowledge-base]
-verify_jwt = true   # Requires authentication
-
-[functions.billing-overage-check]
-verify_jwt = true   # Requires authentication
-
-[functions.marketplace-install-template]
-verify_jwt = true   # Requires authentication
-
-[functions.reseller-track-referral]
-verify_jwt = false  # Allow public referral tracking
