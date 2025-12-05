@@ -196,6 +196,8 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   window.bmbConfig = {
     botId: "${activeBot.id}",
     theme: "${activeBot.themeColor}",
+    position: "${embedConfig.position}",
+    welcomeMessage: "${embedConfig.welcomeMessage}",
     domain: "${displayDomain}"
   };
 </script>
