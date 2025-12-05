@@ -70,7 +70,7 @@ function App() {
     }
     
     // Fake boot sequence for premium feel
-    setTimeout(() => setIsBooting(false), 800);
+    setTimeout(() => setIsBooting(false), 1200);
   }, []);
 
   // --- Real-time Data Subscriptions ---
@@ -198,7 +198,7 @@ function App() {
       name: template.name,
       type: template.category === 'All' ? 'Custom' : template.category,
       systemPrompt: `You are a helpful assistant specialized in ${template.category}. ${template.description}. Act professionally and help the user achieve their goals.`,
-      model: 'gemini-2.5-flash',
+      model: 'gpt-4o-mini',
       temperature: 0.7,
       knowledgeBase: [],
       active: true,
@@ -251,14 +251,15 @@ function App() {
       return (
         <div className="h-screen w-full bg-slate-900 flex items-center justify-center">
             <div className="flex flex-col items-center animate-fade-in">
-                <div className="w-16 h-16 bg-blue-900 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/50 mb-4 animate-bounce-slow">
-                    <BotIcon size={40} className="text-white" />
+                <div className="w-20 h-20 bg-blue-900 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-900/50 mb-6 animate-bounce-slow">
+                    <BotIcon size={48} className="text-white" />
                 </div>
-                <h1 className="text-white font-bold text-xl tracking-widest uppercase">BuildMyBot</h1>
-                <div className="mt-4 flex gap-1">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                <h1 className="text-white font-bold text-2xl tracking-widest uppercase mb-2">BuildMyBot</h1>
+                <p className="text-blue-400 text-xs font-mono tracking-wide mb-6">INITIALIZING SYSTEM...</p>
+                <div className="flex gap-1.5">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
                 </div>
             </div>
         </div>
@@ -266,6 +267,7 @@ function App() {
   }
 
   // If not logged in, show Public Landing Page or Partner Page
+  // This logic guarantees the landing page is the default view
   if (!isLoggedIn || !user) {
     if (showPartnerSignup) {
         return <PartnerSignup onBack={() => setShowPartnerSignup(false)} onComplete={handlePartnerSignup} />;
