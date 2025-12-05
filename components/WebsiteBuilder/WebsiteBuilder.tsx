@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout, Rocket, Monitor, Smartphone, CheckCircle, RefreshCcw } from 'lucide-react';
 import { generateWebsiteStructure } from '../../services/openaiService';

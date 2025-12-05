@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, AlertCircle, Loader } from 'lucide-react';
 import { generateBotResponse } from '../../services/openaiService';
@@ -56,7 +55,7 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
             bot.systemPrompt, 
             messages, 
             userMsg.text, 
-            bot.model,
+            bot.model || 'gpt-4o-mini',
             bot.knowledgeBase ? bot.knowledgeBase.join('\n') : ''
         );
         

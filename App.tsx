@@ -19,7 +19,7 @@ import { AuthModal } from './components/Auth/AuthModal';
 import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation } from './types';
 import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame } from 'lucide-react';
+import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame, Loader } from 'lucide-react';
 import { supabase } from './services/supabaseClient';
 import { dbService } from './services/dbService';
 
@@ -36,6 +36,7 @@ const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@bui
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isBooting, setIsBooting] = useState(true); // Premium loading state
   const [currentView, setCurrentView] = useState('dashboard');
   const [showPartnerPage, setShowPartnerPage] = useState(false);
   const [showPartnerSignup, setShowPartnerSignup] = useState(false);
@@ -67,6 +68,9 @@ function App() {
       localStorage.setItem('bmb_ref_code', refCode);
       console.log('Referral captured:', refCode);
     }
+    
+    // Fake boot sequence for premium feel
+    setTimeout(() => setIsBooting(false), 800);
   }, []);
 
   // --- Real-time Data Subscriptions ---
@@ -194,7 +198,7 @@ function App() {
       name: template.name,
       type: template.category === 'All' ? 'Custom' : template.category,
       systemPrompt: `You are a helpful assistant specialized in ${template.category}. ${template.description}. Act professionally and help the user achieve their goals.`,
-      model: 'gpt-4o-mini',
+      model: 'gemini-2.5-flash',
       temperature: 0.7,
       knowledgeBase: [],
       active: true,
@@ -242,6 +246,24 @@ function App() {
     setAuthMode(mode);
     setAuthModalOpen(true);
   };
+
+  if (isBooting) {
+      return (
+        <div className="h-screen w-full bg-slate-900 flex items-center justify-center">
+            <div className="flex flex-col items-center animate-fade-in">
+                <div className="w-16 h-16 bg-blue-900 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/50 mb-4 animate-bounce-slow">
+                    <BotIcon size={40} className="text-white" />
+                </div>
+                <h1 className="text-white font-bold text-xl tracking-widest uppercase">BuildMyBot</h1>
+                <div className="mt-4 flex gap-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                </div>
+            </div>
+        </div>
+      );
+  }
 
   // If not logged in, show Public Landing Page or Partner Page
   if (!isLoggedIn || !user) {
