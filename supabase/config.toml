@@ -88,3 +88,9 @@ verify_jwt = true   # Requires authentication
 
 [functions.reseller-track-referral]
 verify_jwt = false  # Allow public referral tracking
+
+[functions.stripe-webhook]
+verify_jwt = false  # Stripe handles its own signature verification
+
+[functions.twilio-webhook]
+verify_jwt = false  # Twilio handles its own authentication
