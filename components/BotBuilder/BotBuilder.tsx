@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign } from 'lucide-react';
+import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign, CheckCircle, AlertCircle } from 'lucide-react';
 import { Bot as BotType } from '../../types';
 import { generateBotResponse, scrapeWebsiteContent } from '../../services/openaiService';
 import { AVAILABLE_MODELS } from '../../constants';
 import { dbService } from '../../services/dbService';
+import { edgeFunctions } from '../../services/edgeFunctions';
 
 interface BotBuilderProps {
   bots: BotType[];
@@ -62,6 +63,8 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   const [kbInput, setKbInput] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [isScraping, setIsScraping] = useState(false);
+  const [isEmbedding, setIsEmbedding] = useState(false);
+  const [embeddingStatus, setEmbeddingStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -132,29 +135,90 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     }
   };
 
-  const handleAddKnowledge = () => {
+  const handleAddKnowledge = async () => {
     if (!kbInput.trim()) return;
+
+    const newContent = kbInput;
+    setKbInput('');
+    setEmbeddingStatus(null);
+
+    // Add to local state immediately for UI feedback
     setActiveBot({
       ...activeBot,
-      knowledgeBase: [...(activeBot.knowledgeBase || []), kbInput]
+      knowledgeBase: [...(activeBot.knowledgeBase || []), newContent]
     });
-    setKbInput('');
+
+    // If bot is already saved, embed the knowledge
+    if (activeBot.id && activeBot.id !== 'new') {
+      setIsEmbedding(true);
+      try {
+        const result = await edgeFunctions.embedKnowledgeBase(
+          activeBot.id,
+          newContent,
+          `manual_${Date.now()}.txt`,
+          { fileType: 'text' }
+        );
+        setEmbeddingStatus({
+          type: 'success',
+          message: `Embedded ${result.chunksProcessed} chunks (${result.totalTokens} tokens)`
+        });
+      } catch (err) {
+        console.error('Embedding failed:', err);
+        setEmbeddingStatus({
+          type: 'error',
+          message: err instanceof Error ? err.message : 'Failed to embed knowledge'
+        });
+      } finally {
+        setIsEmbedding(false);
+      }
+    }
   };
 
   const handleScrapeUrl = async () => {
     if (!urlInput.trim()) return;
     setIsScraping(true);
-    
+    setEmbeddingStatus(null);
+
+    const url = urlInput;
+    setUrlInput('');
+
     try {
-        const extractedData = await scrapeWebsiteContent(urlInput);
+        const extractedData = await scrapeWebsiteContent(url);
         setActiveBot({
             ...activeBot,
             knowledgeBase: [...(activeBot.knowledgeBase || []), extractedData]
         });
-        setUrlInput('');
+
+        // If bot is already saved, embed the scraped content
+        if (activeBot.id && activeBot.id !== 'new') {
+            setIsEmbedding(true);
+            try {
+                const result = await edgeFunctions.embedKnowledgeBase(
+                    activeBot.id,
+                    extractedData,
+                    new URL(url).hostname,
+                    { fileType: 'url', fileUrl: url }
+                );
+                setEmbeddingStatus({
+                    type: 'success',
+                    message: `Embedded ${result.chunksProcessed} chunks from ${result.fileName}`
+                });
+            } catch (embErr) {
+                console.error('Embedding failed:', embErr);
+                setEmbeddingStatus({
+                    type: 'error',
+                    message: embErr instanceof Error ? embErr.message : 'Failed to embed knowledge'
+                });
+            } finally {
+                setIsEmbedding(false);
+            }
+        }
     } catch (error) {
         console.error("Scrape failed", error);
-        alert("Failed to scrape website. Please check the URL and try again.");
+        setEmbeddingStatus({
+            type: 'error',
+            message: "Failed to scrape website. Please check the URL and try again."
+        });
     } finally {
         setIsScraping(false);
     }
@@ -420,6 +484,48 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
 
             {activeTab === 'knowledge' && (
                 <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+                   {/* Embedding Status Banner */}
+                   {(isEmbedding || embeddingStatus) && (
+                     <div className={`p-4 rounded-lg flex items-center gap-3 ${
+                       isEmbedding ? 'bg-blue-50 border border-blue-200' :
+                       embeddingStatus?.type === 'success' ? 'bg-emerald-50 border border-emerald-200' :
+                       'bg-red-50 border border-red-200'
+                     }`}>
+                       {isEmbedding ? (
+                         <>
+                           <RefreshCcw className="animate-spin text-blue-600" size={18} />
+                           <span className="text-blue-700 text-sm">Generating embeddings...</span>
+                         </>
+                       ) : embeddingStatus?.type === 'success' ? (
+                         <>
+                           <CheckCircle className="text-emerald-600" size={18} />
+                           <span className="text-emerald-700 text-sm">{embeddingStatus.message}</span>
+                         </>
+                       ) : (
+                         <>
+                           <AlertCircle className="text-red-600" size={18} />
+                           <span className="text-red-700 text-sm">{embeddingStatus?.message}</span>
+                         </>
+                       )}
+                       {!isEmbedding && (
+                         <button
+                           onClick={() => setEmbeddingStatus(null)}
+                           className="ml-auto text-slate-400 hover:text-slate-600"
+                         >
+                           <X size={16} />
+                         </button>
+                       )}
+                     </div>
+                   )}
+
+                   {/* New Bot Warning */}
+                   {activeBot.id === 'new' && (
+                     <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 flex items-center gap-3">
+                       <AlertCircle className="text-amber-600" size={18} />
+                       <span className="text-amber-700 text-sm">Save your bot first to enable AI-powered knowledge embeddings.</span>
+                     </div>
+                   )}
+
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                       <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
                          <Globe size={18} className="text-blue-900" /> Train from Website
