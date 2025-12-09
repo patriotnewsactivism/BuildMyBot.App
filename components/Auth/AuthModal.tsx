@@ -18,6 +18,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
   const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   if (!isOpen) return null;
 
@@ -25,6 +26,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMessage('');
 
     if (!supabase) {
        // Supabase not configured, use fallback
@@ -42,10 +44,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
         });
 
         if (signUpError) throw signUpError;
-        
+
         if (data.user) {
            // Check for referral code
            const referralCode = localStorage.getItem('bmb_ref_code') || undefined;
@@ -56,11 +61,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
              name: email.split('@')[0], // Default name
              email: email,
              role: UserRole.OWNER,
-             plan: PlanType.FREE,
-             companyName: companyName || 'My Company',
-             referredBy: referralCode
-           });
+              plan: PlanType.FREE,
+              companyName: companyName || 'My Company',
+              referredBy: referralCode
+          });
         }
+
+        setSuccessMessage('Verification email sent. Please confirm your inbox before logging in.');
+        setMode('login');
+        return;
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
@@ -115,6 +124,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
           {error && (
             <div className="p-3 bg-red-50 text-red-600 text-xs rounded-lg border border-red-100">
               {error}
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="p-3 bg-emerald-50 text-emerald-700 text-xs rounded-lg border border-emerald-100">
+              {successMessage}
             </div>
           )}
 
@@ -181,6 +196,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
               onClick={() => {
                 setMode(mode === 'login' ? 'signup' : 'login');
                 setError('');
+                setSuccessMessage('');
               }}
               className="text-sm text-slate-500 hover:text-blue-900 font-medium"
             >

@@ -14,6 +14,8 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, role, isOpen, onClose, user, usage = 0 }) => {
+  const isAdmin = role === UserRole.ADMIN || role === UserRole.MASTER_ADMIN || role === UserRole.LIMITED_ADMIN;
+  const isPartnerRole = role === UserRole.RESELLER || isAdmin;
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'bots', label: 'My Bots', icon: Bot },
@@ -27,13 +29,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, role, is
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
-  if (role === UserRole.RESELLER || role === UserRole.ADMIN) {
+  if (isPartnerRole) {
     menuItems.splice(1, 0, { id: 'reseller', label: 'Partner Portal', icon: Briefcase });
   }
 
   // Admin has a special separate dashboard, but can access it via sidebar if logged in as admin context
-  if (role === UserRole.ADMIN) {
-    menuItems.push({ id: 'admin', label: 'Master Admin', icon: TrendingUp });
+  if (isAdmin) {
+    menuItems.push({ id: 'admin', label: role === UserRole.LIMITED_ADMIN ? 'Admin (View Only)' : 'Master Admin', icon: TrendingUp });
   }
 
   const handleNavigation = (viewId: string) => {
