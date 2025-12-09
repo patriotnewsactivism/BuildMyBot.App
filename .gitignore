@@ -1,3 +1,12 @@
+# Environment files (contain secrets - DO NOT COMMIT)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Claude Code
+.claude/
+
 # Logs
 logs
 *.log
