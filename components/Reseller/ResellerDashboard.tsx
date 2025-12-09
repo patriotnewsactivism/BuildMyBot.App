@@ -41,7 +41,9 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats: initia
           totalClients: clientCount,
           totalRevenue: totalRev,
           commissionRate: currentTier.commission,
-          pendingPayout: totalRev * currentTier.commission
+          pendingPayout: totalRev * currentTier.commission,
+          addOnCommission: 0, // TODO: Calculate from add-on purchases
+          arrears: 0, // TODO: Pull from reseller payment records
         });
         
         setIsLoading(false);
