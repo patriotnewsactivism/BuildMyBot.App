@@ -15,6 +15,63 @@ interface RequestBody {
   summarize?: boolean;
 }
 
+// SSRF Protection: Block private IPs, localhost, and cloud metadata endpoints
+function isBlockedUrl(urlString: string): { blocked: boolean; reason?: string } {
+  try {
+    const parsedUrl = new URL(urlString);
+    const hostname = parsedUrl.hostname.toLowerCase();
+
+    // Block localhost and loopback
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+      return { blocked: true, reason: 'Localhost URLs are not allowed' };
+    }
+
+    // Block cloud metadata endpoints
+    const metadataHosts = [
+      '169.254.169.254',  // AWS/GCP metadata
+      'metadata.google.internal',
+      'metadata.google',
+      '100.100.100.200',  // Alibaba Cloud metadata
+      'fd00:ec2::254',    // AWS IPv6 metadata
+    ];
+    if (metadataHosts.includes(hostname)) {
+      return { blocked: true, reason: 'Cloud metadata endpoints are not allowed' };
+    }
+
+    // Block private IP ranges
+    const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4Match) {
+      const [, a, b, c, d] = ipv4Match.map(Number);
+      // 10.0.0.0/8
+      if (a === 10) return { blocked: true, reason: 'Private IP addresses are not allowed' };
+      // 172.16.0.0/12
+      if (a === 172 && b >= 16 && b <= 31) return { blocked: true, reason: 'Private IP addresses are not allowed' };
+      // 192.168.0.0/16
+      if (a === 192 && b === 168) return { blocked: true, reason: 'Private IP addresses are not allowed' };
+      // 127.0.0.0/8
+      if (a === 127) return { blocked: true, reason: 'Loopback addresses are not allowed' };
+      // 0.0.0.0/8
+      if (a === 0) return { blocked: true, reason: 'Invalid IP address' };
+      // 169.254.0.0/16 (link-local)
+      if (a === 169 && b === 254) return { blocked: true, reason: 'Link-local addresses are not allowed' };
+    }
+
+    // Block internal/intranet hostnames
+    if (hostname.endsWith('.internal') || hostname.endsWith('.local') || hostname.endsWith('.localhost')) {
+      return { blocked: true, reason: 'Internal hostnames are not allowed' };
+    }
+
+    // Block file:// and other non-http protocols
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return { blocked: true, reason: 'Only HTTP and HTTPS protocols are allowed' };
+    }
+
+    return { blocked: false };
+  } catch {
+    return { blocked: true, reason: 'Invalid URL format' };
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -73,6 +130,15 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Invalid URL format" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // SSRF Protection: Check if URL is blocked
+    const blockCheck = isBlockedUrl(url);
+    if (blockCheck.blocked) {
+      return new Response(
+        JSON.stringify({ error: blockCheck.reason || "URL is not allowed" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
