@@ -81,6 +81,18 @@ const FALLBACK_TEMPLATES: Template[] = [
     featured: false,
     botConfig: {},
     tags: ['Sales', 'Fitness']
+  },
+  {
+    id: 't6',
+    name: 'Bail Bonds Rapid Response',
+    category: 'Legal Services',
+    description: 'Answers anxious families immediately with next steps to get someone out of jail, collects arrest details, and dispatches an agent 24/7.',
+    price: 0,
+    installCount: 310,
+    rating: 4.8,
+    featured: true,
+    botConfig: {},
+    tags: ['Legal', 'Emergency', '24/7']
   }
 ];
 
