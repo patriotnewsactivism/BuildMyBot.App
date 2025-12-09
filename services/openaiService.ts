@@ -61,49 +61,111 @@ export const generateBotResponse = async (
 export const scrapeWebsiteContent = async (url: string): Promise<string> => {
   if (!url) return "";
   const apiKey = getApiKey();
-  
-  // Note: Scraping does not technically require OpenAI key until the summarization step.
-  // But we check it early to fail fast if the app isn't configured.
+
+  // Scraping itself is public, but summarization and OCR require the OpenAI key.
   if (!apiKey) throw new Error("API Key missing");
 
-  try {
-    let targetUrl = url;
-    if (!targetUrl.startsWith('http')) {
-      targetUrl = 'https://' + targetUrl;
+  const normalizeUrl = (input: string) => {
+    const trimmed = input.trim();
+    if (!trimmed) return "";
+    return trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+  };
+
+  const tryScrapeText = async (targetUrl: string) => {
+    const noProtocol = targetUrl.replace(/^https?:\/\//, "");
+    const attempts = [
+      `https://r.jina.ai/${targetUrl}`,
+      `https://r.jina.ai/https://${noProtocol}`,
+      `https://r.jina.ai/http://${noProtocol}`,
+      // CORS proxy fallback for environments that block direct fetches
+      `https://corsproxy.io/?${encodeURIComponent(`https://r.jina.ai/${targetUrl}`)}`,
+      `https://corsproxy.io/?${encodeURIComponent(`https://r.jina.ai/https://${noProtocol}`)}`,
+    ];
+
+    for (const attempt of attempts) {
+      try {
+        const response = await fetch(attempt);
+        if (!response.ok) continue;
+        const text = await response.text();
+        if (text && text.trim().length > 0) return text;
+      } catch (err) {
+        console.warn("Scrape attempt failed", attempt, err);
+      }
     }
 
-    // 1. Scrape using Jina via CORS Proxy to avoid browser blocking
-    // Using corsproxy.io to bypass Access-Control-Allow-Origin errors in browser environment
-    const proxyUrl = 'https://corsproxy.io/?';
-    const jinaUrl = `https://r.jina.ai/${targetUrl}`;
-    
-    const scrapeResponse = await fetch(proxyUrl + encodeURIComponent(jinaUrl));
-    
-    if (!scrapeResponse.ok) throw new Error("Failed to scrape website. The URL might be blocked or invalid.");
-    
-    const rawText = await scrapeResponse.text();
-    const truncatedText = rawText.substring(0, 15000); // Limit context window for cost/speed
+    throw new Error("All text scrape attempts failed");
+  };
 
-    // 2. Summarize using GPT-4o-mini to create structured knowledge
+  const summarizeContent = async (content: string) => {
+    const truncatedText = content.substring(0, 15000); // Limit context window for cost/speed
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-                { role: 'system', content: 'You are a precise Data Extractor. Extract business facts.' },
-                { role: 'user', content: `Analyze this content and extract key business details:\n1. Business Name & Description\n2. Key Services/Products\n3. Contact Info (Email, Phone, Address)\n4. Pricing/Hours (if available)\n\nCONTENT:\n${truncatedText}` }
-            ]
-        })
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a precise Data Extractor. Extract business facts.' },
+          { role: 'user', content: `Analyze this content and extract key business details:\n1. Business Name & Description\n2. Key Services/Products\n3. Contact Info (Email, Phone, Address)\n4. Pricing/Hours (if available)\n\nCONTENT:\n${truncatedText}` }
+        ]
+      })
     });
 
     if (!response.ok) throw new Error("Failed to summarize content.");
     const data = await response.json();
-    return data.choices[0]?.message?.content || rawText.substring(0, 1000);
+    return data.choices[0]?.message?.content || truncatedText.substring(0, 1000);
+  };
 
+  const performVisionFallback = async (targetUrl: string) => {
+    // Lightweight screenshot endpoint (no API key). Only used when HTML scraping fails.
+    const screenshotUrl = `https://image.thum.io/get/width/1200/${encodeURIComponent(targetUrl)}`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: 'You are an OCR and data extraction assistant. Read the screenshot and pull key business facts.' },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'The direct scrape failed. Read this screenshot and extract: business name/description, services, contact info (email/phone/address), and any pricing or hours.'
+              },
+              {
+                type: 'image_url',
+                image_url: { url: screenshotUrl }
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) throw new Error("Failed to OCR screenshot.");
+    const data = await response.json();
+    return data.choices[0]?.message?.content || "";
+  };
+
+  try {
+    const targetUrl = normalizeUrl(url);
+    if (!targetUrl) throw new Error("Invalid URL");
+
+    try {
+      const rawText = await tryScrapeText(targetUrl);
+      return await summarizeContent(rawText);
+    } catch (scrapeErr) {
+      console.warn("HTML scrape failed, falling back to screenshot OCR", scrapeErr);
+      return await performVisionFallback(targetUrl);
+    }
   } catch (error: any) {
     console.error("Scrape Error:", error);
     throw new Error("Failed to scrape website. " + (error.message || ""));
