@@ -305,6 +305,12 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       desc: 'Instant case intake. Capture high-value clients when they need you most. Automate the initial screening process securely.'
     },
     {
+      title: 'Bail Bonds',
+      icon: Shield,
+      color: 'red',
+      desc: '24/7 response for families who need someone out now. Collect arrest details, explain fees, and dispatch an agent instantly.'
+    },
+    {
       title: 'Politicians',
       icon: Landmark,
       color: 'slate',
