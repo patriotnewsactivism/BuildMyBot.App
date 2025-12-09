@@ -5,7 +5,11 @@ import { dbService } from '../../services/dbService';
 import { User, UserRole } from '../../types';
 import { PLANS, RESELLER_TIERS } from '../../constants';
 
-export const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  readOnly?: boolean;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false }) => {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [partners, setPartners] = useState<User[]>([]);
@@ -58,12 +62,14 @@ export const AdminDashboard: React.FC = () => {
   }, []);
 
   const handleApprovePartner = async (id: string) => {
+    if (readOnly) return;
     await dbService.approvePartner(id);
     // Optimistic update
     setPartners(prev => prev.map(p => p.id === id ? { ...p, status: 'Active' } : p));
   };
 
   const handleToggleBusinessStatus = async (id: string, currentStatus: string) => {
+    if (readOnly) return;
     const newStatus = currentStatus === 'Active' ? 'Suspended' : 'Active';
     await dbService.updateUserStatus(id, newStatus);
     setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus } : u));
@@ -75,6 +81,16 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-fade-in pb-20">
+      {readOnly && (
+        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800">
+          <AlertTriangle size={18} className="mt-0.5" />
+          <div>
+            <p className="font-semibold text-sm">Read-only admin access</p>
+            <p className="text-xs">You can review all system data, but account or platform changes are disabled for this user.</p>
+          </div>
+        </div>
+      )}
+
       <div className="bg-slate-900 text-white p-6 -mx-4 -mt-4 md:-mx-8 md:-mt-8 md:rounded-b-2xl mb-8 shadow-lg">
           <div className="flex justify-between items-center max-w-7xl mx-auto">
             <div>
@@ -230,12 +246,16 @@ export const AdminDashboard: React.FC = () => {
                     </span>
                     </td>
                     <td className="px-6 py-4 flex gap-2">
-                      <button 
-                        onClick={() => handleToggleBusinessStatus(user.id, user.status || 'Active')}
-                        className={`text-xs px-2 py-1 rounded border ${user.status === 'Active' ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
-                      >
-                         {user.status === 'Active' ? 'Suspend' : 'Activate'}
-                      </button>
+                      {readOnly ? (
+                        <span className="text-xs text-slate-400">View only</span>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleBusinessStatus(user.id, user.status || 'Active')}
+                          className={`text-xs px-2 py-1 rounded border ${user.status === 'Active' ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
+                        >
+                           {user.status === 'Active' ? 'Suspend' : 'Activate'}
+                        </button>
+                      )}
                     </td>
                 </tr>
                 ))}
@@ -289,12 +309,16 @@ export const AdminDashboard: React.FC = () => {
                         </td>
                         <td className="px-6 py-4">
                         {(partner.status === 'Pending' || !partner.status) ? (
-                            <button 
-                            onClick={() => handleApprovePartner(partner.id)}
-                            className="bg-blue-900 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-950 shadow-sm"
-                            >
-                                Approve Application
-                            </button>
+                            readOnly ? (
+                              <span className="text-xs text-slate-400">Pending (view only)</span>
+                            ) : (
+                              <button
+                                onClick={() => handleApprovePartner(partner.id)}
+                                className="bg-blue-900 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-950 shadow-sm"
+                              >
+                                  Approve Application
+                              </button>
+                            )
                         ) : (
                             <span className="text-xs text-slate-400">Approved</span>
                         )}

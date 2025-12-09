@@ -31,8 +31,9 @@ const INITIAL_RESELLER_STATS: ResellerStats = {
   pendingPayout: 0,
 };
 
-// Define Master Admins here
-const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org', 'ben@texasplanninglaw.com'];
+// Define privileged admins here
+const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org'];
+const LIMITED_ADMIN_EMAILS = ['ben@texasplanninglaw.com'];
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -81,20 +82,35 @@ function App() {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setIsLoggedIn(true);
-        const email = session.user.email;
-        
-        // CHECK FOR GOD MODE (Master Emails)
-        if (email && MASTER_EMAILS.includes(email.toLowerCase())) {
-           setUser({
-              id: session.user.id,
-              name: 'Master Admin',
-              email: email,
-              role: UserRole.ADMIN, // Grant Full Access
-              plan: PlanType.ENTERPRISE, // Grant Uncapped Limits
-              companyName: 'BuildMyBot HQ',
-              avatarUrl: session.user.user_metadata?.avatar_url
-           });
-           return;
+        const email = session.user.email?.toLowerCase();
+
+        const buildPrivilegedProfile = (role: UserRole): User => ({
+          id: session.user.id,
+          name: session.user.user_metadata?.full_name || (role === UserRole.LIMITED_ADMIN ? 'Admin Viewer' : 'Master Admin'),
+          email: session.user.email || '',
+          role,
+          plan: PlanType.ENTERPRISE,
+          companyName: 'BuildMyBot HQ',
+          avatarUrl: session.user.user_metadata?.avatar_url,
+        });
+
+        // CHECK FOR PRIVILEGED ADMINS
+        if (email) {
+          if (MASTER_EMAILS.includes(email)) {
+            const adminProfile = buildPrivilegedProfile(UserRole.MASTER_ADMIN);
+            setUser(adminProfile);
+            setCurrentView('admin');
+            await dbService.saveUserProfile(adminProfile);
+            return;
+          }
+
+          if (LIMITED_ADMIN_EMAILS.includes(email)) {
+            const adminProfile = buildPrivilegedProfile(UserRole.LIMITED_ADMIN);
+            setUser(adminProfile);
+            setCurrentView('admin');
+            await dbService.saveUserProfile(adminProfile);
+            return;
+          }
         }
 
         // Standard User Flow
@@ -151,15 +167,19 @@ function App() {
 
   // Fallback authentication for when Supabase Config is invalid or blocked
   const handleManualAuth = (email: string, name?: string, companyName?: string) => {
-      const isMaster = MASTER_EMAILS.includes(email.toLowerCase());
-      
+      const normalizedEmail = email.toLowerCase();
+      const isMaster = MASTER_EMAILS.includes(normalizedEmail);
+      const isLimitedAdmin = LIMITED_ADMIN_EMAILS.includes(normalizedEmail);
+      const role = isMaster ? UserRole.MASTER_ADMIN : isLimitedAdmin ? UserRole.LIMITED_ADMIN : UserRole.OWNER;
+      const plan = role === UserRole.MASTER_ADMIN || role === UserRole.LIMITED_ADMIN ? PlanType.ENTERPRISE : PlanType.FREE;
+
       const newUser: User = {
-          id: isMaster ? 'master-admin' : 'demo-user-' + Date.now(),
+          id: role === UserRole.MASTER_ADMIN ? 'master-admin' : role === UserRole.LIMITED_ADMIN ? 'limited-admin' : 'demo-user-' + Date.now(),
           name: name || email.split('@')[0],
           email: email,
-          role: isMaster ? UserRole.ADMIN : UserRole.OWNER,
-          plan: isMaster ? PlanType.ENTERPRISE : PlanType.FREE,
-          companyName: companyName || (isMaster ? 'BuildMyBot HQ' : 'Demo Company'),
+          role,
+          plan,
+          companyName: companyName || (role === UserRole.MASTER_ADMIN || role === UserRole.LIMITED_ADMIN ? 'BuildMyBot HQ' : 'Demo Company'),
           createdAt: new Date().toISOString()
       };
 
@@ -167,7 +187,7 @@ function App() {
       setIsLoggedIn(true);
       setAuthModalOpen(false);
       
-      if (isMaster) {
+      if (role === UserRole.MASTER_ADMIN || role === UserRole.LIMITED_ADMIN) {
           setCurrentView('admin');
       }
       
@@ -429,7 +449,7 @@ function App() {
           
           {currentView === 'billing' && <Billing user={user} />}
           
-          {currentView === 'admin' && <AdminDashboard />}
+          {currentView === 'admin' && <AdminDashboard readOnly={user.role === UserRole.LIMITED_ADMIN} />}
           
           {currentView === 'settings' && <Settings user={user} onUpdateUser={(u) => { setUser(u); dbService.saveUserProfile(u); }} />}
           
