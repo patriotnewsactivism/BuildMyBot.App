@@ -961,9 +961,11 @@ export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
                    <div className="p-3 bg-blue-50 text-blue-900 rounded-xl group-hover:bg-blue-900 group-hover:text-white transition">
                      <ShoppingBag size={24} />
                    </div>
-                   <div className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-2 py-1 rounded-full text-xs font-bold">
-                     <Star size={12} fill="currentColor" /> {template.rating}
-                   </div>
+                   {template.rating && (
+                     <div className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-2 py-1 rounded-full text-xs font-bold">
+                       <Star size={12} fill="currentColor" /> {template.rating}
+                     </div>
+                   )}
                 </div>
                 <h3 className="text-lg font-bold text-slate-800 mb-2">{template.name}</h3>
                 <p className="text-sm text-slate-500 leading-relaxed mb-4">{template.description}</p>
