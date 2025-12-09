@@ -72,7 +72,7 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
         history,
         userMsg.text,
         bot.model || 'gpt-4o-mini',
-        bot.knowledgeBase
+        bot.knowledgeBase?.join('\n\n')
       );
 
       // Apply response delay if configured
