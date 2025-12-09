@@ -63,7 +63,8 @@ export interface Lead {
   phone?: string;
   score: number;
   status: 'New' | 'Contacted' | 'Qualified' | 'Closed';
-  sourceBotId: string;
+  botId: string; // References bots(id) - renamed from sourceBotId to match database
+  sourceUrl?: string; // Source URL where lead was captured
   createdAt: string;
   userId?: string; // Optional during capture, required in DB
 }

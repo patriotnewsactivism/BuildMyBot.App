@@ -2,6 +2,32 @@
 import { supabase } from './supabaseClient';
 import { Bot, Lead, Conversation, User, PlanType } from '../types';
 
+// Helper functions to convert between camelCase (TypeScript) and snake_case (PostgreSQL)
+const toSnakeCase = (str: string): string =>
+  str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+
+const toCamelCase = (str: string): string =>
+  str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+
+const objectToSnakeCase = <T extends Record<string, unknown>>(obj: T): Record<string, unknown> => {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    result[toSnakeCase(key)] = value;
+  }
+  return result;
+};
+
+const objectToCamelCase = <T>(obj: Record<string, unknown>): T => {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    result[toCamelCase(key)] = value;
+  }
+  return result as T;
+};
+
+const arrayToCamelCase = <T>(arr: Record<string, unknown>[]): T[] =>
+  arr.map(item => objectToCamelCase<T>(item));
+
 export const dbService = {
   // --- BOTS ---
   
@@ -14,7 +40,7 @@ export const dbService = {
     const fetchBots = async () => {
       const { data, error } = await client.from('bots').select('*');
       if (!error && data) {
-        onUpdate(data as Bot[]);
+        onUpdate(arrayToCamelCase<Bot>(data as Record<string, unknown>[]));
       }
     };
     fetchBots();
@@ -42,23 +68,23 @@ export const dbService = {
         return bot;
     }
 
-    // Prepare payload with userId
-    const payload = {
+    // Prepare payload with user_id and convert to snake_case
+    const payload = objectToSnakeCase({
         ...bot,
         userId: user.id
-    };
+    });
 
     const { data, error } = await client
       .from('bots')
       .upsert(payload)
       .select()
       .single();
-      
+
     if (error) {
         console.error("Error saving bot to Supabase:", error);
         throw error;
     }
-    return data as Bot;
+    return objectToCamelCase<Bot>(data as Record<string, unknown>);
   },
 
   getBotById: async (id: string): Promise<Bot | undefined> => {
@@ -69,9 +95,9 @@ export const dbService = {
       .select('*')
       .eq('id', id)
       .single();
-      
+
     if (error || !data) return undefined;
-    return data as Bot;
+    return objectToCamelCase<Bot>(data as Record<string, unknown>);
   },
 
   // --- LEADS ---
@@ -84,10 +110,10 @@ export const dbService = {
       const { data, error } = await client
         .from('leads')
         .select('*')
-        .order('createdAt', { ascending: false });
-        
+        .order('created_at', { ascending: false });
+
       if (!error && data) {
-        onUpdate(data as Lead[]);
+        onUpdate(arrayToCamelCase<Lead>(data as Record<string, unknown>[]));
       }
     };
     fetchLeads();
@@ -106,15 +132,16 @@ export const dbService = {
   saveLead: async (lead: Lead) => {
     const client = supabase;
     if (!client) return lead;
-    
+
     const { data: { user } } = await client.auth.getUser();
     if (!user) return lead; // Or handle as anonymous if capturing from public widget
 
-    const payload = {
+    // Convert to snake_case for database
+    const payload = objectToSnakeCase({
         ...lead,
         userId: user.id // Leads should belong to the bot owner
-    };
-    
+    });
+
     const { data, error } = await client
       .from('leads')
       .upsert(payload)
@@ -125,7 +152,7 @@ export const dbService = {
       console.error("Error saving lead:", error);
       return lead;
     }
-    return data as Lead;
+    return objectToCamelCase<Lead>(data as Record<string, unknown>);
   },
 
   // --- USER & BILLING ---
@@ -138,26 +165,27 @@ export const dbService = {
       .select('*')
       .eq('id', uid)
       .single();
-      
+
     if (error || !data) return null;
-    return data as User;
+    return objectToCamelCase<User>(data as Record<string, unknown>);
   },
 
   saveUserProfile: async (user: User) => {
     const client = supabase;
     if (!client) return;
     const now = new Date().toISOString();
-    
-    const userData = {
+
+    // Convert to snake_case for database
+    const userData = objectToSnakeCase({
         ...user,
         status: user.status || 'Active',
         createdAt: user.createdAt || now
-    };
-    
+    });
+
     const { error } = await client
       .from('profiles')
       .upsert(userData);
-      
+
     if (error) console.error("Error saving profile:", error);
   },
 
@@ -183,16 +211,16 @@ export const dbService = {
       const { data, error } = await client
         .from('profiles')
         .select('*')
-        .eq('referredBy', resellerCode);
-        
+        .eq('referred_by', resellerCode);
+
       if (!error && data) {
-        onUpdate(data as User[]);
+        onUpdate(arrayToCamelCase<User>(data as Record<string, unknown>[]));
       }
     };
     fetchReferrals();
 
     const channel = client.channel('public:profiles')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `referredBy=eq.${resellerCode}` }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `referred_by=eq.${resellerCode}` }, () => {
         fetchReferrals();
       })
       .subscribe();
@@ -211,12 +239,12 @@ export const dbService = {
     const { data, error } = await client
       .from('profiles')
       .select('*');
-      
+
     if (error) {
       console.error("Error fetching users:", error);
       return [];
     }
-    return data as User[];
+    return arrayToCamelCase<User>(data as Record<string, unknown>[]);
   },
 
   updateUserStatus: async (uid: string, status: 'Active' | 'Suspended') => {

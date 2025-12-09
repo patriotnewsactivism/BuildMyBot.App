@@ -136,7 +136,7 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
                  <Mail size={12}/> {lead.email}
                </div>
                <div className="flex items-center gap-1.5">
-                 <UserIcon size={12}/> Bot #{lead.sourceBotId}
+                 <UserIcon size={12}/> Bot #{lead.botId}
                </div>
             </div>
 
@@ -356,7 +356,7 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
                         </select>
                     </td>
                     <td className="px-6 py-4 text-slate-500">
-                        Bot #{lead.sourceBotId}
+                        Bot #{lead.botId}
                     </td>
                     <td className="px-6 py-4 text-right">
                         <button 
