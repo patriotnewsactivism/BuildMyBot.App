@@ -228,7 +228,7 @@ function App() {
       email: email,
       score: 85,
       status: 'New',
-      sourceBotId: 'test-bot',
+      botId: 'test-bot',
       createdAt: new Date().toISOString()
     };
     dbService.saveLead(newLead);
