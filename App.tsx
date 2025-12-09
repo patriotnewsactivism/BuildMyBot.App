@@ -54,13 +54,6 @@ function App() {
   const [notification, setNotification] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Manual Routing Check for Full Page Chat
-  const currentPath = window.location.pathname;
-  if (currentPath.startsWith('/chat/')) {
-     const botId = currentPath.split('/')[2];
-     return <FullPageChat botId={botId} />;
-  }
-
   // --- Capture Referral Code ---
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -69,16 +62,19 @@ function App() {
       localStorage.setItem('bmb_ref_code', refCode);
       console.log('Referral captured:', refCode);
     }
-    
+
     // Fake boot sequence for premium feel
     setTimeout(() => setIsBooting(false), 1200);
   }, []);
 
-  // --- Real-time Data Subscriptions ---
+  // Manual Routing Check for Full Page Chat (must be after all hooks)
+  const currentPath = window.location.pathname;
+  const isChatRoute = currentPath.startsWith('/chat/');
+
+  // --- Supabase Auth Listener (runs once on mount) ---
   useEffect(() => {
     if (!supabase) return;
 
-    // Supabase Auth Listener
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setIsLoggedIn(true);
@@ -129,13 +125,26 @@ function App() {
           });
         }
       } else if (event === 'SIGNED_OUT') {
-        // Do not reset if user was set manually (Demo Mode fallback)
-        if (!user || !user.id.startsWith('demo-user')) {
-             setIsLoggedIn(false);
-             setUser(null);
-        }
+        // Use functional update to check current user state without adding dependency
+        setUser((currentUser) => {
+          if (currentUser && currentUser.id.startsWith('demo-user')) {
+            // Don't reset demo users
+            return currentUser;
+          }
+          setIsLoggedIn(false);
+          return null;
+        });
       }
     });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []); // Empty dependency - auth listener only needs to be set up once
+
+  // --- Real-time Data Subscriptions (separate from auth to avoid loop) ---
+  useEffect(() => {
+    if (!supabase) return;
 
     // Subscribe to Bots
     const unsubscribeBots = dbService.subscribeToBots((updatedBots) => {
@@ -148,11 +157,10 @@ function App() {
     });
 
     return () => {
-      authListener.subscription.unsubscribe();
       unsubscribeBots();
       unsubscribeLeads();
     };
-  }, [user]); // Add user to dependancy array to prevent clobbering demo user
+  }, []); // Empty dependency - subscriptions only need to be set up once
 
   // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
@@ -266,6 +274,12 @@ function App() {
     setAuthMode(mode);
     setAuthModalOpen(true);
   };
+
+  // Handle full page chat route (must be after all hooks, before other renders)
+  if (isChatRoute) {
+    const botId = currentPath.split('/')[2];
+    return <FullPageChat botId={botId} />;
+  }
 
   if (isBooting) {
       return (

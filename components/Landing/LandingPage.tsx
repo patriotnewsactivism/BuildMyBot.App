@@ -58,17 +58,19 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     }
   }, [chatHistory, isTyping, isChatOpen]);
 
-  // Open Greeting
+  // Open Greeting - only depends on isChatOpen, uses ref for identity to avoid re-triggers
   useEffect(() => {
     if (isChatOpen && !hasGreeted.current && chatHistory.length === 0) {
         setIsTyping(true);
         hasGreeted.current = true;
+        // Capture current identity value to avoid stale closure
+        const currentName = demoIdentity.name;
         setTimeout(() => {
-            setChatHistory([{ role: 'model', text: `Hi! I'm ${demoIdentity.name}. I can qualify leads, schedule appointments, and answer questions 24/7. How can I help your business grow today?` }]);
+            setChatHistory([{ role: 'model', text: `Hi! I'm ${currentName}. I can qualify leads, schedule appointments, and answer questions 24/7. How can I help your business grow today?` }]);
             setIsTyping(false);
         }, 1500);
     }
-  }, [isChatOpen, demoIdentity]);
+  }, [isChatOpen]); // Remove demoIdentity dependency - hasGreeted ref prevents duplicate greetings
 
   const handleDemoSend = async () => {
     if (!chatInput.trim()) return;
