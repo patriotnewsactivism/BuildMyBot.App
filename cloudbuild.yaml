@@ -1,0 +1,37 @@
+# Cloud Build configuration for BuildMyBot.App
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/buildmybot:$COMMIT_SHA', '.']
+
+  # Push the image to Google Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/buildmybot:$COMMIT_SHA']
+
+  # Tag as latest
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['tag', 'gcr.io/$PROJECT_ID/buildmybot:$COMMIT_SHA', 'gcr.io/$PROJECT_ID/buildmybot:latest']
+
+  # Push latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/buildmybot:latest']
+
+# Images to be pushed to registry
+images:
+  - 'gcr.io/$PROJECT_ID/buildmybot:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/buildmybot:latest'
+
+# Build options
+options:
+  # Use CLOUD_LOGGING_ONLY to fix the service account logging requirement
+  # This stores logs in Cloud Logging instead of requiring a GCS bucket
+  logging: CLOUD_LOGGING_ONLY
+
+  # Optional: specify machine type for faster builds
+  machineType: 'N1_HIGHCPU_8'
+
+  # Optional: timeout for the build
+  timeout: '1200s'
+
+# Optional: If you need to specify a service account, uncomment the line below
+# serviceAccount: 'projects/$PROJECT_ID/serviceAccounts/YOUR_SERVICE_ACCOUNT_EMAIL'
