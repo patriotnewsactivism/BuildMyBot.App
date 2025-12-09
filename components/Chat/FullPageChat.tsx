@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, AlertCircle, Loader } from 'lucide-react';
-import { edgeFunctions } from '../../services/edgeFunctions';
+import { generateBotResponse } from '../../services/openaiService';
 import { dbService } from '../../services/dbService';
 import { Bot as BotType } from '../../types';
 
@@ -60,21 +60,26 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
     setError(null);
 
     try {
-      // Convert messages to Edge Function format
-      const chatMessages = messages.map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.text
+      // Convert messages to OpenAI service format
+      const history = messages.map(m => ({
+        role: m.role === 'assistant' ? 'model' as const : 'user' as const,
+        text: m.text
       }));
-      chatMessages.push({ role: 'user', content: userMsg.text });
 
-      // Call the secure Edge Function
-      const response = await edgeFunctions.aiComplete(botId, chatMessages, sessionId);
+      // Call OpenAI directly
+      const response = await generateBotResponse(
+        bot.systemPrompt || "You are a helpful assistant.",
+        history,
+        userMsg.text,
+        bot.model || 'gpt-4o-mini',
+        bot.knowledgeBase
+      );
 
       // Apply response delay if configured
       const delay = bot.responseDelay || 0;
 
       setTimeout(() => {
-        setMessages(prev => [...prev, { role: 'assistant', text: response.message }]);
+        setMessages(prev => [...prev, { role: 'assistant', text: response }]);
         setIsTyping(false);
       }, delay);
     } catch (e) {
