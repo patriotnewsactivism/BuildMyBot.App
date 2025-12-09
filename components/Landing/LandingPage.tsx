@@ -354,6 +354,21 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     }
   ];
 
+  const industryColorThemes: Record<string, { icon: string; border: string; accent: string }> = {
+    blue: { icon: 'bg-blue-100 text-blue-700', border: 'border-blue-100', accent: 'text-blue-700' },
+    emerald: { icon: 'bg-emerald-100 text-emerald-700', border: 'border-emerald-100', accent: 'text-emerald-700' },
+    red: { icon: 'bg-red-100 text-red-700', border: 'border-red-100', accent: 'text-red-700' },
+    cyan: { icon: 'bg-cyan-100 text-cyan-700', border: 'border-cyan-100', accent: 'text-cyan-700' },
+    amber: { icon: 'bg-amber-100 text-amber-700', border: 'border-amber-100', accent: 'text-amber-700' },
+    slate: { icon: 'bg-slate-100 text-slate-700', border: 'border-slate-200', accent: 'text-slate-700' },
+    orange: { icon: 'bg-orange-100 text-orange-700', border: 'border-orange-100', accent: 'text-orange-700' },
+    purple: { icon: 'bg-purple-100 text-purple-700', border: 'border-purple-100', accent: 'text-purple-700' },
+    lime: { icon: 'bg-lime-100 text-lime-700', border: 'border-lime-100', accent: 'text-lime-700' },
+    indigo: { icon: 'bg-indigo-100 text-indigo-700', border: 'border-indigo-100', accent: 'text-indigo-700' },
+    pink: { icon: 'bg-pink-100 text-pink-700', border: 'border-pink-100', accent: 'text-pink-700' },
+    sky: { icon: 'bg-sky-100 text-sky-700', border: 'border-sky-100', accent: 'text-sky-700' }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden">
       {modalContent && <InfoModal />}
@@ -658,6 +673,55 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                  </div>
               </div>
            </div>
+        </div>
+      </section>
+
+      {/* Industries We Supercharge */}
+      <section className="py-24 px-6 bg-white border-y border-slate-100">
+        <div className="max-w-7xl mx-auto space-y-12">
+          <div className="text-center max-w-4xl mx-auto space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wide border border-blue-100">
+              Built for Every Industry
+            </div>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight">Industries that win with BuildMyBot</h2>
+            <p className="text-lg text-slate-600">We can’t list every single field, so here are just a few places where faster responses and smarter conversations create an immediate edge.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {industries.map((industry) => {
+              const theme = industryColorThemes[industry.color] || industryColorThemes.blue;
+              const Icon = industry.icon;
+
+              return (
+                <div
+                  key={industry.title}
+                  className={`p-6 rounded-2xl bg-white border shadow-sm hover:-translate-y-1 hover:shadow-lg transition ${theme.border}`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${theme.icon}`}>
+                      <Icon size={22} />
+                    </div>
+                    <div className="space-y-1">
+                      <div className={`text-sm font-bold ${theme.accent} uppercase tracking-wide`}>{industry.title}</div>
+                      <p className="text-slate-600 text-sm leading-relaxed">{industry.desc}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="text-center space-y-3">
+            <p className="text-xl md:text-2xl font-extrabold text-slate-900 uppercase">And HUNDREDS of other industries.</p>
+            <p className="text-lg text-slate-600">Can you think of any industry that couldn’t benefit from more customers, faster response times, and total knowledge about your business for a fraction of the cost?</p>
+          </div>
+
+          <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 text-white p-8 md:p-10 rounded-3xl shadow-2xl border border-blue-900/60">
+            <h3 className="text-2xl md:text-3xl font-extrabold mb-4 uppercase">Unlike others, we don’t replace people—we reward them.</h3>
+            <p className="text-lg leading-relaxed text-slate-100">
+              UNLIKE OTHERS, OUR ONE-OF-A-KIND SYSTEM DOESN'T "TAKE AWAY" JOBS FROM EMPLOYEES THAT WANT TO WORK. IT REPLACES JOBS ENABLING YOU THE BUSINESS TO SIGNIFICANTLY LOWER YOUR EXPENSES WHILE ENABLING THEM TO EARN SUBSTANTIALLY MORE THAN THEY DID BEFORE. OUR COMPENSATION MODEL IS MUCH MORE THAN AGGRESSIVE... IT'S UNHEARD OF!
+            </p>
+          </div>
         </div>
       </section>
 
