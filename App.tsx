@@ -29,6 +29,8 @@ const INITIAL_RESELLER_STATS: ResellerStats = {
   totalRevenue: 0,
   commissionRate: 0.20,
   pendingPayout: 0,
+  addOnCommission: 0,
+  arrears: 0,
 };
 
 // Define Master Admins here

@@ -23,6 +23,7 @@ FUNCTIONS=(
     "billing-overage-check"
     "marketplace-install-template"
     "reseller-track-referral"
+    "scrape-url"
 )
 
 for func in "${FUNCTIONS[@]}"; do
