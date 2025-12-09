@@ -21,6 +21,9 @@ images:
   - 'gcr.io/$PROJECT_ID/buildmybot:$COMMIT_SHA'
   - 'gcr.io/$PROJECT_ID/buildmybot:latest'
 
+# Build timeout (20 minutes)
+timeout: '1200s'
+
 # Build options
 options:
   # Use CLOUD_LOGGING_ONLY to fix the service account logging requirement
@@ -29,9 +32,6 @@ options:
 
   # Optional: specify machine type for faster builds
   machineType: 'N1_HIGHCPU_8'
-
-  # Optional: timeout for the build
-  timeout: '1200s'
 
 # Optional: If you need to specify a service account, uncomment the line below
 # serviceAccount: 'projects/$PROJECT_ID/serviceAccounts/YOUR_SERVICE_ACCOUNT_EMAIL'
