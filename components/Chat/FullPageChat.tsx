@@ -1,20 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, AlertCircle, Loader } from 'lucide-react';
-import { generateBotResponse } from '../../services/openaiService';
+import { edgeFunctions } from '../../services/edgeFunctions';
 import { dbService } from '../../services/dbService';
 import { Bot as BotType } from '../../types';
+
+// Generate a unique session ID for this chat session
+const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 interface FullPageChatProps {
   botId: string;
 }
 
 export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
-  const [messages, setMessages] = useState<{role: 'user'|'model', text: string}[]>([]);
+  const [messages, setMessages] = useState<{role: 'user'|'assistant', text: string}[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [bot, setBot] = useState<BotType | null>(null);
+  const [sessionId] = useState(generateSessionId());
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  
+
   // Check for embed mode in URL params
   const isEmbed = window.location.search.includes('mode=embed');
   
@@ -26,11 +31,14 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
         if (foundBot) {
           setBot(foundBot);
           setTimeout(() => {
-             setMessages([{ role: 'model', text: "Hello! How can I help you today?" }]);
+             setMessages([{ role: 'assistant', text: "Hello! How can I help you today?" }]);
           }, 500);
+        } else {
+          setError("Bot not found");
         }
       } catch (e) {
         console.error("Failed to fetch bot", e);
+        setError("Failed to load chat");
       }
     };
     fetchBot();
@@ -49,25 +57,30 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
+    setError(null);
 
     try {
-        const response = await generateBotResponse(
-            bot.systemPrompt, 
-            messages, 
-            userMsg.text, 
-            bot.model || 'gpt-4o-mini',
-            bot.knowledgeBase ? bot.knowledgeBase.join('\n') : ''
-        );
-        
-        // Simulating network delay based on bot config if available, else 1s
-        const delay = bot.responseDelay || 1000;
-        
-        setTimeout(() => {
-            setMessages(prev => [...prev, { role: 'model', text: response }]);
-            setIsTyping(false);
-        }, delay);
-    } catch (e) {
+      // Convert messages to Edge Function format
+      const chatMessages = messages.map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.text
+      }));
+      chatMessages.push({ role: 'user', content: userMsg.text });
+
+      // Call the secure Edge Function
+      const response = await edgeFunctions.aiComplete(botId, chatMessages, sessionId);
+
+      // Apply response delay if configured
+      const delay = bot.responseDelay || 0;
+
+      setTimeout(() => {
+        setMessages(prev => [...prev, { role: 'assistant', text: response.message }]);
         setIsTyping(false);
+      }, delay);
+    } catch (e) {
+      console.error("Chat error:", e);
+      setError(e instanceof Error ? e.message : "Failed to get response");
+      setIsTyping(false);
     }
   };
 
