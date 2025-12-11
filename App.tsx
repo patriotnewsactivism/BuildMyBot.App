@@ -70,6 +70,7 @@ function App() {
   // Manual Routing Check for Full Page Chat (must be after all hooks)
   const currentPath = window.location.pathname;
   const isChatRoute = currentPath.startsWith('/chat/');
+  const isPublicLandingRoute = currentPath === '/landing' || currentPath === '/public';
 
   // --- Supabase Auth Listener (runs once on mount) ---
   useEffect(() => {
@@ -275,10 +276,38 @@ function App() {
     setAuthModalOpen(true);
   };
 
+  const renderPublicExperience = () => {
+    if (showPartnerSignup) {
+        return <PartnerSignup onBack={() => setShowPartnerSignup(false)} onComplete={handlePartnerSignup} />;
+    }
+    if (showPartnerPage) {
+      return <PartnerProgramPage onBack={() => setShowPartnerPage(false)} onLogin={() => openAuth('login')} onSignup={() => setShowPartnerSignup(true)} />;
+    }
+    return (
+      <>
+        <LandingPage
+          onLogin={() => openAuth('login')}
+          onNavigateToPartner={() => setShowPartnerPage(true)}
+          onAdminLogin={handleAdminLogin}
+        />
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          defaultMode={authMode}
+          onLoginSuccess={handleManualAuth}
+        />
+      </>
+    );
+  };
+
   // Handle full page chat route (must be after all hooks, before other renders)
   if (isChatRoute) {
     const botId = currentPath.split('/')[2];
     return <FullPageChat botId={botId} />;
+  }
+
+  if (isPublicLandingRoute) {
+    return renderPublicExperience();
   }
 
   if (isBooting) {
@@ -303,27 +332,7 @@ function App() {
   // If not logged in, show Public Landing Page or Partner Page
   // This logic guarantees the landing page is the default view
   if (!isLoggedIn || !user) {
-    if (showPartnerSignup) {
-        return <PartnerSignup onBack={() => setShowPartnerSignup(false)} onComplete={handlePartnerSignup} />;
-    }
-    if (showPartnerPage) {
-      return <PartnerProgramPage onBack={() => setShowPartnerPage(false)} onLogin={() => openAuth('login')} onSignup={() => setShowPartnerSignup(true)} />;
-    }
-    return (
-      <>
-        <LandingPage 
-          onLogin={() => openAuth('login')} 
-          onNavigateToPartner={() => setShowPartnerPage(true)} 
-          onAdminLogin={handleAdminLogin} 
-        />
-        <AuthModal 
-          isOpen={authModalOpen} 
-          onClose={() => setAuthModalOpen(false)} 
-          defaultMode={authMode} 
-          onLoginSuccess={handleManualAuth}
-        />
-      </>
-    );
+    return renderPublicExperience();
   }
 
   return (
