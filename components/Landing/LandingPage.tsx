@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus, Loader, RefreshCcw, Send, Mic, PhoneCall, Star, Clock, Award, ChevronDown, ChevronUp, AlertTriangle, Gift, Sparkles, BadgeCheck, Timer, ThumbsUp, XCircle } from 'lucide-react';
+import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus, Loader, RefreshCcw, Send, Mic, PhoneCall, Star, Clock, Award, ChevronDown, ChevronUp, AlertTriangle, Gift, Sparkles, BadgeCheck, Timer, ThumbsUp, XCircle, Rocket, MousePointerClick, Calculator, BarChart3, ChevronRight, Circle, Settings, Palette } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
 import { generateBotResponse, generateMarketingContent, scrapeWebsiteContent, generateWebsiteStructure } from '../../services/openaiService';
@@ -52,12 +52,44 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   const [animatedStats, setAnimatedStats] = useState({ leads: 0, businesses: 0, messages: 0, saved: 0 });
   const countersRef = useRef<HTMLDivElement>(null);
 
+  // ROI Calculator State
+  const [roiLeadsPerMonth, setRoiLeadsPerMonth] = useState(100);
+  const [roiAvgDealValue, setRoiAvgDealValue] = useState(1000);
+  const [roiCurrentConversion, setRoiCurrentConversion] = useState(10);
+
+  // Live notification state for social proof
+  const [liveNotifications, setLiveNotifications] = useState<{name: string; action: string; time: string}[]>([]);
+  const [showNotification, setShowNotification] = useState(false);
+  const notificationNames = ['Alex from Denver', 'Sarah from NYC', 'Mike from Austin', 'Emily from LA', 'David from Miami', 'Jessica from Chicago', 'Chris from Seattle', 'Amanda from Boston'];
+  const notificationActions = ['just signed up', 'captured 5 new leads', 'closed a $2,500 deal', 'upgraded to Professional', 'built their first bot'];
+
 
   // Initialize random identity on mount
   useEffect(() => {
     const randomName = HUMAN_NAMES[Math.floor(Math.random() * HUMAN_NAMES.length)];
     const randomColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
     setDemoIdentity({ name: randomName, color: randomColor });
+  }, []);
+
+  // Live notification popup - social proof
+  useEffect(() => {
+    const showRandomNotification = () => {
+      const name = notificationNames[Math.floor(Math.random() * notificationNames.length)];
+      const action = notificationActions[Math.floor(Math.random() * notificationActions.length)];
+      setLiveNotifications([{ name, action, time: 'Just now' }]);
+      setShowNotification(true);
+      setTimeout(() => setShowNotification(false), 4000);
+    };
+
+    // Initial notification after 5 seconds
+    const initialTimeout = setTimeout(showRandomNotification, 5000);
+    // Then every 15-25 seconds
+    const interval = setInterval(showRandomNotification, 15000 + Math.random() * 10000);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
   }, []);
 
   // Animated counters intersection observer
@@ -483,10 +515,36 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     sky: { icon: 'bg-sky-100 text-sky-700', border: 'border-sky-100', accent: 'text-sky-700' }
   };
 
+  // ROI calculation
+  const roiImprovedConversion = Math.min(roiCurrentConversion * 2.5, 80); // 2.5x improvement, max 80%
+  const roiCurrentRevenue = roiLeadsPerMonth * roiAvgDealValue * (roiCurrentConversion / 100);
+  const roiImprovedRevenue = roiLeadsPerMonth * roiAvgDealValue * (roiImprovedConversion / 100);
+  const roiAdditionalRevenue = roiImprovedRevenue - roiCurrentRevenue;
+  const roiAnnualGain = roiAdditionalRevenue * 12;
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden">
       {modalContent && <InfoModal />}
-      
+
+      {/* Live Social Proof Notification Toast */}
+      {showNotification && liveNotifications.length > 0 && (
+        <div className="fixed bottom-24 left-6 z-30 animate-slide-in-left">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 p-4 flex items-center gap-3 max-w-sm">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white">
+              <CheckCircle size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800">{liveNotifications[0].name}</p>
+              <p className="text-xs text-slate-500">{liveNotifications[0].action} - {liveNotifications[0].time}</p>
+            </div>
+            <div className="ml-2 flex items-center gap-1">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+              <span className="text-xs text-emerald-600 font-medium">Live</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Demo Chatbot Widget */}
       <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-4">
           {/* Chat Window */}
@@ -851,6 +909,227 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
             <button onClick={onLogin} className="px-8 py-4 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-950 transition shadow-xl shadow-blue-900/30 inline-flex items-center gap-2">
               Join {animatedStats.businesses.toLocaleString()}+ Happy Businesses <ArrowRight size={18} />
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works Section - New Timeline */}
+      <section className="py-24 px-6 bg-gradient-to-b from-white to-slate-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold uppercase tracking-wide mb-4">
+              <Rocket size={12} /> Simple Setup
+            </div>
+            <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-4">
+              Live in 3 Minutes, Not 3 Months
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              Most AI solutions take forever to implement. BuildMyBot is different.
+            </p>
+          </div>
+
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="hidden md:block absolute left-1/2 transform -translate-x-1/2 w-1 h-full bg-gradient-to-b from-blue-500 via-purple-500 to-emerald-500 rounded-full" />
+
+            <div className="space-y-12 md:space-y-24">
+              {[
+                {
+                  step: '01',
+                  title: 'Enter Your Website',
+                  description: 'Just paste your URL. Our AI instantly scrapes your site, understands your business, products, services, and FAQs.',
+                  icon: Globe,
+                  color: 'blue',
+                  side: 'left'
+                },
+                {
+                  step: '02',
+                  title: 'Customize Your Bot',
+                  description: 'Choose a persona, tweak the responses, set your brand colors. Make it yours in seconds - no coding required.',
+                  icon: Settings,
+                  color: 'purple',
+                  side: 'right'
+                },
+                {
+                  step: '03',
+                  title: 'Copy One Line of Code',
+                  description: 'Embed on any website with a single script tag. Works with WordPress, Shopify, Wix, Squarespace - anything.',
+                  icon: FileText,
+                  color: 'emerald',
+                  side: 'left'
+                },
+                {
+                  step: '04',
+                  title: 'Watch Leads Roll In',
+                  description: 'Your AI employee is now live 24/7. Get instant alerts when hot leads are captured. Close deals while you sleep.',
+                  icon: TrendingUp,
+                  color: 'amber',
+                  side: 'right'
+                }
+              ].map((item, idx) => (
+                <div key={idx} className={`flex flex-col md:flex-row items-center gap-8 ${item.side === 'right' ? 'md:flex-row-reverse' : ''}`}>
+                  <div className={`flex-1 ${item.side === 'right' ? 'md:text-left' : 'md:text-right'}`}>
+                    <div className={`bg-white p-8 rounded-2xl shadow-xl border border-slate-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1`}>
+                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-${item.color}-100 text-${item.color}-700 text-xs font-bold mb-4`}>
+                        Step {item.step}
+                      </div>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-3">{item.title}</h3>
+                      <p className="text-slate-600 leading-relaxed">{item.description}</p>
+                    </div>
+                  </div>
+
+                  {/* Center icon */}
+                  <div className={`relative z-10 w-20 h-20 rounded-full bg-${item.color}-500 flex items-center justify-center shadow-lg shadow-${item.color}-500/30`}>
+                    <item.icon size={32} className="text-white" />
+                  </div>
+
+                  <div className="flex-1 hidden md:block" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="text-center mt-16">
+            <button onClick={onLogin} className="px-10 py-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl text-lg font-bold hover:from-blue-700 hover:to-purple-700 transition-all shadow-2xl shadow-purple-500/30 inline-flex items-center gap-3 transform hover:scale-105">
+              <Rocket size={22} />
+              Get Started in 3 Minutes
+              <ArrowRight size={20} />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Interactive ROI Calculator */}
+      <section className="py-24 px-6 bg-slate-900 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
+        </div>
+
+        <div className="max-w-6xl mx-auto relative z-10">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold uppercase tracking-wide mb-4">
+              <Calculator size={12} /> ROI Calculator
+            </div>
+            <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">
+              See Your Potential Revenue Boost
+            </h2>
+            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+              Drag the sliders to see how much additional revenue BuildMyBot could generate for your business.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Calculator Inputs */}
+            <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700">
+              <div className="space-y-8">
+                <div>
+                  <div className="flex justify-between mb-3">
+                    <label className="text-white font-medium">Monthly Website Leads</label>
+                    <span className="text-blue-400 font-bold">{roiLeadsPerMonth}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="1000"
+                    step="10"
+                    value={roiLeadsPerMonth}
+                    onChange={(e) => setRoiLeadsPerMonth(Number(e.target.value))}
+                    className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                  />
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                    <span>10</span>
+                    <span>1,000</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-3">
+                    <label className="text-white font-medium">Average Deal Value</label>
+                    <span className="text-emerald-400 font-bold">${roiAvgDealValue.toLocaleString()}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="100"
+                    max="50000"
+                    step="100"
+                    value={roiAvgDealValue}
+                    onChange={(e) => setRoiAvgDealValue(Number(e.target.value))}
+                    className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                  />
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                    <span>$100</span>
+                    <span>$50,000</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-3">
+                    <label className="text-white font-medium">Current Conversion Rate</label>
+                    <span className="text-purple-400 font-bold">{roiCurrentConversion}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    step="1"
+                    value={roiCurrentConversion}
+                    onChange={(e) => setRoiCurrentConversion(Number(e.target.value))}
+                    className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  />
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                    <span>1%</span>
+                    <span>50%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Results */}
+            <div className="space-y-6">
+              <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-2xl border border-slate-700">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <p className="text-slate-400 text-sm">Current Monthly Revenue</p>
+                    <p className="text-3xl font-bold text-white">${roiCurrentRevenue.toLocaleString()}</p>
+                  </div>
+                  <ArrowRight className="text-slate-500" size={24} />
+                  <div>
+                    <p className="text-slate-400 text-sm">With BuildMyBot</p>
+                    <p className="text-3xl font-bold text-emerald-400">${roiImprovedRevenue.toLocaleString()}</p>
+                  </div>
+                </div>
+
+                <div className="h-4 bg-slate-700 rounded-full overflow-hidden mb-4">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min((roiImprovedRevenue / Math.max(roiImprovedRevenue, roiCurrentRevenue)) * 100, 100)}%` }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700">
+                  <div>
+                    <p className="text-slate-400 text-sm">New Conversion Rate</p>
+                    <p className="text-xl font-bold text-purple-400">{roiImprovedConversion.toFixed(1)}%</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-sm">Monthly Increase</p>
+                    <p className="text-xl font-bold text-emerald-400">+${roiAdditionalRevenue.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 p-6 rounded-2xl text-center">
+                <p className="text-emerald-100 text-sm mb-2">Projected Annual Revenue Increase</p>
+                <p className="text-4xl md:text-5xl font-extrabold text-white mb-4">
+                  +${roiAnnualGain.toLocaleString()}
+                </p>
+                <button onClick={onLogin} className="px-8 py-3 bg-white text-emerald-700 rounded-xl font-bold hover:bg-emerald-50 transition shadow-lg inline-flex items-center gap-2">
+                  <Sparkles size={18} />
+                  Claim Your Revenue Boost
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
