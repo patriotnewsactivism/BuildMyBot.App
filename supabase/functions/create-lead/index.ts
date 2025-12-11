@@ -1,13 +1,10 @@
 // create-lead Edge Function
+// SEC-006, SEC-007 FIXES Applied
 // Creates lead records from chat interactions
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/cors.ts";
 
 interface RequestBody {
   botId: string;
@@ -20,6 +17,8 @@ interface RequestBody {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -28,6 +27,15 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get client IP for rate limiting
+    const ipAddress = getClientIp(req);
+
+    // Check rate limit (uses IP since this can be called from embed widget)
+    const rateCheck = await checkRateLimit(supabase, null, ipAddress, "create-lead");
+    if (!rateCheck.allowed) {
+      return rateLimitResponse(corsHeaders);
+    }
 
     const body: RequestBody = await req.json();
     const { botId, name, email, phone, score, sourceUrl, metadata } = body;
@@ -47,6 +55,9 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // SEC-011: Sanitize name input to prevent XSS
+    const sanitizedName = name.replace(/<[^>]*>/g, '').substring(0, 200);
 
     // Fetch bot to get owner
     const { data: bot, error: botError } = await supabase
@@ -82,7 +93,7 @@ serve(async (req) => {
     }
 
     // Calculate lead score if not provided
-    const leadScore = score ?? 50;
+    const leadScore = Math.min(100, Math.max(0, score ?? 50));
 
     // Create lead
     const { data: lead, error: leadError } = await supabase
@@ -90,7 +101,7 @@ serve(async (req) => {
       .insert({
         user_id: bot.user_id,
         bot_id: botId,
-        name,
+        name: sanitizedName,
         email,
         phone,
         score: leadScore,
@@ -129,9 +140,16 @@ serve(async (req) => {
           status: lead.status,
         },
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "X-RateLimit-Remaining": String(rateCheck.remaining),
+        },
+      }
     );
   } catch (error) {
+    const corsHeaders = getCorsHeaders(req);
     console.error("Error in create-lead:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Internal server error" }),

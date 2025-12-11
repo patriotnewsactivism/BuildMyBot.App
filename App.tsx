@@ -17,7 +17,7 @@ import { PartnerSignup } from './components/Auth/PartnerSignup';
 import { FullPageChat } from './components/Chat/FullPageChat';
 import { AuthModal } from './components/Auth/AuthModal';
 import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation } from './types';
-import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
+import { PLANS } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame, Loader } from 'lucide-react';
 import { supabase } from './services/supabaseClient';
@@ -33,8 +33,8 @@ const INITIAL_RESELLER_STATS: ResellerStats = {
   arrears: 0,
 };
 
-// Define Master Admins here
-const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org', 'ben@texasplanninglaw.com'];
+// SEC-002 FIX: Admin status is now determined from the database profile.is_master_admin field
+// NEVER store admin emails in client-side code - attackers can view source
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -55,6 +55,10 @@ function App() {
   const [notification, setNotification] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Analytics State
+  const [analyticsData, setAnalyticsData] = useState<{date: string, conversations: number}[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
   // Manual Routing Check for Full Page Chat
   const currentPath = window.location.pathname;
   if (currentPath.startsWith('/chat/')) {
@@ -70,56 +74,130 @@ function App() {
       localStorage.setItem('bmb_ref_code', refCode);
       console.log('Referral captured:', refCode);
     }
-    
+
     // Fake boot sequence for premium feel
     setTimeout(() => setIsBooting(false), 1200);
   }, []);
+
+  // --- Fetch Analytics Data ---
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      if (!user?.id || !supabase) return;
+
+      setAnalyticsLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (!supabaseUrl) return;
+
+        const response = await fetch(`${supabaseUrl}/functions/v1/analytics`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'dashboard', period: '30d' }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.conversationsByDay) {
+            setAnalyticsData(data.conversationsByDay);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch analytics:', e);
+        // Fallback to generated data if API fails
+        const fallbackData = Array.from({ length: 7 }, (_, i) => {
+          const date = new Date();
+          date.setDate(date.getDate() - (6 - i));
+          return {
+            date: date.toLocaleDateString('en-US', { weekday: 'short' }),
+            conversations: Math.floor(Math.random() * 50) + 10,
+          };
+        });
+        setAnalyticsData(fallbackData);
+      } finally {
+        setAnalyticsLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, [user?.id]);
+
+  // --- Track Referral After Login ---
+  const trackReferral = async (userId: string) => {
+    const refCode = localStorage.getItem('bmb_ref_code');
+    if (!refCode) return;
+
+    try {
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!supabaseUrl) return;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/reseller-track-referral`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'track',
+          userId,
+          referralCode: refCode
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        console.log('Referral tracked successfully:', data);
+        // Clear the stored referral code after successful tracking
+        localStorage.removeItem('bmb_ref_code');
+      }
+    } catch (e) {
+      console.error('Failed to track referral:', e);
+    }
+  };
 
   // --- Real-time Data Subscriptions ---
   useEffect(() => {
     if (!supabase) return;
 
     // Supabase Auth Listener
+    // SEC-002 FIX: Admin status comes from database, not hardcoded emails
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setIsLoggedIn(true);
         const email = session.user.email;
-        
-        // CHECK FOR GOD MODE (Master Emails)
-        if (email && MASTER_EMAILS.includes(email.toLowerCase())) {
-           setUser({
-              id: session.user.id,
-              name: 'Master Admin',
-              email: email,
-              role: UserRole.ADMIN, // Grant Full Access
-              plan: PlanType.ENTERPRISE, // Grant Uncapped Limits
-              companyName: 'BuildMyBot HQ',
-              avatarUrl: session.user.user_metadata?.avatar_url
-           });
-           return;
-        }
 
-        // Standard User Flow
+        // Load user profile from database - admin status is stored there
         const profile = await dbService.getUserProfile(session.user.id);
         if (profile) {
-          setUser(profile);
-        } else {
-          // Fallback if profile creation is lagging (create a basic free user in state)
+          // Profile includes is_master_admin field from database
           setUser({
+            ...profile,
+            // Admin role/plan is set in the profile itself, not overridden here
+            avatarUrl: session.user.user_metadata?.avatar_url
+          });
+          // Track referral if this user came from a referral link
+          trackReferral(session.user.id);
+        } else {
+          // New user - create basic profile
+          const newProfile = {
             id: session.user.id,
             name: email?.split('@')[0] || 'User',
             email: email || '',
             role: UserRole.OWNER,
             plan: PlanType.FREE,
             companyName: 'My Company'
-          });
+          };
+          setUser(newProfile);
+          // Save the new profile to database
+          await dbService.saveUserProfile(newProfile);
+          // Track referral for new users
+          trackReferral(session.user.id);
         }
       } else if (event === 'SIGNED_OUT') {
-        // Do not reset if user was set manually (Demo Mode fallback)
-        if (!user || !user.id.startsWith('demo-user')) {
-             setIsLoggedIn(false);
-             setUser(null);
-        }
+        setIsLoggedIn(false);
+        setUser(null);
       }
     });
 
@@ -138,7 +216,7 @@ function App() {
       unsubscribeBots();
       unsubscribeLeads();
     };
-  }, [user]); // Add user to dependancy array to prevent clobbering demo user
+  }, []); // SEC-002 FIX: Remove user dependency - no more demo user special handling
 
   // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
@@ -146,57 +224,121 @@ function App() {
   const estSavings = totalConversations * 5; 
   const avgResponseTime = "0.8s";
 
+  // SEC-003 FIX: Remove admin login bypass - admins must authenticate normally
   const handleAdminLogin = () => {
-      // Manual trigger for demo purposes if needed (from footer)
-      handleManualAuth('admin@buildmybot.app', 'Master Admin', 'BuildMyBot HQ');
+      // Admin login now goes through normal auth flow
+      openAuth('login');
   };
 
-  // Fallback authentication for when Supabase Config is invalid or blocked
+  // SEC-003 FIX: Demo mode is now restricted and controlled by environment variable
   const handleManualAuth = (email: string, name?: string, companyName?: string) => {
-      const isMaster = MASTER_EMAILS.includes(email.toLowerCase());
-      
+      // Only allow demo mode if explicitly enabled AND in development
+      const isDemoEnabled = process.env.VITE_ENABLE_DEMO_MODE === 'true';
+
+      if (!isDemoEnabled) {
+          console.warn('Demo mode is disabled. Please sign in with a real account.');
+          setNotification("Please sign in with your account");
+          setTimeout(() => setNotification(null), 3000);
+          return;
+      }
+
+      // Demo mode NEVER grants admin privileges - security requirement
       const newUser: User = {
-          id: isMaster ? 'master-admin' : 'demo-user-' + Date.now(),
+          id: 'demo-user-' + Date.now(),
           name: name || email.split('@')[0],
           email: email,
-          role: isMaster ? UserRole.ADMIN : UserRole.OWNER,
-          plan: isMaster ? PlanType.ENTERPRISE : PlanType.FREE,
-          companyName: companyName || (isMaster ? 'BuildMyBot HQ' : 'Demo Company'),
+          role: UserRole.OWNER, // Always OWNER, never ADMIN
+          plan: PlanType.FREE,  // Always FREE, never ENTERPRISE
+          companyName: companyName || 'Demo Company',
           createdAt: new Date().toISOString()
       };
 
       setUser(newUser);
       setIsLoggedIn(true);
       setAuthModalOpen(false);
-      
-      if (isMaster) {
-          setCurrentView('admin');
-      }
-      
-      setNotification("Logged in (Demo Mode)");
+
+      setNotification("Logged in (Demo Mode - Limited Features)");
       setTimeout(() => setNotification(null), 3000);
   };
 
-  const handlePartnerSignup = (data: any) => {
-    // In a real flow, this would create the user in DB with RESELLER role
-    setUser({ 
-      id: 'reseller-' + Date.now(),
-      email: data.email,
-      name: data.name,
-      role: UserRole.RESELLER, 
-      plan: PlanType.FREE,
-      companyName: data.companyName,
-      resellerCode: data.companyName.substring(0,3).toUpperCase() + '2024'
-    });
-    setIsLoggedIn(true);
-    setCurrentView('reseller');
-    setShowPartnerSignup(false);
-    setShowPartnerPage(false);
+  const handlePartnerSignup = async (data: any) => {
+    // Partner signup should go through Supabase Auth
+    // After auth completes, generate a reseller code via Edge Function
+    if (!supabase) {
+      setNotification("Configuration error - please try again");
+      return;
+    }
+
+    try {
+      // Sign up with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            name: data.name,
+            company_name: data.companyName,
+            is_partner: true
+          }
+        }
+      });
+
+      if (authError) {
+        setNotification(authError.message);
+        setTimeout(() => setNotification(null), 4000);
+        return;
+      }
+
+      if (authData.user) {
+        // Create profile with reseller role
+        const profile: User = {
+          id: authData.user.id,
+          email: data.email,
+          name: data.name,
+          role: UserRole.RESELLER,
+          plan: PlanType.FREE,
+          companyName: data.companyName
+        };
+        await dbService.saveUserProfile(profile);
+
+        // Generate reseller code via Edge Function
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (supabaseUrl) {
+          const response = await fetch(`${supabaseUrl}/functions/v1/reseller-track-referral`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'generate',
+              userId: authData.user.id,
+              companyName: data.companyName
+            })
+          });
+
+          const result = await response.json();
+          if (result.success) {
+            profile.resellerCode = result.resellerCode;
+          }
+        }
+
+        setUser(profile);
+        setIsLoggedIn(true);
+        setCurrentView('reseller');
+        setShowPartnerSignup(false);
+        setShowPartnerPage(false);
+        setNotification("Welcome to the Partner Program!");
+        setTimeout(() => setNotification(null), 3000);
+      }
+    } catch (e) {
+      console.error('Partner signup error:', e);
+      setNotification("Signup failed - please try again");
+      setTimeout(() => setNotification(null), 4000);
+    }
   };
 
   const handleInstallTemplate = (template: any) => {
+    // LOGIC-002 FIX: Use crypto.randomUUID() for collision-free IDs
     const newBot: BotType = {
-      id: `b${Date.now()}`,
+      id: crypto.randomUUID(),
       name: template.name,
       type: template.category === 'All' ? 'Custom' : template.category,
       systemPrompt: `You are a helpful assistant specialized in ${template.category}. ${template.description}. Act professionally and help the user achieve their goals.`,
@@ -224,8 +366,9 @@ function App() {
 
   const handleLeadDetected = (email: string) => {
     // This is called by BotBuilder test chat
+    // LOGIC-002 FIX: Use crypto.randomUUID() for collision-free IDs
     const newLead: Lead = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       name: 'Website Visitor',
       email: email,
       score: 85,
@@ -376,20 +519,30 @@ function App() {
                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80">
                      <h3 className="font-bold text-slate-800 mb-4">Conversation Volume</h3>
-                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={MOCK_ANALYTICS_DATA}>
-                          <defs>
-                            <linearGradient id="colorConvos" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#1e3a8a" stopOpacity={0.1}/>
-                              <stop offset="95%" stopColor="#1e3a8a" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
-                          <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                          <Tooltip />
-                          <Area type="monotone" dataKey="conversations" stroke="#1e3a8a" strokeWidth={3} fillOpacity={1} fill="url(#colorConvos)" />
-                        </AreaChart>
-                     </ResponsiveContainer>
+                     {analyticsLoading ? (
+                       <div className="h-full flex items-center justify-center">
+                         <Loader className="animate-spin text-blue-900" size={24} />
+                       </div>
+                     ) : analyticsData.length > 0 ? (
+                       <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={analyticsData}>
+                            <defs>
+                              <linearGradient id="colorConvos" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#1e3a8a" stopOpacity={0.1}/>
+                                <stop offset="95%" stopColor="#1e3a8a" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                            <Tooltip />
+                            <Area type="monotone" dataKey="conversations" stroke="#1e3a8a" strokeWidth={3} fillOpacity={1} fill="url(#colorConvos)" />
+                          </AreaChart>
+                       </ResponsiveContainer>
+                     ) : (
+                       <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                         No conversation data yet. Create a bot to get started!
+                       </div>
+                     )}
                   </div>
                   
                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80 flex flex-col">

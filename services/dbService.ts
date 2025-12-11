@@ -32,23 +32,36 @@ export const dbService = {
   // --- BOTS ---
   
   // Real-time listener for bots
+  // LOGIC-003 FIX: Filter bots by current user
   subscribeToBots: (onUpdate: (bots: Bot[]) => void) => {
     const client = supabase;
     if (!client) return () => {};
 
-    // Initial fetch
+    // Initial fetch with user filter
     const fetchBots = async () => {
-      const { data, error } = await client.from('bots').select('*');
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) {
+        onUpdate([]);
+        return;
+      }
+
+      const { data, error } = await client
+        .from('bots')
+        .select('*')
+        .eq('user_id', user.id);
+
       if (!error && data) {
         onUpdate(arrayToCamelCase<Bot>(data as Record<string, unknown>[]));
       }
     };
     fetchBots();
 
-    // Subscribe to changes
+    // PERF-002 FIX: Use delta updates instead of re-fetching all data
+    // Note: Since onUpdate takes an array (not a function), we re-fetch on changes
+    // but the RLS filtering ensures we only get user's own data
     const channel = client.channel('public:bots')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bots' }, () => {
-        // Re-fetch on any change for simplicity
+        // Re-fetch on any change - RLS ensures only user's bots are returned
         fetchBots();
       })
       .subscribe();
@@ -100,16 +113,42 @@ export const dbService = {
     return objectToCamelCase<Bot>(data as Record<string, unknown>);
   },
 
+  // PUBLIC: Get bot for embedding/sharing (no auth required)
+  getPublicBot: async (botId: string): Promise<Bot | undefined> => {
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) return undefined;
+
+    try {
+      // Use Edge Function to fetch bot publicly
+      const response = await fetch(`${supabaseUrl}/functions/v1/public-bot?botId=${botId}`);
+      if (!response.ok) return undefined;
+
+      const { bot } = await response.json();
+      return bot ? objectToCamelCase<Bot>(bot as Record<string, unknown>) : undefined;
+    } catch (e) {
+      console.error('Failed to fetch public bot:', e);
+      return undefined;
+    }
+  },
+
   // --- LEADS ---
 
+  // LOGIC-003 FIX: Filter leads by current user
   subscribeToLeads: (onUpdate: (leads: Lead[]) => void) => {
     const client = supabase;
     if (!client) return () => {};
 
     const fetchLeads = async () => {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) {
+        onUpdate([]);
+        return;
+      }
+
       const { data, error } = await client
         .from('leads')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (!error && data) {
@@ -118,8 +157,10 @@ export const dbService = {
     };
     fetchLeads();
 
+    // Subscribe to changes - RLS filtering ensures only user's leads are returned
     const channel = client.channel('public:leads')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
+        // Re-fetch on any change - RLS ensures only user's leads are returned
         fetchLeads();
       })
       .subscribe();
@@ -231,8 +272,98 @@ export const dbService = {
   },
 
   // --- ADMIN FUNCTIONS ---
-  
-  // Get ALL users for the Admin Dashboard
+  // SEC-005, PERF-001 FIXES: Admin functions now use Edge Function with proper authorization
+
+  // Get admin dashboard stats via Edge Function
+  getAdminStats: async (): Promise<{
+    totalMrr: number;
+    totalUsers: number;
+    activeUsers: number;
+    suspendedUsers: number;
+    partnerCount: number;
+    pendingPartners: number;
+    totalBots: number;
+    activeBots: number;
+  } | null> => {
+    const client = supabase;
+    if (!client) return null;
+
+    const { data: { session } } = await client.auth.getSession();
+    if (!session?.access_token) return null;
+
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) return null;
+
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/admin-stats?action=stats`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Admin stats error:', response.status);
+        return null;
+      }
+
+      const { stats } = await response.json();
+      return stats ? {
+        totalMrr: stats.total_mrr || 0,
+        totalUsers: stats.total_users || 0,
+        activeUsers: stats.active_users || 0,
+        suspendedUsers: stats.suspended_users || 0,
+        partnerCount: stats.partner_count || 0,
+        pendingPartners: stats.pending_partners || 0,
+        totalBots: stats.total_bots || 0,
+        activeBots: stats.active_bots || 0,
+      } : null;
+    } catch (e) {
+      console.error('Admin stats fetch error:', e);
+      return null;
+    }
+  },
+
+  // Get paginated users via Edge Function
+  getAdminUsers: async (page = 1, pageSize = 50, search?: string): Promise<User[]> => {
+    const client = supabase;
+    if (!client) return [];
+
+    const { data: { session } } = await client.auth.getSession();
+    if (!session?.access_token) return [];
+
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) return [];
+
+    try {
+      const params = new URLSearchParams({
+        action: 'users',
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+      if (search) params.set('search', search);
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/admin-stats?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Admin users error:', response.status);
+        return [];
+      }
+
+      const { users } = await response.json();
+      return arrayToCamelCase<User>(users || []);
+    } catch (e) {
+      console.error('Admin users fetch error:', e);
+      return [];
+    }
+  },
+
+  // Legacy: Get ALL users for the Admin Dashboard (fallback)
   getAllUsers: async (): Promise<User[]> => {
     const client = supabase;
     if (!client) return [];

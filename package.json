@@ -10,11 +10,12 @@
   },
   "dependencies": {
     "@google/genai": "^1.31.0",
+    "@supabase/supabase-js": "^2.39.7",
+    "@vercel/analytics": "^1.6.1",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^2.12.2",
-    "@supabase/supabase-js": "^2.39.7"
+    "recharts": "^2.12.2"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",

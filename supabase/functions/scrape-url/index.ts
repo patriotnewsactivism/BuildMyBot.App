@@ -1,14 +1,58 @@
 // scrape-url Edge Function
+// SEC-006, SEC-007 FIXES Applied
 // Server-side URL scraping that bypasses CORS issues
 // Uses Jina.ai reader for clean text extraction and GPT-4o-mini for summarization
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// SEC-006 FIX: Restrict CORS to allowed origins
+const ALLOWED_ORIGINS = [
+  "https://buildmybot.app",
+  "https://app.buildmybot.app",
+  "https://www.buildmybot.app",
+  "http://localhost:8080",
+  "http://localhost:3000",
+  "http://127.0.0.1:8080",
+];
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") || "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
+
+// SEC-007 FIX: Rate limiting for scraping
+const RATE_LIMIT = { requests: 10, windowSeconds: 60 };
+
+async function checkRateLimit(
+  supabase: SupabaseClient,
+  userId: string,
+  endpoint: string
+): Promise<{ allowed: boolean; remaining: number }> {
+  const windowStart = new Date(Date.now() - RATE_LIMIT.windowSeconds * 1000).toISOString();
+
+  const { count } = await supabase
+    .from("api_rate_limits")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("endpoint", endpoint)
+    .gte("created_at", windowStart);
+
+  const currentCount = count || 0;
+
+  if (currentCount >= RATE_LIMIT.requests) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  await supabase.from("api_rate_limits").insert({ user_id: userId, endpoint });
+  return { allowed: true, remaining: RATE_LIMIT.requests - currentCount - 1 };
+}
 
 interface RequestBody {
   url: string;
@@ -73,6 +117,8 @@ function isBlockedUrl(urlString: string): { blocked: boolean; reason?: string } 
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -105,6 +151,23 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Invalid authentication" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // SEC-007 FIX: Check rate limit
+    const rateCheck = await checkRateLimit(supabase, user.id, "scrape-url");
+    if (!rateCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "X-RateLimit-Remaining": "0",
+            "Retry-After": "60",
+          },
+        }
       );
     }
 
@@ -272,6 +335,7 @@ ${truncatedText}`,
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
+    const corsHeaders = getCorsHeaders(req);
     console.error("Error in scrape-url:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Internal server error" }),

@@ -1,13 +1,10 @@
 // embed-knowledge-base Edge Function
+// SEC-006, SEC-007 FIXES Applied
 // Generates embeddings for knowledge base content using OpenAI
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/cors.ts";
 
 interface RequestBody {
   botId: string;
@@ -49,6 +46,8 @@ function chunkText(text: string, chunkSize: number = 1000, overlap: number = 200
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -81,6 +80,12 @@ serve(async (req) => {
         JSON.stringify({ error: "Invalid authentication" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // SEC-007 FIX: Check rate limit
+    const rateCheck = await checkRateLimit(supabase, user.id, getClientIp(req), "embed-knowledge-base");
+    if (!rateCheck.allowed) {
+      return rateLimitResponse(corsHeaders);
     }
 
     const body: RequestBody = await req.json();

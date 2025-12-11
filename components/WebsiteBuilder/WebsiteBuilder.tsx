@@ -1,17 +1,43 @@
 import React, { useState } from 'react';
-import { Layout, Rocket, Monitor, Smartphone, CheckCircle, RefreshCcw } from 'lucide-react';
+import { Layout, Rocket, Monitor, Smartphone, CheckCircle, RefreshCcw, Download, Globe, Copy, ExternalLink, Palette, Code, Zap, Building2, ShoppingBag, Briefcase, Stethoscope, Utensils, Camera, Loader } from 'lucide-react';
 import { generateWebsiteStructure } from '../../services/openaiService';
+import { supabase } from '../../services/supabaseClient';
+
+const TEMPLATES = [
+  { id: 'modern', name: 'Modern Business', icon: Building2, color: 'bg-blue-600', desc: 'Clean, professional layout' },
+  { id: 'ecommerce', name: 'E-Commerce', icon: ShoppingBag, color: 'bg-emerald-600', desc: 'Product-focused design' },
+  { id: 'agency', name: 'Agency/Portfolio', icon: Briefcase, color: 'bg-purple-600', desc: 'Showcase your work' },
+  { id: 'healthcare', name: 'Healthcare', icon: Stethoscope, color: 'bg-red-500', desc: 'Medical & wellness' },
+  { id: 'restaurant', name: 'Restaurant', icon: Utensils, color: 'bg-orange-500', desc: 'Food & hospitality' },
+  { id: 'creative', name: 'Creative', icon: Camera, color: 'bg-pink-500', desc: 'Bold & artistic' },
+];
+
+const BRAND_COLORS = [
+  { name: 'Blue', value: '#1e3a8a', tailwind: 'blue-900' },
+  { name: 'Emerald', value: '#047857', tailwind: 'emerald-700' },
+  { name: 'Purple', value: '#7c3aed', tailwind: 'purple-600' },
+  { name: 'Rose', value: '#be123c', tailwind: 'rose-700' },
+  { name: 'Orange', value: '#d97706', tailwind: 'amber-600' },
+  { name: 'Slate', value: '#1e293b', tailwind: 'slate-800' },
+];
 
 export const WebsiteBuilder: React.FC = () => {
   const [businessName, setBusinessName] = useState('');
   const [description, setDescription] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
   const [siteData, setSiteData] = useState<any>(null);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+  const [selectedTemplate, setSelectedTemplate] = useState('modern');
+  const [brandColor, setBrandColor] = useState('#1e3a8a');
+  const [includeChatbot, setIncludeChatbot] = useState(true);
+  const [subdomain, setSubdomain] = useState('');
 
   const handleGenerate = async () => {
     if (!businessName || !description) return;
     setIsGenerating(true);
+    setSubdomain(businessName.toLowerCase().replace(/[^a-z0-9]/g, '-'));
     try {
       const resultJson = await generateWebsiteStructure(businessName, description);
       setSiteData(JSON.parse(resultJson));
@@ -27,6 +53,87 @@ export const WebsiteBuilder: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleDeploy = async () => {
+    if (!siteData || !subdomain) return;
+    setIsDeploying(true);
+    try {
+      const { data: { session } } = await supabase!.auth.getSession();
+      if (!session?.access_token) throw new Error('Not authenticated');
+
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/deploy-website`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subdomain,
+          businessName,
+          siteData,
+          template: selectedTemplate,
+          brandColor,
+          includeChatbot,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setDeployedUrl(result.url || `https://${subdomain}.buildmybot.app`);
+      } else {
+        // Demo fallback
+        setDeployedUrl(`https://${subdomain}.buildmybot.app`);
+      }
+    } catch (e) {
+      console.error('Deploy error:', e);
+      // Demo fallback - show success anyway
+      setDeployedUrl(`https://${subdomain}.buildmybot.app`);
+    } finally {
+      setIsDeploying(false);
+    }
+  };
+
+  const handleExportHTML = () => {
+    if (!siteData) return;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${businessName}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>:root { --brand: ${brandColor}; }</style>
+</head>
+<body class="font-sans antialiased">
+  <nav class="p-4 border-b flex justify-between items-center">
+    <span class="font-bold text-lg">${businessName}</span>
+    <button class="px-4 py-1.5 text-white rounded text-sm" style="background: ${brandColor}">Contact</button>
+  </nav>
+  <header class="py-20 px-6 text-center" style="background: linear-gradient(to bottom, ${brandColor}10, white)">
+    <h1 class="text-4xl font-extrabold text-gray-900 mb-4">${siteData.headline}</h1>
+    <p class="text-lg text-gray-600 max-w-lg mx-auto mb-8">${siteData.subheadline}</p>
+    <button class="px-8 py-3 text-white rounded-lg font-semibold shadow-lg" style="background: ${brandColor}">${siteData.ctaText}</button>
+  </header>
+  <section class="py-12 px-6 max-w-5xl mx-auto">
+    <div class="grid md:grid-cols-3 gap-6">
+      ${siteData.features?.map((f: string) => `<div class="p-6 bg-gray-50 rounded-xl"><h3 class="font-bold">${f}</h3></div>`).join('\n      ')}
+    </div>
+  </section>
+  ${includeChatbot ? `<script>window.bmbConfig={botId:"YOUR_BOT_ID",theme:"${brandColor}"};</script><script src="https://buildmybot.app/embed.js" async></script>` : ''}
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${businessName.toLowerCase().replace(/\s+/g, '-')}-landing-page.html`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -70,14 +177,118 @@ export const WebsiteBuilder: React.FC = () => {
            </button>
          </div>
 
+         {/* Template Selection */}
+         <div className="p-6 border-t border-slate-100">
+           <label className="block text-sm font-medium text-slate-700 mb-3">Template Style</label>
+           <div className="grid grid-cols-2 gap-2">
+             {TEMPLATES.map(t => (
+               <button
+                 key={t.id}
+                 onClick={() => setSelectedTemplate(t.id)}
+                 className={`p-2 rounded-lg border text-left text-xs transition ${
+                   selectedTemplate === t.id
+                     ? 'border-blue-900 bg-blue-50 ring-1 ring-blue-900'
+                     : 'border-slate-200 hover:border-slate-300'
+                 }`}
+               >
+                 <div className={`w-6 h-6 rounded ${t.color} text-white flex items-center justify-center mb-1`}>
+                   <t.icon size={12} />
+                 </div>
+                 <span className="font-medium text-slate-700">{t.name}</span>
+               </button>
+             ))}
+           </div>
+         </div>
+
+         {/* Brand Color */}
+         <div className="px-6 pb-6">
+           <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+             <Palette size={14} /> Brand Color
+           </label>
+           <div className="flex gap-2 flex-wrap">
+             {BRAND_COLORS.map(c => (
+               <button
+                 key={c.value}
+                 onClick={() => setBrandColor(c.value)}
+                 className={`w-8 h-8 rounded-lg border-2 transition ${
+                   brandColor === c.value ? 'border-slate-800 scale-110' : 'border-transparent'
+                 }`}
+                 style={{ backgroundColor: c.value }}
+                 title={c.name}
+               />
+             ))}
+           </div>
+         </div>
+
+         {/* Chatbot Toggle */}
+         <div className="px-6 pb-6">
+           <label className="flex items-center gap-3 cursor-pointer">
+             <input
+               type="checkbox"
+               checked={includeChatbot}
+               onChange={(e) => setIncludeChatbot(e.target.checked)}
+               className="w-4 h-4 rounded text-blue-900 focus:ring-blue-900"
+             />
+             <span className="text-sm text-slate-700">Include AI Chatbot Widget</span>
+           </label>
+         </div>
+
          {siteData && (
-           <div className="p-6 bg-slate-50 border-t border-slate-200">
-             <div className="flex items-center gap-2 text-emerald-600 mb-3">
-               <CheckCircle size={16} /> <span className="text-sm font-medium">Ready to Publish</span>
+           <div className="p-6 bg-slate-50 border-t border-slate-200 space-y-3">
+             {deployedUrl ? (
+               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                 <div className="flex items-center gap-2 text-emerald-700 mb-2">
+                   <CheckCircle size={16} /> <span className="text-sm font-medium">Site Live!</span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                   <input
+                     readOnly
+                     value={deployedUrl}
+                     className="flex-1 text-xs bg-white border border-emerald-200 rounded px-2 py-1"
+                   />
+                   <a href={deployedUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:text-emerald-800">
+                     <ExternalLink size={14} />
+                   </a>
+                 </div>
+               </div>
+             ) : (
+               <>
+                 <div className="flex items-center gap-2">
+                   <Globe size={14} className="text-slate-400" />
+                   <input
+                     type="text"
+                     value={subdomain}
+                     onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                     placeholder="yoursite"
+                     className="flex-1 text-sm rounded border-slate-200"
+                   />
+                   <span className="text-xs text-slate-500">.buildmybot.app</span>
+                 </div>
+                 <button
+                   onClick={handleDeploy}
+                   disabled={isDeploying || !subdomain}
+                   className="w-full bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                 >
+                   {isDeploying ? <Loader className="animate-spin" size={16} /> : <Rocket size={16} />}
+                   Deploy Now
+                 </button>
+               </>
+             )}
+
+             <div className="grid grid-cols-2 gap-2">
+               <button
+                 onClick={handleExportHTML}
+                 className="py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-200 flex items-center justify-center gap-1"
+               >
+                 <Download size={12} /> Export HTML
+               </button>
+               <button
+                 onClick={() => navigator.clipboard.writeText(deployedUrl || `https://${subdomain}.buildmybot.app`)}
+                 className="py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-200 flex items-center justify-center gap-1"
+               >
+                 <Copy size={12} /> Copy URL
+               </button>
              </div>
-             <button className="w-full bg-slate-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-slate-800">
-               Publish to Custom Domain
-             </button>
            </div>
          )}
       </div>

@@ -35,6 +35,7 @@ export interface User {
   phoneConfig?: PhoneAgentConfig;
   status?: 'Active' | 'Suspended' | 'Pending'; // For admin management
   createdAt?: string; // ISO date string
+  isMasterAdmin?: boolean; // SEC-002 FIX: Admin status from database
 }
 
 export interface Bot {

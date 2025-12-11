@@ -1,27 +1,80 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Mic, Settings, PlayCircle, Save, Voicemail, Play, Loader } from 'lucide-react';
+import { Phone, Mic, Settings, PlayCircle, Save, Voicemail, Play, Loader, AlertCircle, CheckCircle } from 'lucide-react';
 import { User } from '../../types';
+import { supabase } from '../../services/supabaseClient';
 
 interface PhoneAgentProps {
   user?: User;
   onUpdate?: (user: User) => void;
 }
 
+interface PhoneCall {
+  id: string;
+  from_number: string;
+  to_number: string;
+  status: string;
+  duration_seconds: number;
+  created_at: string;
+}
+
+const getSupabaseUrl = () => process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+
 export const PhoneAgent: React.FC<PhoneAgentProps> = ({ user, onUpdate }) => {
   const [enabled, setEnabled] = useState(user?.phoneConfig?.enabled || false);
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneConfig?.phoneNumber || '');
-  const [voice, setVoice] = useState(user?.phoneConfig?.voiceId || 'alloy');
-  const [introMessage, setIntroMessage] = useState(user?.phoneConfig?.introMessage || "Hi! Thanks for calling Apex Digital. How can I help you today?");
-  
-  // Simulation State
+  const [voice, setVoice] = useState(user?.phoneConfig?.voiceId || 'Polly.Joanna');
+  const [introMessage, setIntroMessage] = useState(user?.phoneConfig?.introMessage || "Hi! Thanks for calling. How can I help you today?");
+
+  // State
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationStatus, setSimulationStatus] = useState('Ready to call');
   const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [recentCalls, setRecentCalls] = useState<PhoneCall[]>([]);
+  const [loadingCalls, setLoadingCalls] = useState(true);
+
+  // Fetch recent calls on mount
+  useEffect(() => {
+    const fetchCalls = async () => {
+      if (!user || !supabase) {
+        setLoadingCalls(false);
+        return;
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          setLoadingCalls(false);
+          return;
+        }
+
+        const supabaseUrl = getSupabaseUrl();
+        const response = await fetch(`${supabaseUrl}/functions/v1/twilio-phone/calls`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setRecentCalls(data.calls || []);
+        }
+      } catch (e) {
+        console.error('Error fetching calls:', e);
+      } finally {
+        setLoadingCalls(false);
+      }
+    };
+
+    fetchCalls();
+  }, [user]);
 
   const startSimulation = () => {
     setIsSimulating(true);
     setSimulationStatus('Connecting...');
-    
+
     if ('speechSynthesis' in window) {
        const utter = new SpeechSynthesisUtterance(introMessage);
        window.speechSynthesis.speak(utter);
@@ -35,26 +88,98 @@ export const PhoneAgent: React.FC<PhoneAgentProps> = ({ user, onUpdate }) => {
   const endSimulation = () => {
     setIsSimulating(false);
     setSimulationStatus('Call ended');
-    window.speechSynthesis.cancel();
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!user || !supabase) return;
+
     setIsSaving(true);
-    // Simulate API delay
-    setTimeout(() => {
-        if (onUpdate && user) {
-            onUpdate({
-                ...user,
-                phoneConfig: {
-                    enabled,
-                    phoneNumber,
-                    voiceId: voice,
-                    introMessage
-                }
-            });
-        }
-        setIsSaving(false);
-    }, 1000);
+    setError(null);
+    setSaveSuccess(false);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Please log in to save');
+      }
+
+      const supabaseUrl = getSupabaseUrl();
+      const response = await fetch(`${supabaseUrl}/functions/v1/twilio-phone/configure`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          enabled: String(enabled),
+          phoneNumber,
+          voiceId: voice,
+          introMessage,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to save configuration');
+      }
+
+      // Update local state
+      if (onUpdate && user) {
+        onUpdate({
+          ...user,
+          phoneConfig: {
+            enabled,
+            phoneNumber,
+            voiceId: voice,
+            introMessage
+          }
+        });
+      }
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (e) {
+      console.error('Save error:', e);
+      setError(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const formatPhoneNumber = (phone: string) => {
+    if (!phone) return 'Unknown';
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    if (cleaned.length === 11 && cleaned[0] === '1') {
+      return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+    }
+    return phone;
+  };
+
+  const formatDuration = (seconds: number) => {
+    if (!seconds) return '0s';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  };
+
+  const formatTimeAgo = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
   };
 
   return (
@@ -158,35 +283,61 @@ export const PhoneAgent: React.FC<PhoneAgentProps> = ({ user, onUpdate }) => {
                   <Voicemail size={18} className="text-blue-900" /> Recent Calls
                 </h3>
                 <div className="space-y-3">
-                   {[
-                     { from: '(415) 555-0123', time: '10m ago', duration: '2m 14s', status: 'missed' },
-                     { from: '(212) 555-0988', time: '1h ago', duration: '5m 32s', status: 'completed' },
-                     { from: '(310) 555-4422', time: '3h ago', duration: '1m 05s', status: 'completed' },
-                   ].map((call, i) => (
-                     <div key={i} className="flex justify-between items-center text-sm border-b border-slate-50 last:border-0 pb-2 last:pb-0">
-                        <div>
-                          <p className="font-medium text-slate-700">{call.from}</p>
-                          <p className="text-xs text-slate-400">{call.time}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className={`text-xs capitalize ${call.status === 'missed' ? 'text-red-500' : 'text-emerald-500'}`}>{call.status}</p>
-                          <p className="text-xs text-slate-400">{call.duration}</p>
-                        </div>
+                   {loadingCalls ? (
+                     <div className="flex items-center justify-center py-4">
+                       <Loader className="animate-spin text-slate-400" size={20} />
                      </div>
-                   ))}
+                   ) : recentCalls.length === 0 ? (
+                     <div className="text-center py-4 text-slate-400 text-sm">
+                       No calls yet. Configure your phone number to start receiving calls.
+                     </div>
+                   ) : (
+                     recentCalls.slice(0, 5).map((call) => (
+                       <div key={call.id} className="flex justify-between items-center text-sm border-b border-slate-50 last:border-0 pb-2 last:pb-0">
+                          <div>
+                            <p className="font-medium text-slate-700">{formatPhoneNumber(call.from_number)}</p>
+                            <p className="text-xs text-slate-400">{formatTimeAgo(call.created_at)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-xs capitalize ${call.status === 'failed' || call.status === 'missed' ? 'text-red-500' : 'text-emerald-500'}`}>
+                              {call.status}
+                            </p>
+                            <p className="text-xs text-slate-400">{formatDuration(call.duration_seconds)}</p>
+                          </div>
+                       </div>
+                     ))
+                   )}
                 </div>
-                <button className="w-full mt-4 text-xs text-blue-900 font-medium hover:underline">View Call Logs</button>
+                {recentCalls.length > 5 && (
+                  <button className="w-full mt-4 text-xs text-blue-900 font-medium hover:underline">
+                    View All {recentCalls.length} Calls
+                  </button>
+                )}
              </div>
           </div>
        </div>
 
+       {/* Error/Success Feedback */}
+       {error && (
+         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
+           <AlertCircle size={18} />
+           {error}
+         </div>
+       )}
+       {saveSuccess && (
+         <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg flex items-center gap-2">
+           <CheckCircle size={18} />
+           Phone agent configuration saved successfully!
+         </div>
+       )}
+
        <div className="flex justify-end pt-4 border-t border-slate-200">
-         <button 
+         <button
            onClick={handleSave}
            disabled={isSaving}
            className="px-6 py-2.5 bg-blue-900 text-white rounded-lg font-medium hover:bg-blue-950 shadow-sm transition flex items-center gap-2 disabled:opacity-70"
          >
-           {isSaving ? <Loader className="animate-spin" size={18} /> : <Save size={18} />} 
+           {isSaving ? <Loader className="animate-spin" size={18} /> : <Save size={18} />}
            Save Agent Configuration
          </button>
        </div>

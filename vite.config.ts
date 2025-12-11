@@ -12,8 +12,14 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve('./'),
       },
     },
+    // SEC-016 FIX: Only expose safe environment variables to client
+    // NEVER expose API keys - they must stay server-side only
     define: {
-      'process.env': env
+      'process.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || ''),
+      'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
+      'process.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(env.NEXT_PUBLIC_SUPABASE_URL || ''),
+      'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''),
+      'process.env.VITE_ENABLE_DEMO_MODE': JSON.stringify(env.VITE_ENABLE_DEMO_MODE || 'false'),
     },
     build: {
       outDir: 'dist',

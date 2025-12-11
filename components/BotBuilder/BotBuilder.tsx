@@ -17,28 +17,29 @@ const HUMAN_NAMES = ['Sarah', 'Michael', 'Jessica', 'David', 'Emma', 'James', 'E
 const AVATAR_COLORS = ['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed', '#db2777'];
 
 const PERSONAS = [
-  { id: 'support', name: 'Customer Support Agent', prompt: 'You are a helpful customer support agent for {company}. Be polite, patient, and concise. Your goal is to resolve issues quickly. If you do not know the answer, ask for their contact info.' },
-  { id: 'sales', name: 'Sales Representative', prompt: 'You are a top-performing sales representative for {company}. Your goal is to qualify leads and close deals. Be persuasive but not pushy. Focus on value and benefits. Always try to get a meeting booked.' },
-  { id: 'receptionist', name: 'AI Receptionist', prompt: 'You are the front desk receptionist for {company}. Be warm and welcoming. Help schedule appointments and route calls. Keep responses short and professional.' },
-  { id: 'city_gov', name: 'City Services Agent', prompt: 'You are the official AI agent for {company} (City Government). Assist citizens with utility bill payments, trash pickup schedules, and permit applications. Be authoritative, helpful, and community-focused. If a citizen reports an emergency, tell them to dial 911 immediately.' },
-  { id: 'batesville', name: 'Batesville City Assistant', prompt: 'You are the official AI liaison for the City of Batesville, Mississippi. Your primary duties are to assist residents with utility bill payments (water, gas, electricity), answer questions about city ordinances, and help schedule inspections. \n\nContext:\n- City Hall is located at 103 College St.\n- Utility payments can be made in person or via the online portal.\n- Trash pickup is weekly.\n\nBe professional, warm, and neighborly. Always direct utility payment queries to the secure payment portal.' },
-  { id: 'hr', name: 'HR Assistant', prompt: 'You are a Human Resources assistant. Answer employee questions about benefits, holidays, and company policy. Maintain strict confidentiality and professionalism.' },
-  { id: 'tech', name: 'Technical Support', prompt: 'You are a Tier 1 Technical Support agent. Walk users through troubleshooting steps logically. Ask clarifying questions to diagnose the issue.' },
-  { id: 'scheduler', name: 'Appointment Scheduler', prompt: 'You are a dedicated scheduling assistant for {company}. Your primary goal is to book appointments. Be efficient and accommodating. Always offer specific time slots and confirm details.' },
-  { id: 'product', name: 'Product Specialist', prompt: 'You are an expert product specialist for {company}. Assist customers in finding the perfect product. Ask about their needs, compare options, and explain benefits clearly.' },
-  { id: 'realestate', name: 'Real Estate Agent', prompt: 'You are a knowledgeable real estate agent for {company}. Qualify buyers by asking about budget, location, and preferences. Schedule property viewings.' },
-  { id: 'legal', name: 'Legal Intake', prompt: 'You are a legal intake specialist for {company}. Collect potential client details and case information with empathy and discretion. Do not provide legal advice.' },
-  { id: 'coach', name: 'Lifestyle Coach', prompt: 'You are a lifestyle and wellness coach representing {company}. Motivate users, track progress, and provide encouraging feedback. Maintain a positive, energetic tone.' },
-  { id: 'recruiter', name: 'Recruitment Assistant', prompt: 'You are a recruitment assistant for {company}. Screen candidates by asking about their experience, availability, and skills. Be professional, encouraging, and efficient. If they seem qualified, ask for their email to schedule an interview.' },
-  { id: 'travel', name: 'Travel Concierge', prompt: 'You are a knowledgeable travel concierge for {company}. Help users plan their perfect trip by asking about their budget, preferred climate, and interests. Suggest destinations and activities. Be enthusiastic and descriptive.' },
-  { id: 'financial', name: 'Financial Guide', prompt: 'You are a financial guide for {company}. Help users understand our banking products, credit cards, and loan options. Explain complex terms simply. Be trustworthy and precise. Do not give personal investment advice.' }
+  { id: 'support', name: 'Customer Support Agent', prompt: 'You work in customer support at {company}. You genuinely care about helping people solve their problems. Keep things conversational - no one likes talking to someone who sounds like they\'re reading from a script. If you can\'t help with something, just ask for their email or phone so someone can get back to them.' },
+  { id: 'sales', name: 'Sales Representative', prompt: 'You\'re a sales rep at {company} who actually believes in what you\'re selling. Your job is to figure out if someone\'s a good fit - ask the right questions, understand their situation, and if it makes sense, try to get a call or meeting on the books. Don\'t be pushy though - nobody likes that.' },
+  { id: 'receptionist', name: 'AI Receptionist', prompt: 'You\'re the friendly voice at the front desk of {company}. Help people get where they need to go - whether that\'s scheduling an appointment, answering quick questions, or connecting them with the right person. Keep it warm but efficient, like a really good receptionist would.' },
+  { id: 'city_gov', name: 'City Services Agent', prompt: 'You work for {company} (city government) helping residents with everyday stuff - utility bills, trash pickup schedules, permits, that kind of thing. Be helpful and approachable, not bureaucratic. If someone mentions an emergency, immediately tell them to call 911.' },
+  { id: 'batesville', name: 'Batesville City Assistant', prompt: 'You\'re here to help folks in Batesville, Mississippi with city services. Things you can help with: utility bills (water, gas, electric), city rules and ordinances, and setting up inspections.\n\nUseful info:\n- City Hall is at 103 College St\n- You can pay bills online or in person\n- Trash gets picked up weekly\n\nBe friendly and neighborly - this is a small town and people appreciate a personal touch. Always point them to the secure payment portal for bills.' },
+  { id: 'hr', name: 'HR Assistant', prompt: 'You work in HR and help employees with questions about benefits, time off, company policies - all that stuff. Be approachable but also professional. Some topics are sensitive, so be discreet. If something\'s outside your wheelhouse, point them to the right person.' },
+  { id: 'tech', name: 'Technical Support', prompt: 'You\'re tech support - helping people troubleshoot issues step by step. Don\'t assume they know technical stuff. Ask questions to figure out what\'s actually going on before jumping to solutions. Be patient - tech problems are frustrating.' },
+  { id: 'scheduler', name: 'Appointment Scheduler', prompt: 'You handle scheduling for {company}. Your main goal is getting appointments booked - make it easy for people. Suggest specific times, confirm all the details, and make sure nothing falls through the cracks.' },
+  { id: 'product', name: 'Product Specialist', prompt: 'You know {company}\'s products inside and out. Help people find what they actually need - ask about their situation, what they\'re trying to accomplish, and point them in the right direction. Don\'t just list features - explain why something would work for them.' },
+  { id: 'realestate', name: 'Real Estate Agent', prompt: 'You\'re a real estate agent at {company}. Figure out what people are looking for - budget, location, must-haves vs nice-to-haves. Get them excited about possibilities and set up viewings. Real estate is personal, so connect with them.' },
+  { id: 'legal', name: 'Legal Intake', prompt: 'You do intake for {company}\'s law practice. Gather info about potential clients and their situations with care and discretion. This is often a stressful time for people, so be empathetic. Important: you can\'t give legal advice, just collect information.' },
+  { id: 'coach', name: 'Lifestyle Coach', prompt: 'You\'re a wellness and lifestyle coach with {company}. Help people set goals, stay motivated, and celebrate their wins. Be genuinely encouraging - positivity that feels real, not cheesy. Everyone\'s journey is different.' },
+  { id: 'recruiter', name: 'Recruitment Assistant', prompt: 'You help with recruiting at {company}. Learn about candidates - their experience, what they\'re looking for, when they could start. Be encouraging but also honest about fit. If they seem like a match, get their email to set up a proper interview.' },
+  { id: 'travel', name: 'Travel Concierge', prompt: 'You\'re a travel concierge at {company}. Help people plan trips they\'ll actually love - ask about their budget, what kind of experiences they enjoy, when they want to go. Get excited with them! Good travel planning is part logistics, part enthusiasm.' },
+  { id: 'financial', name: 'Financial Guide', prompt: 'You help people understand {company}\'s financial products - accounts, cards, loans, etc. Make the complicated stuff simple. Be trustworthy and clear. You can explain products and answer questions, but don\'t give personal investment advice - that\'s a different conversation.' }
 ];
 
 export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDomain, onLeadDetected }) => {
   const [selectedBotId, setSelectedBotId] = useState<string>(bots[0]?.id || 'new');
   // Initialize with the selected bot or a default new one
+  // LOGIC-002 FIX: Use crypto.randomUUID() for collision-free IDs
   const [activeBot, setActiveBot] = useState<BotType>(bots[0] || {
-    id: `b${Date.now()}`,
+    id: crypto.randomUUID(),
     name: 'New Assistant',
     type: 'Customer Support',
     systemPrompt: 'You are a helpful customer support assistant.',
@@ -65,6 +66,9 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   const [isScraping, setIsScraping] = useState(false);
   const [isEmbedding, setIsEmbedding] = useState(false);
   const [embeddingStatus, setEmbeddingStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<{name: string, size: number, status: 'pending' | 'processing' | 'done' | 'error'}[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -107,9 +111,10 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
 
   const handleSaveBot = () => {
       // Ensure we have a valid ID if it's new
+      // LOGIC-002 FIX: Use crypto.randomUUID() for collision-free IDs
       const botToSave = { ...activeBot };
       if (botToSave.id === 'new') {
-          botToSave.id = `b${Date.now()}`;
+          botToSave.id = crypto.randomUUID();
       }
       onSave(botToSave);
       // Update local view
@@ -170,6 +175,107 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
         });
       } finally {
         setIsEmbedding(false);
+      }
+    }
+  };
+
+  // File upload handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    await processFiles(files);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      await processFiles(files);
+    }
+  };
+
+  const processFiles = async (files: File[]) => {
+    const allowedTypes = ['.pdf', '.txt', '.md', '.csv', '.docx'];
+    const validFiles = files.filter(f =>
+      allowedTypes.some(ext => f.name.toLowerCase().endsWith(ext))
+    );
+
+    if (validFiles.length === 0) {
+      setEmbeddingStatus({
+        type: 'error',
+        message: 'Please upload PDF, TXT, MD, CSV, or DOCX files only.'
+      });
+      return;
+    }
+
+    for (const file of validFiles) {
+      setUploadedFiles(prev => [...prev, { name: file.name, size: file.size, status: 'processing' }]);
+
+      try {
+        let content = '';
+
+        // Read file content
+        if (file.name.endsWith('.pdf')) {
+          // For PDF, we'll send to the server to parse
+          content = `[PDF Document: ${file.name}] - Content extraction requires server processing.`;
+          // In a full implementation, you'd upload the file to Supabase Storage
+          // and then call an Edge Function to parse the PDF
+        } else {
+          // For text-based files, read directly
+          content = await file.text();
+        }
+
+        // Add to local knowledge base
+        setActiveBot(prev => ({
+          ...prev,
+          knowledgeBase: [...(prev.knowledgeBase || []), `[${file.name}]\n${content.substring(0, 5000)}`]
+        }));
+
+        // If bot is saved, embed the content
+        if (activeBot.id && activeBot.id !== 'new') {
+          try {
+            const result = await edgeFunctions.embedKnowledgeBase(
+              activeBot.id,
+              content,
+              file.name,
+              { fileType: file.name.split('.').pop() || 'txt' }
+            );
+            setUploadedFiles(prev =>
+              prev.map(f => f.name === file.name ? { ...f, status: 'done' } : f)
+            );
+            setEmbeddingStatus({
+              type: 'success',
+              message: `Processed ${file.name}: ${result.chunksProcessed} chunks`
+            });
+          } catch (embErr) {
+            setUploadedFiles(prev =>
+              prev.map(f => f.name === file.name ? { ...f, status: 'error' } : f)
+            );
+          }
+        } else {
+          setUploadedFiles(prev =>
+            prev.map(f => f.name === file.name ? { ...f, status: 'done' } : f)
+          );
+        }
+      } catch (err) {
+        console.error('File processing error:', err);
+        setUploadedFiles(prev =>
+          prev.map(f => f.name === file.name ? { ...f, status: 'error' } : f)
+        );
+        setEmbeddingStatus({
+          type: 'error',
+          message: `Failed to process ${file.name}`
+        });
       }
     }
   };
@@ -526,28 +632,95 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                      </div>
                    )}
 
+                   {/* Document Upload Zone */}
+                   <div
+                     onDragOver={handleDragOver}
+                     onDragLeave={handleDragLeave}
+                     onDrop={handleDrop}
+                     className={`bg-white p-6 rounded-xl border-2 border-dashed shadow-sm transition-all ${
+                       isDragging
+                         ? 'border-blue-500 bg-blue-50'
+                         : 'border-slate-200 hover:border-blue-300'
+                     }`}
+                   >
+                      <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                         <Upload size={18} className="text-blue-900" /> Upload Documents
+                      </h3>
+                      <div className="text-center py-6">
+                         <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+                           <Upload size={24} className="text-slate-400" />
+                         </div>
+                         <p className="text-slate-600 mb-2">
+                           Drag & drop files here, or{' '}
+                           <button
+                             onClick={() => fileInputRef.current?.click()}
+                             className="text-blue-900 font-medium hover:underline"
+                           >
+                             browse
+                           </button>
+                         </p>
+                         <p className="text-xs text-slate-400">Supports PDF, TXT, MD, CSV, DOCX (max 10MB)</p>
+                         <input
+                           ref={fileInputRef}
+                           type="file"
+                           multiple
+                           accept=".pdf,.txt,.md,.csv,.docx"
+                           onChange={handleFileSelect}
+                           className="hidden"
+                         />
+                      </div>
+
+                      {/* Uploaded Files List */}
+                      {uploadedFiles.length > 0 && (
+                        <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+                          {uploadedFiles.map((file, i) => (
+                            <div key={i} className="flex items-center justify-between bg-slate-50 p-3 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <FileText size={16} className="text-blue-900" />
+                                <div>
+                                  <p className="text-sm font-medium text-slate-700">{file.name}</p>
+                                  <p className="text-xs text-slate-400">{(file.size / 1024).toFixed(1)} KB</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {file.status === 'processing' && (
+                                  <RefreshCcw className="animate-spin text-blue-600" size={14} />
+                                )}
+                                {file.status === 'done' && (
+                                  <CheckCircle className="text-emerald-500" size={14} />
+                                )}
+                                {file.status === 'error' && (
+                                  <AlertCircle className="text-red-500" size={14} />
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                   </div>
+
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                       <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
                          <Globe size={18} className="text-blue-900" /> Train from Website
                       </h3>
                       <div className="flex gap-2">
-                         <input 
-                           type="url" 
+                         <input
+                           type="url"
                            value={urlInput}
                            onChange={(e) => setUrlInput(e.target.value)}
                            placeholder="https://yourbusiness.com"
                            className="flex-1 rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900"
                          />
-                         <button 
+                         <button
                            onClick={handleScrapeUrl}
                            disabled={isScraping || !urlInput}
                            className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-950 disabled:opacity-50 transition font-medium flex items-center gap-2"
                          >
                            {isScraping ? <RefreshCcw className="animate-spin" size={16} /> : <Zap size={16} />}
-                           Train Bot
+                           Scrape Website
                          </button>
                       </div>
-                      <p className="text-xs text-slate-500 mt-2">We will scrape this URL and add key info to the bot's memory.</p>
+                      <p className="text-xs text-slate-500 mt-2">Enter a URL to extract content and train your bot on that website's information.</p>
                    </div>
 
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
