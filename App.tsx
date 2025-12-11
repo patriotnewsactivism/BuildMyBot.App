@@ -64,7 +64,20 @@ function App() {
     }
 
     // Fake boot sequence for premium feel
-    setTimeout(() => setIsBooting(false), 1200);
+    const timer = window.setTimeout(() => setIsBooting(false), 1200);
+
+    // Safety net: if something blocks the initial timer (e.g. throttled timers/background tabs),
+    // ensure we still render the landing page instead of getting stuck on the preloader.
+    const safetyTimer = window.setTimeout(() => setIsBooting(false), 4000);
+
+    const handleLoad = () => setIsBooting(false);
+    window.addEventListener('load', handleLoad);
+
+    return () => {
+      window.removeEventListener('load', handleLoad);
+      window.clearTimeout(timer);
+      window.clearTimeout(safetyTimer);
+    };
   }, []);
 
   // Manual Routing Check for Full Page Chat (must be after all hooks)
