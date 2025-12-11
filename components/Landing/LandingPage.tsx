@@ -432,42 +432,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     }
   ];
 
-  // Testimonials data
-  const testimonials = [
-    {
-      name: 'Marcus Johnson',
-      role: 'Owner, Elite Roofing Co.',
-      image: 'MJ',
-      color: '#1e3a8a',
-      quote: "We went from missing 40% of our leads to capturing 100%. BuildMyBot paid for itself in the first week. Last month alone, it booked $127,000 in jobs while I slept.",
-      rating: 5
-    },
-    {
-      name: 'Dr. Sarah Chen',
-      role: 'Founder, Smile Dental Group',
-      image: 'SC',
-      color: '#be123c',
-      quote: "Our no-show rate dropped by 60%. The AI confirms appointments, sends reminders, and handles rescheduling automatically. Staff morale has never been higher.",
-      rating: 5
-    },
-    {
-      name: 'James Rodriguez',
-      role: 'CEO, Rodriguez Law Firm',
-      image: 'JR',
-      color: '#047857',
-      quote: "Client intake used to take 15 minutes per call. Now it's instant. We've taken on 3x more cases this quarter without hiring anyone new.",
-      rating: 5
-    },
-    {
-      name: 'Ashley Williams',
-      role: 'Realtor, Keller Williams',
-      image: 'AW',
-      color: '#7c3aed',
-      quote: "In real estate, the first agent to respond wins. BuildMyBot responds in under 2 seconds. My conversion rate went from 12% to 34%.",
-      rating: 5
-    }
-  ];
-
   // FAQ data
   const faqs = [
     {
@@ -526,24 +490,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden">
       {modalContent && <InfoModal />}
 
-      {/* Live Social Proof Notification Toast */}
-      {showNotification && liveNotifications.length > 0 && (
-        <div className="fixed bottom-24 left-6 z-30 animate-slide-in-left">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 p-4 flex items-center gap-3 max-w-sm">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white">
-              <CheckCircle size={20} />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-800">{liveNotifications[0].name}</p>
-              <p className="text-xs text-slate-500">{liveNotifications[0].action} - {liveNotifications[0].time}</p>
-            </div>
-            <div className="ml-2 flex items-center gap-1">
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-              <span className="text-xs text-emerald-600 font-medium">Live</span>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Social proof notification removed - will add real testimonials when available */}
 
       {/* Demo Chatbot Widget */}
       <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-4">
@@ -737,11 +684,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                  </div>
                ))}
              </div>
-             <span className="ml-2">Join <strong className="text-slate-900">12,847+</strong> businesses already converting more leads</span>
-             <div className="flex items-center gap-0.5 ml-2">
-               {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="#f59e0b" className="text-amber-400" />)}
-             </div>
-             <span className="font-bold text-slate-900">4.9/5</span>
+             <span className="ml-2">Start capturing leads <strong className="text-slate-900">24/7</strong> with AI</span>
            </div>
            
            {/* High Fidelity Dashboard Preview */}
@@ -818,97 +761,121 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         </div>
       </section>
 
-      {/* Animated Stats Section */}
+      {/* Platform Capabilities Section */}
       <section ref={countersRef} className="py-20 px-6 bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDM0djZoNnYtNmgtNnptNiA2aDZ2LTZoLTZ2NnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-50"></div>
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div className="space-y-2">
               <div className="text-4xl md:text-5xl font-extrabold text-white">
-                {animatedStats.leads.toLocaleString()}+
+                &lt;2s
               </div>
-              <div className="text-blue-200 font-medium">Leads Captured</div>
+              <div className="text-blue-200 font-medium">Response Time</div>
             </div>
             <div className="space-y-2">
               <div className="text-4xl md:text-5xl font-extrabold text-white">
-                {animatedStats.businesses.toLocaleString()}+
+                24/7
               </div>
-              <div className="text-blue-200 font-medium">Happy Businesses</div>
+              <div className="text-blue-200 font-medium">Always Online</div>
             </div>
             <div className="space-y-2">
               <div className="text-4xl md:text-5xl font-extrabold text-white">
-                {(animatedStats.messages / 1000000).toFixed(0)}M+
+                10min
               </div>
-              <div className="text-blue-200 font-medium">Messages Handled</div>
+              <div className="text-blue-200 font-medium">Setup Time</div>
             </div>
             <div className="space-y-2">
               <div className="text-4xl md:text-5xl font-extrabold text-emerald-400">
-                ${animatedStats.saved}K+
+                GPT-4o
               </div>
-              <div className="text-blue-200 font-medium">Avg. Monthly Savings</div>
+              <div className="text-blue-200 font-medium">Powered By</div>
             </div>
           </div>
 
-          {/* Trust Badges */}
+          {/* Technology Stack */}
           <div className="mt-12 pt-8 border-t border-white/10">
-            <p className="text-center text-blue-200/60 text-sm mb-6 uppercase tracking-wider">Trusted by teams at</p>
-            <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500">
-              <div className="text-white font-bold text-xl">YCombinator</div>
-              <div className="text-white font-bold text-xl">TechStars</div>
-              <div className="text-white font-bold text-xl">500 Global</div>
-              <div className="text-white font-bold text-xl">Stripe</div>
-              <div className="text-white font-bold text-xl">Shopify</div>
+            <p className="text-center text-blue-200/60 text-sm mb-6 uppercase tracking-wider">Built with enterprise-grade technology</p>
+            <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60 hover:opacity-100 transition-all duration-500">
+              <div className="text-white font-bold text-xl">OpenAI</div>
+              <div className="text-white font-bold text-xl">Supabase</div>
+              <div className="text-white font-bold text-xl">React</div>
+              <div className="text-white font-bold text-xl">TypeScript</div>
+              <div className="text-white font-bold text-xl">Tailwind</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Testimonials Section */}
+      {/* What You Can Expect Section - Honest Capabilities */}
       <section className="py-24 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold uppercase tracking-wide mb-4">
-              <Star size={12} fill="currentColor" /> Real Results
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold uppercase tracking-wide mb-4">
+              <Target size={12} /> What You Get
             </div>
             <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-4">
-              Don't Take Our Word For It
+              Real Capabilities, Real Results
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              See what business owners just like you are saying about BuildMyBot
+              Here's exactly what BuildMyBot delivers for your business
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {testimonials.map((t, idx) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                icon: Zap,
+                title: '24/7 Instant Response',
+                description: 'Your AI responds to every visitor in under 2 seconds, even at 3 AM on a holiday. No more lost leads due to slow response times.',
+                color: 'blue'
+              },
+              {
+                icon: Target,
+                title: 'Smart Lead Qualification',
+                description: 'AI scores every conversation based on intent and urgency. You get notified instantly when a hot lead is ready to buy.',
+                color: 'red'
+              },
+              {
+                icon: Globe,
+                title: 'Train in Minutes',
+                description: 'Just paste your website URL. Our AI scrapes your content and learns your business automatically. No manual setup required.',
+                color: 'emerald'
+              },
+              {
+                icon: MessageSquare,
+                title: 'Natural Conversations',
+                description: 'Powered by GPT-4o, your bot holds human-like conversations that build trust and move prospects toward a sale.',
+                color: 'purple'
+              },
+              {
+                icon: Bell,
+                title: 'Real-Time Alerts',
+                description: 'Get SMS or email notifications the moment a qualified lead shares their contact info. Strike while the iron is hot.',
+                color: 'amber'
+              },
+              {
+                icon: BarChart3,
+                title: 'Full Analytics',
+                description: 'See every conversation, track conversion rates, and understand what questions your visitors are asking most.',
+                color: 'cyan'
+              }
+            ].map((item, idx) => (
               <div key={idx} className="bg-gradient-to-br from-slate-50 to-white p-8 rounded-2xl border border-slate-200 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(t.rating)].map((_, i) => (
-                    <Star key={i} size={20} fill="#f59e0b" className="text-amber-400" />
-                  ))}
+                <div className={`w-14 h-14 rounded-xl bg-${item.color}-100 text-${item.color}-600 flex items-center justify-center mb-6`}>
+                  <item.icon size={28} />
                 </div>
-                <p className="text-lg text-slate-700 mb-6 leading-relaxed">"{t.quote}"</p>
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg"
-                    style={{ backgroundColor: t.color }}
-                  >
-                    {t.image}
-                  </div>
-                  <div>
-                    <div className="font-bold text-slate-900">{t.name}</div>
-                    <div className="text-sm text-slate-500">{t.role}</div>
-                  </div>
-                  <BadgeCheck className="ml-auto text-blue-500" size={24} />
-                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">{item.title}</h3>
+                <p className="text-slate-600 leading-relaxed">{item.description}</p>
               </div>
             ))}
           </div>
 
-          {/* CTA after testimonials */}
+          {/* CTA */}
           <div className="text-center mt-12">
             <button onClick={onLogin} className="px-8 py-4 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-950 transition shadow-xl shadow-blue-900/30 inline-flex items-center gap-2">
-              Join {animatedStats.businesses.toLocaleString()}+ Happy Businesses <ArrowRight size={18} />
+              Start Your Free Trial <ArrowRight size={18} />
             </button>
+            <p className="text-slate-500 text-sm mt-3">No credit card required. See results in minutes.</p>
           </div>
         </div>
       </section>
@@ -1759,7 +1726,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
           </h2>
           <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto">
             Every minute you wait is another potential customer going to your competitor.
-            Join 12,847+ businesses already closing more deals with BuildMyBot.
+            Don't let slow response times cost you another sale.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button onClick={onLogin} className="group w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-lg font-bold hover:from-blue-700 hover:to-blue-600 transition-all shadow-2xl shadow-blue-900/40 flex items-center justify-center gap-3 transform hover:-translate-y-1">
