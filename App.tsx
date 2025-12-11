@@ -33,8 +33,9 @@ const INITIAL_RESELLER_STATS: ResellerStats = {
   arrears: 0,
 };
 
-// Define Master Admins here
-const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org', 'ben@texasplanninglaw.com'];
+// Define privileged admins here
+const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org'];
+const LIMITED_ADMIN_EMAILS = ['ben@texasplanninglaw.com'];
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -55,13 +56,6 @@ function App() {
   const [notification, setNotification] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Manual Routing Check for Full Page Chat
-  const currentPath = window.location.pathname;
-  if (currentPath.startsWith('/chat/')) {
-     const botId = currentPath.split('/')[2];
-     return <FullPageChat botId={botId} />;
-  }
-
   // --- Capture Referral Code ---
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -70,33 +64,65 @@ function App() {
       localStorage.setItem('bmb_ref_code', refCode);
       console.log('Referral captured:', refCode);
     }
-    
+
     // Fake boot sequence for premium feel
-    setTimeout(() => setIsBooting(false), 1200);
+    const timer = window.setTimeout(() => setIsBooting(false), 1200);
+
+    // Safety net: if something blocks the initial timer (e.g. throttled timers/background tabs),
+    // ensure we still render the landing page instead of getting stuck on the preloader.
+    const safetyTimer = window.setTimeout(() => setIsBooting(false), 4000);
+
+    const handleLoad = () => setIsBooting(false);
+    window.addEventListener('load', handleLoad);
+
+    return () => {
+      window.removeEventListener('load', handleLoad);
+      window.clearTimeout(timer);
+      window.clearTimeout(safetyTimer);
+    };
   }, []);
 
-  // --- Real-time Data Subscriptions ---
+  // Manual Routing Check for Full Page Chat (must be after all hooks)
+  const currentPath = window.location.pathname;
+  const isChatRoute = currentPath.startsWith('/chat/');
+  const isPublicLandingRoute = currentPath === '/landing' || currentPath === '/public';
+
+  // --- Supabase Auth Listener (runs once on mount) ---
   useEffect(() => {
     if (!supabase) return;
 
-    // Supabase Auth Listener
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setIsLoggedIn(true);
-        const email = session.user.email;
-        
-        // CHECK FOR GOD MODE (Master Emails)
-        if (email && MASTER_EMAILS.includes(email.toLowerCase())) {
-           setUser({
-              id: session.user.id,
-              name: 'Master Admin',
-              email: email,
-              role: UserRole.ADMIN, // Grant Full Access
-              plan: PlanType.ENTERPRISE, // Grant Uncapped Limits
-              companyName: 'BuildMyBot HQ',
-              avatarUrl: session.user.user_metadata?.avatar_url
-           });
-           return;
+        const email = session.user.email?.toLowerCase();
+
+        const buildPrivilegedProfile = (role: UserRole): User => ({
+          id: session.user.id,
+          name: session.user.user_metadata?.full_name || (role === UserRole.LIMITED_ADMIN ? 'Admin Viewer' : 'Master Admin'),
+          email: session.user.email || '',
+          role,
+          plan: PlanType.ENTERPRISE,
+          companyName: 'BuildMyBot HQ',
+          avatarUrl: session.user.user_metadata?.avatar_url,
+        });
+
+        // CHECK FOR PRIVILEGED ADMINS
+        if (email) {
+          if (MASTER_EMAILS.includes(email)) {
+            const adminProfile = buildPrivilegedProfile(UserRole.MASTER_ADMIN);
+            setUser(adminProfile);
+            setCurrentView('admin');
+            await dbService.saveUserProfile(adminProfile);
+            return;
+          }
+
+          if (LIMITED_ADMIN_EMAILS.includes(email)) {
+            const adminProfile = buildPrivilegedProfile(UserRole.LIMITED_ADMIN);
+            setUser(adminProfile);
+            setCurrentView('admin');
+            await dbService.saveUserProfile(adminProfile);
+            return;
+          }
         }
 
         // Standard User Flow
@@ -115,13 +141,26 @@ function App() {
           });
         }
       } else if (event === 'SIGNED_OUT') {
-        // Do not reset if user was set manually (Demo Mode fallback)
-        if (!user || !user.id.startsWith('demo-user')) {
-             setIsLoggedIn(false);
-             setUser(null);
-        }
+        // Use functional update to check current user state without adding dependency
+        setUser((currentUser) => {
+          if (currentUser && currentUser.id.startsWith('demo-user')) {
+            // Don't reset demo users
+            return currentUser;
+          }
+          setIsLoggedIn(false);
+          return null;
+        });
       }
     });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []); // Empty dependency - auth listener only needs to be set up once
+
+  // --- Real-time Data Subscriptions (separate from auth to avoid loop) ---
+  useEffect(() => {
+    if (!supabase) return;
 
     // Subscribe to Bots
     const unsubscribeBots = dbService.subscribeToBots((updatedBots) => {
@@ -134,11 +173,10 @@ function App() {
     });
 
     return () => {
-      authListener.subscription.unsubscribe();
       unsubscribeBots();
       unsubscribeLeads();
     };
-  }, [user]); // Add user to dependancy array to prevent clobbering demo user
+  }, []); // Empty dependency - subscriptions only need to be set up once
 
   // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
@@ -153,15 +191,19 @@ function App() {
 
   // Fallback authentication for when Supabase Config is invalid or blocked
   const handleManualAuth = (email: string, name?: string, companyName?: string) => {
-      const isMaster = MASTER_EMAILS.includes(email.toLowerCase());
-      
+      const normalizedEmail = email.toLowerCase();
+      const isMaster = MASTER_EMAILS.includes(normalizedEmail);
+      const isLimitedAdmin = LIMITED_ADMIN_EMAILS.includes(normalizedEmail);
+      const role = isMaster ? UserRole.MASTER_ADMIN : isLimitedAdmin ? UserRole.LIMITED_ADMIN : UserRole.OWNER;
+      const plan = role === UserRole.MASTER_ADMIN || role === UserRole.LIMITED_ADMIN ? PlanType.ENTERPRISE : PlanType.FREE;
+
       const newUser: User = {
-          id: isMaster ? 'master-admin' : 'demo-user-' + Date.now(),
+          id: role === UserRole.MASTER_ADMIN ? 'master-admin' : role === UserRole.LIMITED_ADMIN ? 'limited-admin' : 'demo-user-' + Date.now(),
           name: name || email.split('@')[0],
           email: email,
-          role: isMaster ? UserRole.ADMIN : UserRole.OWNER,
-          plan: isMaster ? PlanType.ENTERPRISE : PlanType.FREE,
-          companyName: companyName || (isMaster ? 'BuildMyBot HQ' : 'Demo Company'),
+          role,
+          plan,
+          companyName: companyName || (role === UserRole.MASTER_ADMIN || role === UserRole.LIMITED_ADMIN ? 'BuildMyBot HQ' : 'Demo Company'),
           createdAt: new Date().toISOString()
       };
 
@@ -169,7 +211,7 @@ function App() {
       setIsLoggedIn(true);
       setAuthModalOpen(false);
       
-      if (isMaster) {
+      if (role === UserRole.MASTER_ADMIN || role === UserRole.LIMITED_ADMIN) {
           setCurrentView('admin');
       }
       
@@ -249,6 +291,40 @@ function App() {
     setAuthModalOpen(true);
   };
 
+  const renderPublicExperience = () => {
+    if (showPartnerSignup) {
+        return <PartnerSignup onBack={() => setShowPartnerSignup(false)} onComplete={handlePartnerSignup} />;
+    }
+    if (showPartnerPage) {
+      return <PartnerProgramPage onBack={() => setShowPartnerPage(false)} onLogin={() => openAuth('login')} onSignup={() => setShowPartnerSignup(true)} />;
+    }
+    return (
+      <>
+        <LandingPage
+          onLogin={() => openAuth('login')}
+          onNavigateToPartner={() => setShowPartnerPage(true)}
+          onAdminLogin={handleAdminLogin}
+        />
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          defaultMode={authMode}
+          onLoginSuccess={handleManualAuth}
+        />
+      </>
+    );
+  };
+
+  // Handle full page chat route (must be after all hooks, before other renders)
+  if (isChatRoute) {
+    const botId = currentPath.split('/')[2];
+    return <FullPageChat botId={botId} />;
+  }
+
+  if (isPublicLandingRoute) {
+    return renderPublicExperience();
+  }
+
   if (isBooting) {
       return (
         <div className="h-screen w-full bg-slate-900 flex items-center justify-center">
@@ -271,27 +347,7 @@ function App() {
   // If not logged in, show Public Landing Page or Partner Page
   // This logic guarantees the landing page is the default view
   if (!isLoggedIn || !user) {
-    if (showPartnerSignup) {
-        return <PartnerSignup onBack={() => setShowPartnerSignup(false)} onComplete={handlePartnerSignup} />;
-    }
-    if (showPartnerPage) {
-      return <PartnerProgramPage onBack={() => setShowPartnerPage(false)} onLogin={() => openAuth('login')} onSignup={() => setShowPartnerSignup(true)} />;
-    }
-    return (
-      <>
-        <LandingPage 
-          onLogin={() => openAuth('login')} 
-          onNavigateToPartner={() => setShowPartnerPage(true)} 
-          onAdminLogin={handleAdminLogin} 
-        />
-        <AuthModal 
-          isOpen={authModalOpen} 
-          onClose={() => setAuthModalOpen(false)} 
-          defaultMode={authMode} 
-          onLoginSuccess={handleManualAuth}
-        />
-      </>
-    );
+    return renderPublicExperience();
   }
 
   return (
@@ -431,7 +487,7 @@ function App() {
           
           {currentView === 'billing' && <Billing user={user} />}
           
-          {currentView === 'admin' && <AdminDashboard />}
+          {currentView === 'admin' && <AdminDashboard readOnly={user.role === UserRole.LIMITED_ADMIN} />}
           
           {currentView === 'settings' && <Settings user={user} onUpdateUser={(u) => { setUser(u); dbService.saveUserProfile(u); }} />}
           
