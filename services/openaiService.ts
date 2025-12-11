@@ -120,14 +120,55 @@ export const scrapeWebsiteContent = async (url: string) => {
 };
 
 // -----------------------------------------------------------
-// MULTI-TURN CHAT: generateBotResponse (Option B)
+// MULTI-TURN CHAT: generateBotResponse
+// Supports both legacy signature and new messages-only signature
 // -----------------------------------------------------------
 
 export const generateBotResponse = async (
-  messages: { role: "system" | "user" | "assistant"; content: string }[]
+  systemPromptOrMessages: string | { role: "system" | "user" | "assistant"; content: string }[],
+  history?: { role: string; text: string }[],
+  userMessage?: string,
+  model: string = "gpt-4o-mini",
+  context?: string
 ): Promise<string> => {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("API Key missing.");
+
+  let messages: { role: "system" | "user" | "assistant"; content: string }[];
+
+  // Check if first argument is an array (new signature) or string (legacy signature)
+  if (Array.isArray(systemPromptOrMessages)) {
+    // New signature: just an array of messages
+    messages = systemPromptOrMessages;
+  } else {
+    // Legacy signature: systemPrompt, history, userMessage, model, context
+    const systemPrompt = systemPromptOrMessages;
+
+    // Build system message with optional context
+    let systemContent = systemPrompt;
+    if (context) {
+      systemContent += `\n\nRelevant Knowledge Base:\n${context}`;
+    }
+
+    messages = [
+      { role: "system", content: systemContent }
+    ];
+
+    // Add conversation history
+    if (history && history.length > 0) {
+      for (const msg of history) {
+        messages.push({
+          role: msg.role === "user" ? "user" : "assistant",
+          content: msg.text
+        });
+      }
+    }
+
+    // Add the current user message if not already in history
+    if (userMessage && (!history || history.length === 0 || history[history.length - 1]?.text !== userMessage)) {
+      messages.push({ role: "user", content: userMessage });
+    }
+  }
 
   const cleanMessages = sanitizeMessages(messages);
 
@@ -138,10 +179,16 @@ export const generateBotResponse = async (
       "Authorization": `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: cleanMessages
+      model: model,
+      messages: cleanMessages,
+      temperature: 0.7
     })
   });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`API request failed: ${response.status} - ${errorData.error?.message || response.statusText}`);
+  }
 
   const data = await response.json();
   return data.choices?.[0]?.message?.content || "";
