@@ -41,7 +41,9 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats: initia
           totalClients: clientCount,
           totalRevenue: totalRev,
           commissionRate: currentTier.commission,
-          pendingPayout: totalRev * currentTier.commission
+          pendingPayout: totalRev * currentTier.commission,
+          addOnCommission: 0, // TODO: Calculate from add-on purchases
+          arrears: 0, // TODO: Pull from reseller payment records
         });
         
         setIsLoading(false);
@@ -54,8 +56,9 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats: initia
   
   const currentTier = RESELLER_TIERS.find(t => realStats.totalClients >= t.min && realStats.totalClients <= t.max) || RESELLER_TIERS[0];
   const nextTier = RESELLER_TIERS.find(t => t.min > realStats.totalClients);
-  const progress = nextTier 
-    ? ((realStats.totalClients - currentTier.min) / (nextTier.min - currentTier.min)) * 100 
+  const tierRange = nextTier ? (nextTier.min - currentTier.min) : 1; // Prevent division by zero
+  const progress = nextTier
+    ? ((realStats.totalClients - currentTier.min) / tierRange) * 100
     : 100;
 
   const displayDomain = user.customDomain || (typeof window !== 'undefined' ? window.location.host : 'buildmybot.app');

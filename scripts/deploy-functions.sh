@@ -1,8 +1,10 @@
 #!/bin/bash
 # Deploy all Supabase Edge Functions
 # Usage: ./scripts/deploy-functions.sh
+# Or with custom project: PROJECT_REF=your-ref ./scripts/deploy-functions.sh
 
-PROJECT_REF="qjwwkcoredotrjtstigt"
+# Use environment variable or default (set your default here or via env)
+PROJECT_REF="${SUPABASE_PROJECT_REF:-qjwwkcoredotrjtstigt}"
 
 # Check if logged in
 echo "Checking Supabase authentication..."
@@ -23,6 +25,7 @@ FUNCTIONS=(
     "billing-overage-check"
     "marketplace-install-template"
     "reseller-track-referral"
+    "scrape-url"
 )
 
 for func in "${FUNCTIONS[@]}"; do

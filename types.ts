@@ -90,4 +90,46 @@ export interface ResellerStats {
   totalRevenue: number;
   commissionRate: number;
   pendingPayout: number;
+  addOnCommission: number; // 50% of add-on sales
+  arrears: number; // Deducted from next payment
+}
+
+// Add-on features that can be sold to clients
+export interface AddOn {
+  id: string;
+  name: string;
+  description: string;
+  price: number; // Monthly price
+  oneTimePrice?: number; // One-time setup fee (optional)
+  category: 'ai' | 'integration' | 'support' | 'feature' | 'storage';
+  resellerCommission: number; // Always 0.50 (50%)
+  isActive: boolean;
+}
+
+// Add-on purchase record
+export interface AddOnPurchase {
+  id: string;
+  userId: string;
+  addOnId: string;
+  resellerId?: string; // Reseller who sold it
+  purchaseDate: string;
+  price: number;
+  resellerEarnings: number; // 50% of price
+  companyEarnings: number; // 50% of price
+  status: 'active' | 'cancelled' | 'pending';
+  waivedBy?: string; // Reseller ID if waived
+  discountPercent?: number; // If reseller reduced price
+}
+
+// Reseller payment record with arrears tracking
+export interface ResellerPayment {
+  id: string;
+  resellerId: string;
+  amount: number;
+  arrears: number; // Deducted from this payment
+  netAmount: number; // amount - arrears
+  periodStart: string;
+  periodEnd: string;
+  status: 'pending' | 'processed' | 'failed';
+  processedAt?: string;
 }
