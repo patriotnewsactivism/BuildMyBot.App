@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus, Loader, RefreshCcw, Send, Mic, PhoneCall, Star, Clock, Award, ChevronDown, ChevronUp, AlertTriangle, Gift, Sparkles, BadgeCheck, Timer, ThumbsUp, XCircle } from 'lucide-react';
+import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus, Loader, RefreshCcw, Send, Mic, PhoneCall, Clock, Award, ChevronDown, ChevronUp, AlertTriangle, Gift, Sparkles, Timer, ThumbsUp, XCircle } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
 import { generateBotResponse, generateMarketingContent, scrapeWebsiteContent, generateWebsiteStructure } from '../../services/openaiService';
@@ -47,11 +47,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   // FAQ State
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  // Animated counter state
-  const [countersVisible, setCountersVisible] = useState(false);
-  const [animatedStats, setAnimatedStats] = useState({ leads: 0, businesses: 0, messages: 0, saved: 0 });
-  const countersRef = useRef<HTMLDivElement>(null);
-
 
   // Initialize random identity on mount
   useEffect(() => {
@@ -59,42 +54,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     const randomColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
     setDemoIdentity({ name: randomName, color: randomColor });
   }, []);
-
-  // Animated counters intersection observer
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !countersVisible) {
-          setCountersVisible(true);
-          // Animate to target numbers
-          const targets = { leads: 2847593, businesses: 12847, messages: 48000000, saved: 847 };
-          const duration = 2000;
-          const steps = 60;
-          const stepTime = duration / steps;
-          let step = 0;
-
-          const timer = setInterval(() => {
-            step++;
-            const progress = step / steps;
-            const easeOut = 1 - Math.pow(1 - progress, 3);
-
-            setAnimatedStats({
-              leads: Math.floor(targets.leads * easeOut),
-              businesses: Math.floor(targets.businesses * easeOut),
-              messages: Math.floor(targets.messages * easeOut),
-              saved: Math.floor(targets.saved * easeOut)
-            });
-
-            if (step >= steps) clearInterval(timer);
-          }, stepTime);
-        }
-      },
-      { threshold: 0.3 }
-    );
-
-    if (countersRef.current) observer.observe(countersRef.current);
-    return () => observer.disconnect();
-  }, [countersVisible]);
 
   useEffect(() => {
     if (chatScrollRef.current) {
@@ -400,42 +359,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     }
   ];
 
-  // Testimonials data
-  const testimonials = [
-    {
-      name: 'Marcus Johnson',
-      role: 'Owner, Elite Roofing Co.',
-      image: 'MJ',
-      color: '#1e3a8a',
-      quote: "We went from missing 40% of our leads to capturing 100%. BuildMyBot paid for itself in the first week. Last month alone, it booked $127,000 in jobs while I slept.",
-      rating: 5
-    },
-    {
-      name: 'Dr. Sarah Chen',
-      role: 'Founder, Smile Dental Group',
-      image: 'SC',
-      color: '#be123c',
-      quote: "Our no-show rate dropped by 60%. The AI confirms appointments, sends reminders, and handles rescheduling automatically. Staff morale has never been higher.",
-      rating: 5
-    },
-    {
-      name: 'James Rodriguez',
-      role: 'CEO, Rodriguez Law Firm',
-      image: 'JR',
-      color: '#047857',
-      quote: "Client intake used to take 15 minutes per call. Now it's instant. We've taken on 3x more cases this quarter without hiring anyone new.",
-      rating: 5
-    },
-    {
-      name: 'Ashley Williams',
-      role: 'Realtor, Keller Williams',
-      image: 'AW',
-      color: '#7c3aed',
-      quote: "In real estate, the first agent to respond wins. BuildMyBot responds in under 2 seconds. My conversion rate went from 12% to 34%.",
-      rating: 5
-    }
-  ];
-
   // FAQ data
   const faqs = [
     {
@@ -670,20 +593,20 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
               </button>
            </div>
 
-           {/* Social Proof Mini */}
-           <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-slate-500 mb-16">
-             <div className="flex -space-x-2">
-               {['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed'].map((color, i) => (
-                 <div key={i} className="w-8 h-8 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: color }}>
-                   {String.fromCharCode(65 + i)}
-                 </div>
-               ))}
+           {/* Setup Promise */}
+           <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500 mb-16">
+             <div className="flex items-center gap-2">
+               <CheckCircle size={16} className="text-emerald-500" />
+               <span>Setup in under 10 minutes</span>
              </div>
-             <span className="ml-2">Join <strong className="text-slate-900">12,847+</strong> businesses already converting more leads</span>
-             <div className="flex items-center gap-0.5 ml-2">
-               {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="#f59e0b" className="text-amber-400" />)}
+             <div className="flex items-center gap-2">
+               <CheckCircle size={16} className="text-emerald-500" />
+               <span>No coding required</span>
              </div>
-             <span className="font-bold text-slate-900">4.9/5</span>
+             <div className="flex items-center gap-2">
+               <CheckCircle size={16} className="text-emerald-500" />
+               <span>Cancel anytime</span>
+             </div>
            </div>
            
            {/* High Fidelity Dashboard Preview */}
@@ -757,101 +680,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                 </div>
               </div>
            </div>
-        </div>
-      </section>
-
-      {/* Animated Stats Section */}
-      <section ref={countersRef} className="py-20 px-6 bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDM0djZoNnYtNmgtNnptNiA2aDZ2LTZoLTZ2NnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-50"></div>
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div className="space-y-2">
-              <div className="text-4xl md:text-5xl font-extrabold text-white">
-                {animatedStats.leads.toLocaleString()}+
-              </div>
-              <div className="text-blue-200 font-medium">Leads Captured</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl md:text-5xl font-extrabold text-white">
-                {animatedStats.businesses.toLocaleString()}+
-              </div>
-              <div className="text-blue-200 font-medium">Happy Businesses</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl md:text-5xl font-extrabold text-white">
-                {(animatedStats.messages / 1000000).toFixed(0)}M+
-              </div>
-              <div className="text-blue-200 font-medium">Messages Handled</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl md:text-5xl font-extrabold text-emerald-400">
-                ${animatedStats.saved}K+
-              </div>
-              <div className="text-blue-200 font-medium">Avg. Monthly Savings</div>
-            </div>
-          </div>
-
-          {/* Trust Badges */}
-          <div className="mt-12 pt-8 border-t border-white/10">
-            <p className="text-center text-blue-200/60 text-sm mb-6 uppercase tracking-wider">Trusted by teams at</p>
-            <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500">
-              <div className="text-white font-bold text-xl">YCombinator</div>
-              <div className="text-white font-bold text-xl">TechStars</div>
-              <div className="text-white font-bold text-xl">500 Global</div>
-              <div className="text-white font-bold text-xl">Stripe</div>
-              <div className="text-white font-bold text-xl">Shopify</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-24 px-6 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold uppercase tracking-wide mb-4">
-              <Star size={12} fill="currentColor" /> Real Results
-            </div>
-            <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-4">
-              Don't Take Our Word For It
-            </h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              See what business owners just like you are saying about BuildMyBot
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {testimonials.map((t, idx) => (
-              <div key={idx} className="bg-gradient-to-br from-slate-50 to-white p-8 rounded-2xl border border-slate-200 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(t.rating)].map((_, i) => (
-                    <Star key={i} size={20} fill="#f59e0b" className="text-amber-400" />
-                  ))}
-                </div>
-                <p className="text-lg text-slate-700 mb-6 leading-relaxed">"{t.quote}"</p>
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg"
-                    style={{ backgroundColor: t.color }}
-                  >
-                    {t.image}
-                  </div>
-                  <div>
-                    <div className="font-bold text-slate-900">{t.name}</div>
-                    <div className="text-sm text-slate-500">{t.role}</div>
-                  </div>
-                  <BadgeCheck className="ml-auto text-blue-500" size={24} />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* CTA after testimonials */}
-          <div className="text-center mt-12">
-            <button onClick={onLogin} className="px-8 py-4 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-950 transition shadow-xl shadow-blue-900/30 inline-flex items-center gap-2">
-              Join {animatedStats.businesses.toLocaleString()}+ Happy Businesses <ArrowRight size={18} />
-            </button>
-          </div>
         </div>
       </section>
 
@@ -1480,7 +1308,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
           </h2>
           <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto">
             Every minute you wait is another potential customer going to your competitor.
-            Join 12,847+ businesses already closing more deals with BuildMyBot.
+            Start capturing leads today with your own AI-powered sales assistant.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button onClick={onLogin} className="group w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-lg font-bold hover:from-blue-700 hover:to-blue-600 transition-all shadow-2xl shadow-blue-900/40 flex items-center justify-center gap-3 transform hover:-translate-y-1">
