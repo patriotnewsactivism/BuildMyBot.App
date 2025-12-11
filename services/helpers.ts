@@ -1,5 +1,6 @@
 export const getApiKey = (): string => {
-  return process.env.OPENAI_API_KEY || "";
+  // Use Vite's import.meta.env for browser environment
+  return import.meta.env.VITE_OPENAI_API_KEY || "";
 };
 
 export const normalizeUrl = (url: string): string => {
