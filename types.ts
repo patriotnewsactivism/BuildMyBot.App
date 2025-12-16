@@ -22,6 +22,25 @@ export interface PhoneAgentConfig {
   introMessage: string;
 }
 
+export type CallStatus = 'initiated' | 'in-progress' | 'completed' | 'failed';
+
+export interface PhoneCall {
+  id: string;
+  userId: string;
+  botId?: string | null;
+  twilioCallSid?: string | null;
+  fromNumber?: string | null;
+  toNumber?: string | null;
+  status: CallStatus;
+  durationSeconds?: number | null;
+  recordingUrl?: string | null;
+  transcript?: string | null;
+  metadata?: Record<string, unknown>;
+  leadId?: string | null;
+  createdAt?: string;
+  endedAt?: string | null;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -56,6 +75,20 @@ export interface Bot {
   avatar?: string; // Custom avatar URL/Base64
   responseDelay?: number; // Simulated typing delay in ms
   userId?: string; // Optional during creation, required in DB
+}
+
+export interface MarketplaceTemplate {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+  installCount: number;
+  rating: number | null;
+  featured: boolean;
+  botConfig: Record<string, unknown>;
+  tags?: string[];
+  previewUrl?: string;
 }
 
 export interface Lead {
@@ -96,6 +129,28 @@ export interface ResellerStats {
   pendingPayout: number;
   addOnCommission: number; // 50% of add-on sales
   arrears: number; // Deducted from next payment
+}
+
+export interface ReferralRecord {
+  id: string;
+  resellerId: string;
+  referredUserId: string;
+  code: string;
+  status: string;
+  createdAt: string;
+  clientProfile?: Pick<User, 'id' | 'name' | 'email' | 'companyName' | 'plan'>;
+}
+
+export interface ResellerEarning {
+  id: string;
+  resellerId: string;
+  customerId: string;
+  amount: number;
+  commissionRate: number;
+  status: 'pending' | 'paid' | 'failed';
+  periodStart?: string;
+  periodEnd?: string;
+  paidAt?: string;
 }
 
 // Add-on features that can be sold to clients
