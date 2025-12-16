@@ -88,7 +88,7 @@ export interface PageContent {
 }
 
 export interface SeoMetadata {
-  title: string;
+  title?: string;
   description?: string;
   keywords?: string[];
   canonicalUrl?: string;
@@ -220,4 +220,15 @@ export interface MarketingContent {
   content: string;
   metadata?: Record<string, unknown>;
   createdAt?: string;
+}
+
+export interface MarketplaceTemplate {
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    tags: string[];
+    author: string;
+    image: string;
+    installs: number;
 }
