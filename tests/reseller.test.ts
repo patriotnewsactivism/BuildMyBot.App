@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeResellerStats } from '../utils/reseller';
-import { ReferralRecord, ResellerEarning } from '../types';
+import { ReferralRecord, ResellerEarning, PlanType } from '../types';
 
 const referrals: ReferralRecord[] = [
   {
@@ -15,7 +15,7 @@ const referrals: ReferralRecord[] = [
       name: 'Acme',
       email: 'owner@acme.com',
       companyName: 'Acme Co',
-      plan: 'PROFESSIONAL',
+      plan: PlanType.PROFESSIONAL,
     },
   },
   {
@@ -30,7 +30,7 @@ const referrals: ReferralRecord[] = [
       name: 'Beacon',
       email: 'hello@beacon.com',
       companyName: 'Beacon',
-      plan: 'STARTER',
+      plan: PlanType.STARTER,
     },
   },
 ];

@@ -23,6 +23,7 @@ import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, Arr
 import { supabase } from './services/supabaseClient';
 import { dbService } from './services/dbService';
 import { calculateLeadScore } from './services/leadCapture';
+import { edgeFunctions } from './services/edgeFunctions';
 
 const INITIAL_CHAT_LOGS: Conversation[] = []; 
 const INITIAL_RESELLER_STATS: ResellerStats = {
