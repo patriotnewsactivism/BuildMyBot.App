@@ -15,12 +15,22 @@ export default defineConfig(({ mode }) => {
     define: {
       'process.env': env
     },
+    test: {
+      environment: 'jsdom',
+      setupFiles: './vitest.setup.ts',
+      globals: true
+    },
     build: {
       outDir: 'dist',
       sourcemap: false
     },
     server: {
       port: 8080
+    },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: './vitest.setup.ts'
     }
   };
 });
