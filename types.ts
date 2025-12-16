@@ -22,6 +22,25 @@ export interface PhoneAgentConfig {
   introMessage: string;
 }
 
+export type CallStatus = 'initiated' | 'in-progress' | 'completed' | 'failed';
+
+export interface PhoneCall {
+  id: string;
+  userId: string;
+  botId?: string | null;
+  twilioCallSid?: string | null;
+  fromNumber?: string | null;
+  toNumber?: string | null;
+  status: CallStatus;
+  durationSeconds?: number | null;
+  recordingUrl?: string | null;
+  transcript?: string | null;
+  metadata?: Record<string, unknown>;
+  leadId?: string | null;
+  createdAt?: string;
+  endedAt?: string | null;
+}
+
 export interface User {
   id: string;
   name: string;
