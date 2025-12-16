@@ -16,7 +16,7 @@ import { PartnerProgramPage } from './components/Landing/PartnerProgramPage';
 import { PartnerSignup } from './components/Auth/PartnerSignup';
 import { FullPageChat } from './components/Chat/FullPageChat';
 import { AuthModal } from './components/Auth/AuthModal';
-import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation } from './types';
+import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation, MarketplaceTemplate } from './types';
 import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame, Loader } from 'lucide-react';
@@ -185,6 +185,33 @@ function App() {
     };
   }, []); // Empty dependency - subscriptions only need to be set up once
 
+  // Track referrals with backend function once user is authenticated
+  useEffect(() => {
+    const referralCode = typeof window !== 'undefined' ? localStorage.getItem('bmb_ref_code') : null;
+    const alreadyTracked = typeof window !== 'undefined' ? localStorage.getItem('bmb_ref_tracked') : null;
+
+    if (!referralCode || alreadyTracked === referralCode || !user || !supabase) return;
+
+    const trackReferral = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const authedUserId = data.session?.user?.id;
+
+        if (!authedUserId || authedUserId.startsWith('demo-user')) {
+          return;
+        }
+
+        await edgeFunctions.trackReferral(referralCode, authedUserId);
+        setUser((prev) => (prev ? { ...prev, referredBy: referralCode } : prev));
+        localStorage.setItem('bmb_ref_tracked', referralCode);
+      } catch (err) {
+        console.error('Failed to track referral:', err);
+      }
+    };
+
+    trackReferral();
+  }, [user?.id]);
+
   // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
   const totalLeads = leads.length;
@@ -243,24 +270,24 @@ function App() {
     setShowPartnerPage(false);
   };
 
-  const handleInstallTemplate = (template: any) => {
-    const newBot: BotType = {
-      id: `b${Date.now()}`,
-      name: template.name,
-      type: template.category === 'All' ? 'Custom' : template.category,
-      systemPrompt: `You are a helpful assistant specialized in ${template.category}. ${template.description}. Act professionally and help the user achieve their goals.`,
-      model: 'gpt-4o-mini',
-      temperature: 0.7,
-      knowledgeBase: [],
-      active: true,
-      conversationsCount: 0,
-      themeColor: ['#1e3a8a', '#be123c', '#047857', '#d97706'][Math.floor(Math.random() * 4)],
-      maxMessages: 20,
-      randomizeIdentity: true
-    };
-    
-    // Save to DB
-    dbService.saveBot(newBot);
+  const handleInstallTemplate = (template: MarketplaceTemplate) => {
+    if (!supabase) {
+      const newBot: BotType = {
+        id: `b${Date.now()}`,
+        name: template.name,
+        type: template.category === 'All' ? 'Custom' : template.category,
+        systemPrompt: `You are a helpful assistant specialized in ${template.category}. ${template.description}. Act professionally and help the user achieve their goals.`,
+        model: 'gpt-4o-mini',
+        temperature: 0.7,
+        knowledgeBase: [],
+        active: true,
+        conversationsCount: 0,
+        themeColor: ['#1e3a8a', '#be123c', '#047857', '#d97706'][Math.floor(Math.random() * 4)],
+        maxMessages: 20,
+        randomizeIdentity: true
+      };
+      dbService.saveBot(newBot);
+    }
     
     setNotification(`Installed "${template.name}" successfully!`);
     setTimeout(() => setNotification(null), 3000);
