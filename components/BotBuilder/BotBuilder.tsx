@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign, CheckCircle, AlertCircle } from 'lucide-react';
-import { Bot as BotType } from '../../types';
-import { generateBotResponse, scrapeWebsiteContent } from '../../services/openaiService';
+import { Bot as BotType, Conversation } from '../../types';
+import { scrapeWebsiteContent } from '../../services/openaiService';
 import { AVAILABLE_MODELS } from '../../constants';
 import { dbService } from '../../services/dbService';
 import { edgeFunctions } from '../../services/edgeFunctions';
+import { PreviewMessage, buildAiCompleteMessages, deriveSentiment } from './utils';
 
 interface BotBuilderProps {
   bots: BotType[];
   onSave: (bot: BotType) => void;
   customDomain?: string;
   onLeadDetected?: (email: string) => void;
+  onConversationLogged?: (conversation: Conversation) => void;
 }
 
 const HUMAN_NAMES = ['Sarah', 'Michael', 'Jessica', 'David', 'Emma', 'James', 'Emily', 'Robert'];
@@ -34,7 +36,18 @@ const PERSONAS = [
   { id: 'financial', name: 'Financial Guide', prompt: 'You are a financial guide for {company}. Help users understand our banking products, credit cards, and loan options. Explain complex terms simply. Be trustworthy and precise. Do not give personal investment advice.' }
 ];
 
-export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDomain, onLeadDetected }) => {
+type IngestionRun = {
+  id: string;
+  label: string;
+  type: 'pdf' | 'url' | 'text';
+  status: 'processing' | 'success' | 'error';
+  chunksProcessed?: number;
+  totalTokens?: number;
+  message?: string;
+  createdAt: number;
+};
+
+export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDomain, onLeadDetected, onConversationLogged }) => {
   const [selectedBotId, setSelectedBotId] = useState<string>(bots[0]?.id || 'new');
   // Initialize with the selected bot or a default new one
   const [activeBot, setActiveBot] = useState<BotType>(bots[0] || {
@@ -55,16 +68,21 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   });
 
   const [activeTab, setActiveTab] = useState<'config' | 'knowledge' | 'test' | 'embed'>('config');
-  const [testInput, setTestInput] = useState('');
-  const [testHistory, setTestHistory] = useState<{role: 'user'|'model', text: string, timestamp: number}[]>([]);
-  const [isTesting, setIsTesting] = useState(false);
-  
+  const [previewInput, setPreviewInput] = useState('');
+  const [previewHistory, setPreviewHistory] = useState<PreviewMessage[]>([]);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewSessionId] = useState(() => `preview_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+  const [previewConversationId, setPreviewConversationId] = useState<string | null>(null);
+  const [tokensUsed, setTokensUsed] = useState<number | null>(null);
+
   // Knowledge Base State
   const [kbInput, setKbInput] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [isScraping, setIsScraping] = useState(false);
-  const [isEmbedding, setIsEmbedding] = useState(false);
-  const [embeddingStatus, setEmbeddingStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [ingestionRuns, setIngestionRuns] = useState<IngestionRun[]>([]);
+  const [uploadingFileName, setUploadingFileName] = useState<string | null>(null);
+  const [knowledgeStatus, setKnowledgeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -97,12 +115,15 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [testHistory, isTesting]);
+  }, [previewHistory, isPreviewing]);
 
   const handleBotSelect = (bot: BotType) => {
       setSelectedBotId(bot.id);
       setActiveBot(bot);
-      setTestHistory([]);
+      setPreviewHistory([]);
+      setPreviewError(null);
+      setTokensUsed(null);
+      setPreviewConversationId(null);
   };
 
   const handleSaveBot = () => {
@@ -135,87 +156,100 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     }
   };
 
+  const startIngestionRun = (label: string, type: IngestionRun['type']) => {
+    const run: IngestionRun = {
+      id: `ingest_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      label,
+      type,
+      status: 'processing',
+      createdAt: Date.now()
+    };
+
+    setIngestionRuns((prev) => [run, ...prev]);
+    return run.id;
+  };
+
+  const updateIngestionRun = (id: string, updates: Partial<IngestionRun>) => {
+    setIngestionRuns((prev) => prev.map((run) => run.id === id ? { ...run, ...updates } : run));
+  };
+
+  const attachKnowledgeLocally = (content: string) => {
+    setActiveBot((current) => ({
+      ...current,
+      knowledgeBase: [...(current.knowledgeBase || []), content]
+    }));
+  };
+
+  const embedKnowledge = async (
+    label: string,
+    content: string,
+    type: IngestionRun['type'],
+    options?: { fileType?: string; fileUrl?: string; chunkSize?: number }
+  ) => {
+    setKnowledgeStatus(null);
+    const runId = startIngestionRun(label, type);
+
+    if (!content.trim()) {
+      updateIngestionRun(runId, { status: 'error', message: 'No content to embed.' });
+      return;
+    }
+
+    if (!activeBot.id || activeBot.id === 'new') {
+      attachKnowledgeLocally(content);
+      const message = 'Save your bot before embedding knowledge.';
+      updateIngestionRun(runId, { status: 'error', message });
+      setKnowledgeStatus({ type: 'error', message });
+      return;
+    }
+
+    try {
+      const result = await edgeFunctions.embedKnowledgeBase(
+        activeBot.id,
+        content,
+        label,
+        options
+      );
+
+      attachKnowledgeLocally(content);
+      updateIngestionRun(runId, {
+        status: 'success',
+        chunksProcessed: result.chunksProcessed,
+        totalTokens: result.totalTokens,
+        message: `Embedded ${result.chunksProcessed} chunks (${result.totalTokens} tokens)`
+      });
+      setKnowledgeStatus({
+        type: 'success',
+        message: `Embedded ${result.chunksProcessed} chunks from ${result.fileName}`
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to embed knowledge';
+      updateIngestionRun(runId, { status: 'error', message: errorMessage });
+      setKnowledgeStatus({ type: 'error', message: errorMessage });
+      console.error('Embedding failed:', err);
+    }
+  };
+
   const handleAddKnowledge = async () => {
     if (!kbInput.trim()) return;
 
     const newContent = kbInput;
     setKbInput('');
-    setEmbeddingStatus(null);
-
-    // Add to local state immediately for UI feedback
-    setActiveBot({
-      ...activeBot,
-      knowledgeBase: [...(activeBot.knowledgeBase || []), newContent]
-    });
-
-    // If bot is already saved, embed the knowledge
-    if (activeBot.id && activeBot.id !== 'new') {
-      setIsEmbedding(true);
-      try {
-        const result = await edgeFunctions.embedKnowledgeBase(
-          activeBot.id,
-          newContent,
-          `manual_${Date.now()}.txt`,
-          { fileType: 'text' }
-        );
-        setEmbeddingStatus({
-          type: 'success',
-          message: `Embedded ${result.chunksProcessed} chunks (${result.totalTokens} tokens)`
-        });
-      } catch (err) {
-        console.error('Embedding failed:', err);
-        setEmbeddingStatus({
-          type: 'error',
-          message: err instanceof Error ? err.message : 'Failed to embed knowledge'
-        });
-      } finally {
-        setIsEmbedding(false);
-      }
-    }
+    await embedKnowledge(`manual_${Date.now()}.txt`, newContent, 'text', { fileType: 'text' });
   };
 
   const handleScrapeUrl = async () => {
     if (!urlInput.trim()) return;
     setIsScraping(true);
-    setEmbeddingStatus(null);
 
     const url = urlInput;
     setUrlInput('');
 
     try {
         const extractedData = await scrapeWebsiteContent(url);
-        setActiveBot({
-            ...activeBot,
-            knowledgeBase: [...(activeBot.knowledgeBase || []), extractedData]
-        });
-
-        // If bot is already saved, embed the scraped content
-        if (activeBot.id && activeBot.id !== 'new') {
-            setIsEmbedding(true);
-            try {
-                const result = await edgeFunctions.embedKnowledgeBase(
-                    activeBot.id,
-                    extractedData,
-                    new URL(url).hostname,
-                    { fileType: 'url', fileUrl: url }
-                );
-                setEmbeddingStatus({
-                    type: 'success',
-                    message: `Embedded ${result.chunksProcessed} chunks from ${result.fileName}`
-                });
-            } catch (embErr) {
-                console.error('Embedding failed:', embErr);
-                setEmbeddingStatus({
-                    type: 'error',
-                    message: embErr instanceof Error ? embErr.message : 'Failed to embed knowledge'
-                });
-            } finally {
-                setIsEmbedding(false);
-            }
-        }
+        await embedKnowledge(new URL(url).hostname || url, extractedData, 'url', { fileType: 'url', fileUrl: url });
     } catch (error) {
         console.error("Scrape failed", error);
-        setEmbeddingStatus({
+        setKnowledgeStatus({
             type: 'error',
             message: "Failed to scrape website. Please check the URL and try again."
         });
@@ -224,34 +258,83 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     }
   };
 
+  const handleFileUpload = async (file?: File | null) => {
+    if (!file) return;
+    setUploadingFileName(file.name);
+
+    try {
+      const text = await file.text();
+      await embedKnowledge(file.name, text, file.type.includes('pdf') ? 'pdf' : 'text', {
+        fileType: file.type.includes('pdf') ? 'pdf' : 'text',
+        chunkSize: 800
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to process file';
+      setKnowledgeStatus({ type: 'error', message });
+    } finally {
+      setUploadingFileName(null);
+    }
+  };
+
+  const logConversation = (messages: PreviewMessage[], conversationId: string) => {
+    if (!onConversationLogged) return;
+
+    const normalizedMessages = messages.map(msg => ({
+      role: msg.role === 'assistant' ? 'model' as const : 'user' as const,
+      text: msg.text,
+      timestamp: msg.timestamp
+    }));
+
+    onConversationLogged({
+      id: conversationId,
+      botId: activeBot.id,
+      messages: normalizedMessages,
+      sentiment: deriveSentiment(messages),
+      timestamp: Date.now()
+    });
+  };
+
   const handleTestSend = async () => {
-    if (!testInput.trim()) return;
+    if (!previewInput.trim()) return;
+    if (!activeBot.id || activeBot.id === 'new') {
+      setPreviewError('Save your bot before running a live preview.');
+      return;
+    }
     
     // Check for "hot lead" triggers (simple regex for email)
-    const emailMatch = testInput.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi);
+    const emailMatch = previewInput.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi);
     if (emailMatch && onLeadDetected) {
        onLeadDetected(emailMatch[0]);
     }
 
-    const newMessage = { role: 'user' as const, text: testInput, timestamp: Date.now() };
-    const updatedHistory = [...testHistory, newMessage];
+    const newMessage: PreviewMessage = { role: 'user', text: previewInput, timestamp: Date.now() };
+    const updatedHistory = [...previewHistory, newMessage];
     
-    setTestHistory(updatedHistory);
-    setTestInput('');
-    setIsTesting(true);
+    setPreviewHistory(updatedHistory);
+    setPreviewInput('');
+    setIsPreviewing(true);
+    setPreviewError(null);
 
     try {
-        const context = activeBot.knowledgeBase.join('\n\n');
-        const response = await generateBotResponse(activeBot.systemPrompt, updatedHistory, newMessage.text, activeBot.model, context);
-        
-        // Use configured delay
-        setTimeout(() => {
-            setTestHistory(prev => [...prev, { role: 'model', text: response, timestamp: Date.now() }]);
-            setIsTesting(false);
-        }, activeBot.responseDelay || 1500);
+        const payload = buildAiCompleteMessages(activeBot, updatedHistory);
+        const response = await edgeFunctions.aiComplete(activeBot.id, payload, previewSessionId);
 
+        const assistantMessage: PreviewMessage = {
+          role: 'assistant',
+          text: response.message,
+          timestamp: Date.now()
+        };
+
+        const finalHistory = [...updatedHistory, assistantMessage];
+        const conversationId = response.conversationId || previewConversationId || previewSessionId;
+        setPreviewHistory(finalHistory);
+        setPreviewConversationId(conversationId);
+        setTokensUsed(response.tokensUsed || null);
+        logConversation(finalHistory, conversationId);
     } catch (e) {
-        setIsTesting(false);
+        setPreviewError(e instanceof Error ? e.message : 'Failed to get response');
+    } finally {
+        setIsPreviewing(false);
     }
   };
 
@@ -483,42 +566,20 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
             )}
 
             {activeTab === 'knowledge' && (
-                <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
-                   {/* Embedding Status Banner */}
-                   {(isEmbedding || embeddingStatus) && (
-                     <div className={`p-4 rounded-lg flex items-center gap-3 ${
-                       isEmbedding ? 'bg-blue-50 border border-blue-200' :
-                       embeddingStatus?.type === 'success' ? 'bg-emerald-50 border border-emerald-200' :
-                       'bg-red-50 border border-red-200'
-                     }`}>
-                       {isEmbedding ? (
-                         <>
-                           <RefreshCcw className="animate-spin text-blue-600" size={18} />
-                           <span className="text-blue-700 text-sm">Generating embeddings...</span>
-                         </>
-                       ) : embeddingStatus?.type === 'success' ? (
-                         <>
-                           <CheckCircle className="text-emerald-600" size={18} />
-                           <span className="text-emerald-700 text-sm">{embeddingStatus.message}</span>
-                         </>
-                       ) : (
-                         <>
-                           <AlertCircle className="text-red-600" size={18} />
-                           <span className="text-red-700 text-sm">{embeddingStatus?.message}</span>
-                         </>
-                       )}
-                       {!isEmbedding && (
-                         <button
-                           onClick={() => setEmbeddingStatus(null)}
-                           className="ml-auto text-slate-400 hover:text-slate-600"
-                         >
-                           <X size={16} />
-                         </button>
-                       )}
+                <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+                   {knowledgeStatus && (
+                     <div className={`p-4 rounded-lg flex items-center gap-3 ${knowledgeStatus.type === 'success' ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
+                       {knowledgeStatus.type === 'success' ? <CheckCircle className="text-emerald-600" size={18} /> : <AlertCircle className="text-red-600" size={18} />}
+                       <span className={`${knowledgeStatus.type === 'success' ? 'text-emerald-700' : 'text-red-700'} text-sm`}>{knowledgeStatus.message}</span>
+                       <button
+                         onClick={() => setKnowledgeStatus(null)}
+                         className="ml-auto text-slate-400 hover:text-slate-600"
+                       >
+                         <X size={16} />
+                       </button>
                      </div>
                    )}
 
-                   {/* New Bot Warning */}
                    {activeBot.id === 'new' && (
                      <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 flex items-center gap-3">
                        <AlertCircle className="text-amber-600" size={18} />
@@ -526,62 +587,120 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                      </div>
                    )}
 
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                           <Upload size={18} className="text-blue-900" /> Upload PDF/Text
+                        </h3>
+                        <p className="text-xs text-slate-500 mb-4">Drop a PDF, TXT, or Markdown file to embed it into your bot's knowledge base.</p>
+                        <label className="flex items-center justify-between w-full border-2 border-dashed border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-600 cursor-pointer hover:border-blue-300 hover:bg-blue-50/50 transition">
+                          <span>{uploadingFileName ? `Processing ${uploadingFileName}...` : 'Choose a file to upload'}</span>
+                          <Upload size={16} className="text-blue-900" />
+                          <input 
+                            type="file" 
+                            accept=".pdf,.txt,.md,.markdown" 
+                            className="hidden"
+                            onChange={(e) => handleFileUpload(e.target.files?.[0] || null)}
+                          />
+                        </label>
+                        <p className="text-[11px] text-slate-400 mt-2">Files stay private. Content is chunked and embedded via the secured edge function.</p>
+                     </div>
+
+                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                           <Globe size={18} className="text-blue-900" /> Ingest from URL
+                        </h3>
+                        <p className="text-xs text-slate-500 mb-3">We will scrape the page, summarize it, and push it to embeddings.</p>
+                        <div className="flex gap-2">
+                           <input 
+                             type="url" 
+                             value={urlInput}
+                             onChange={(e) => setUrlInput(e.target.value)}
+                             placeholder="https://yourbusiness.com/docs"
+                             className="flex-1 rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900"
+                           />
+                           <button 
+                             onClick={handleScrapeUrl}
+                             disabled={isScraping || !urlInput}
+                             className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-950 disabled:opacity-50 transition font-medium flex items-center gap-2"
+                           >
+                             {isScraping ? <RefreshCcw className="animate-spin" size={16} /> : <Zap size={16} />}
+                             Train Bot
+                           </button>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-2">Supports public URLs. Private pages should be uploaded as PDFs instead.</p>
+                     </div>
+                   </div>
+
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                      <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                         <Globe size={18} className="text-blue-900" /> Train from Website
+                      <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                         <FileText size={18} className="text-blue-900" /> Paste Text Snippet
                       </h3>
-                      <div className="flex gap-2">
-                         <input 
-                           type="url" 
-                           value={urlInput}
-                           onChange={(e) => setUrlInput(e.target.value)}
-                           placeholder="https://yourbusiness.com"
-                           className="flex-1 rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900"
-                         />
-                         <button 
-                           onClick={handleScrapeUrl}
-                           disabled={isScraping || !urlInput}
-                           className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-950 disabled:opacity-50 transition font-medium flex items-center gap-2"
-                         >
-                           {isScraping ? <RefreshCcw className="animate-spin" size={16} /> : <Zap size={16} />}
-                           Train Bot
-                         </button>
+                      <textarea 
+                        value={kbInput}
+                        onChange={(e) => setKbInput(e.target.value)}
+                        placeholder="Add specific facts, FAQs, or troubleshooting steps."
+                        className="w-full h-28 rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900 text-sm"
+                      />
+                      <div className="flex justify-between items-center mt-3">
+                        <p className="text-xs text-slate-500">Rich text is flattened automatically. Keep sensitive data out of prompts.</p>
+                        <button 
+                           onClick={handleAddKnowledge}
+                           className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition font-medium"
+                        >
+                           Embed Text
+                        </button>
                       </div>
-                      <p className="text-xs text-slate-500 mt-2">We will scrape this URL and add key info to the bot's memory.</p>
                    </div>
 
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                       <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                         <FileText size={18} className="text-blue-900" /> Manual Training Data
+                         <RefreshCcw size={18} className="text-blue-900" /> Ingestion Activity
                       </h3>
-                      <div className="flex gap-2 mb-4">
-                         <input 
-                           type="text" 
-                           value={kbInput}
-                           onChange={(e) => setKbInput(e.target.value)}
-                           placeholder="Add specific fact (e.g. 'We are closed on Sundays')"
-                           className="flex-1 rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900"
-                         />
-                         <button 
-                           onClick={handleAddKnowledge}
-                           className="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-200 transition font-medium"
-                         >
-                           Add Fact
-                         </button>
+                      <div className="space-y-3">
+                        {ingestionRuns.length === 0 && (
+                          <div className="text-center py-6 text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-lg">
+                             No ingestion runs yet. Upload a PDF, paste text, or ingest a URL to see chunking status.
+                          </div>
+                        )}
+                        {ingestionRuns.map(run => (
+                          <div key={run.id} className="flex items-start justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <div>
+                              <div className="font-medium text-slate-800 text-sm">{run.label}</div>
+                              <div className="text-[11px] text-slate-500">{run.type.toUpperCase()} • {new Date(run.createdAt).toLocaleTimeString()}</div>
+                              {run.message && <div className="text-xs text-slate-600 mt-1">{run.message}</div>}
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                              {run.status === 'processing' && <RefreshCcw className="animate-spin text-blue-600" size={16} />}
+                              {run.status === 'success' && <CheckCircle className="text-emerald-600" size={16} />}
+                              {run.status === 'error' && <AlertCircle className="text-red-600" size={16} />}
+                              <div className="text-xs text-slate-500">
+                                {run.status === 'processing' && 'Embedding...'}
+                                {run.status === 'success' && `${run.chunksProcessed || 0} chunks`}
+                                {run.status === 'error' && 'Failed'}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      
+                   </div>
+
+                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                      <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                         <FileText size={18} className="text-blue-900" /> Knowledge Base Entries
+                      </h3>
                       <div className="space-y-2">
-                         {activeBot.knowledgeBase.length === 0 && (
+                         {(activeBot.knowledgeBase?.length || 0) === 0 && (
                             <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-lg">
                                No knowledge added yet.
                             </div>
                          )}
-                         {activeBot.knowledgeBase.map((item, i) => (
+                         {(activeBot.knowledgeBase || []).map((item, i) => (
                             <div key={i} className="flex items-start justify-between bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm">
                                <p className="text-slate-700 whitespace-pre-wrap">{item}</p>
                                <button 
                                  onClick={() => {
-                                     const newKb = [...activeBot.knowledgeBase];
+                                     const newKb = [...(activeBot.knowledgeBase || [])];
                                      newKb.splice(i, 1);
                                      setActiveBot({...activeBot, knowledgeBase: newKb});
                                  }}
@@ -736,20 +855,42 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                             </div>
                          </div>
                       </div>
-                      <button onClick={() => setTestHistory([])} className="text-xs text-slate-400 hover:text-red-500 flex items-center gap-1">
+                      <button 
+                        onClick={() => {
+                          setPreviewHistory([]);
+                          setPreviewConversationId(null);
+                          setTokensUsed(null);
+                          setPreviewError(null);
+                        }} 
+                        className="text-xs text-slate-400 hover:text-red-500 flex items-center gap-1"
+                      >
                          <Trash2 size={12}/> Clear Chat
                       </button>
                    </div>
 
+                   {previewError && (
+                     <div className="mx-4 mt-2 px-3 py-2 bg-red-50 border border-red-200 text-xs text-red-700 rounded-lg">
+                       {previewError}
+                     </div>
+                   )}
+                   {previewConversationId && (
+                     <div className="mx-4 mb-2 text-[11px] text-slate-500 flex items-center gap-2">
+                       <span className="px-2 py-0.5 bg-slate-100 rounded-md border border-slate-200">Session {previewConversationId.slice(0, 12)}</span>
+                       {tokensUsed !== null && (
+                         <span className="px-2 py-0.5 bg-slate-100 rounded-md border border-slate-200">Tokens: {tokensUsed}</span>
+                       )}
+                     </div>
+                   )}
+
                    {/* Chat History */}
                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50" ref={scrollRef}>
-                      {testHistory.length === 0 && (
+                      {previewHistory.length === 0 && (
                          <div className="text-center py-12 text-slate-400 text-sm">
                             <BotIcon size={32} className="mx-auto mb-2 opacity-20"/>
                             Start typing to test your bot.
                          </div>
                       )}
-                      {testHistory.map((msg, i) => (
+                      {previewHistory.map((msg, i) => (
                          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm shadow-sm ${
                                msg.role === 'user' 
@@ -760,7 +901,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                             </div>
                          </div>
                       ))}
-                      {isTesting && (
+                      {isPreviewing && (
                          <div className="flex justify-start">
                             <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm flex gap-1 items-center">
                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
@@ -775,17 +916,17 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                    <div className="p-4 bg-white border-t border-slate-100">
                       <div className="relative">
                          <input 
-                           value={testInput}
-                           onChange={(e) => setTestInput(e.target.value)}
-                           onKeyDown={(e) => e.key === 'Enter' && handleTestSend()}
-                           placeholder="Type a message..."
-                           className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:ring-blue-900 focus:border-blue-900 shadow-sm"
-                         />
-                         <button 
-                           onClick={handleTestSend}
-                           disabled={!testInput.trim() || isTesting}
-                           className="absolute right-2 top-2 p-2 bg-blue-900 text-white rounded-lg hover:bg-blue-950 disabled:opacity-50 transition"
-                         >
+                           value={previewInput}
+                          onChange={(e) => setPreviewInput(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleTestSend()}
+                          placeholder="Type a message..."
+                          className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:ring-blue-900 focus:border-blue-900 shadow-sm"
+                        />
+                        <button 
+                          onClick={handleTestSend}
+                          disabled={!previewInput.trim() || isPreviewing}
+                          className="absolute right-2 top-2 p-2 bg-blue-900 text-white rounded-lg hover:bg-blue-950 disabled:opacity-50 transition"
+                        >
                             <Play size={16} fill="currentColor" />
                          </button>
                       </div>

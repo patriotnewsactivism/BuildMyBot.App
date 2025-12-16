@@ -14,11 +14,21 @@ interface ChatMessage {
   content: string;
 }
 
-interface RequestBody {
+interface ChatRequestBody {
   botId: string;
   messages: ChatMessage[];
   sessionId: string;
   userId?: string;
+}
+
+interface MarketingRequestBody {
+  mode: "marketing";
+  variant: "email" | "ad" | "blog" | "social";
+  topic: string;
+  tone?: string;
+  templateContent?: string;
+  templateId?: string;
+  title?: string;
 }
 
 serve(async (req) => {
@@ -50,7 +60,121 @@ serve(async (req) => {
       }
     }
 
-    const body: RequestBody = await req.json();
+    const rawBody = await req.json() as ChatRequestBody | MarketingRequestBody;
+    const isMarketingRequest = (rawBody as MarketingRequestBody)?.mode === "marketing" || "variant" in rawBody;
+
+    // --------------------------
+    // MARKETING CONTENT VARIANT
+    // --------------------------
+    if (isMarketingRequest && (rawBody as MarketingRequestBody).variant) {
+      const { variant, topic, tone = "Professional", templateContent, templateId, title } = rawBody as MarketingRequestBody;
+
+      if (!userId) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized. Please sign in to generate marketing content." }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!variant || !topic) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields: variant, topic" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const systemPrompts: Record<MarketingRequestBody["variant"], string> = {
+        email: "You are a senior lifecycle marketer. Craft concise, high-converting emails that include a compelling subject line and a short, skimmable body. Keep copy under 150 words.",
+        ad: "You are a performance marketing expert. Produce ad copy variations with headlines under 40 characters and body copy under 90 characters. Include 2-3 variants optimized for PPC/paid social.",
+        blog: "You are a content strategist. Produce a blog outline with title, intro paragraph, 3-5 section headings, and a closing CTA. Keep tone clear and authoritative.",
+        social: "You are a social media copywriter. Produce platform-ready posts for LinkedIn and X. Include concise hooks, 2-3 supporting bullets, and 3-5 relevant hashtags."
+      };
+
+      const systemPrompt = systemPrompts[variant];
+      const promptIntro = `Topic: ${topic}\nTone: ${tone}`;
+      const reuseInstruction = templateContent
+        ? `Reuse the following template as a starting point. Modernize and refresh it without repeating verbatim:\n${templateContent}`
+        : "Create this from scratch using best practices for this channel.";
+
+      const marketingMessages: ChatMessage[] = [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: `${promptIntro}\n\n${reuseInstruction}\n\nOutput only the copy in plain text.`
+        }
+      ];
+
+      const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: marketingMessages,
+          temperature: 0.75,
+          max_tokens: 800,
+        }),
+      });
+
+      if (!openaiResponse.ok) {
+        const errorText = await openaiResponse.text();
+        console.error("OpenAI API error (marketing):", errorText);
+        return new Response(
+          JSON.stringify({ error: "AI service error" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const openaiData = await openaiResponse.json();
+      const assistantMessage = openaiData.choices?.[0]?.message?.content || "";
+      const tokensUsed = openaiData.usage?.total_tokens || 0;
+
+      let savedContent = null;
+      const safeTitle = title || `${variant.toUpperCase()} - ${topic}`.slice(0, 120);
+
+      try {
+        const { data, error: insertError } = await supabase
+          .from("marketing_content")
+          .insert({
+            user_id: userId,
+            content_type: variant,
+            title: safeTitle,
+            content: assistantMessage,
+            metadata: {
+              tone,
+              topic,
+              templateId: templateId || null,
+            },
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error("Failed to persist marketing content:", insertError);
+        } else {
+          savedContent = data;
+        }
+      } catch (persistError) {
+        console.error("Unexpected persistence error:", persistError);
+      }
+
+      return new Response(
+        JSON.stringify({
+          message: assistantMessage,
+          marketingContent: savedContent,
+          tokensUsed,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // --------------------------
+    // DEFAULT CHAT COMPLETIONS
+    // --------------------------
+
+    const body = rawBody as ChatRequestBody;
     const { botId, messages, sessionId } = body;
 
     if (!botId || !messages || !sessionId) {

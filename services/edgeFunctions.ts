@@ -17,6 +17,20 @@ interface AiCompleteResponse {
   tokensUsed: number;
 }
 
+interface MarketingContentResponse {
+  message: string;
+  marketingContent?: {
+    id: string;
+    user_id: string;
+    content_type: string;
+    title?: string | null;
+    content: string;
+    metadata?: Record<string, unknown>;
+    created_at?: string;
+  };
+  tokensUsed?: number;
+}
+
 interface LeadResponse {
   message: string;
   lead?: {
@@ -102,6 +116,42 @@ export const edgeFunctions = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'AI completion failed');
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Marketing content generation via ai-complete (variant mode)
+   */
+  aiCompleteMarketing: async (
+    payload: {
+      variant: 'email' | 'ad' | 'blog' | 'social';
+      topic: string;
+      tone?: string;
+      templateId?: string;
+      templateContent?: string;
+      title?: string;
+    }
+  ): Promise<MarketingContentResponse> => {
+    if (!SUPABASE_URL) {
+      throw new Error('Supabase URL is not configured.');
+    }
+
+    const headers = await getAuthHeaders();
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-complete`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        mode: 'marketing',
+        ...payload,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Marketing generation failed');
     }
 
     return response.json();
