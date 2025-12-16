@@ -25,7 +25,73 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
 
   // Check for embed mode in URL params
   const isEmbed = window.location.search.includes('mode=embed');
-  
+
+  // Setup postMessage communication for widget mode
+  useEffect(() => {
+    if (!isEmbed) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      // In production, verify origin for security
+      // const allowedOrigins = ['https://buildmybot.app', 'http://localhost:8080'];
+      // if (!allowedOrigins.includes(event.origin)) return;
+
+      const message = event.data;
+
+      switch (message.action) {
+        case 'open':
+          // Widget opened - track event
+          console.log('[FullPageChat] Widget opened');
+          break;
+
+        case 'close':
+          // Widget closed - track event
+          console.log('[FullPageChat] Widget closed');
+          break;
+
+        case 'sendMessage':
+          // Programmatic message from host page
+          if (message.text) {
+            setInput(message.text);
+            // Auto-send if requested
+            if (message.autoSend) {
+              setTimeout(() => handleSend(), 100);
+            }
+          }
+          break;
+
+        default:
+          console.log('[FullPageChat] Unknown message:', message);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    // Send ready signal to parent
+    if (window.parent !== window) {
+      window.parent.postMessage({ action: 'ready', botId }, '*');
+    }
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [isEmbed, botId]);
+
+  // Notify parent window of new messages in embed mode
+  useEffect(() => {
+    if (!isEmbed || messages.length === 0) return;
+
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.role === 'assistant' && window.parent !== window) {
+      // Notify parent of new bot message
+      window.parent.postMessage({
+        action: 'newMessage',
+        botId,
+        message: lastMessage.text,
+        timestamp: lastMessage.timestamp
+      }, '*');
+    }
+  }, [messages, isEmbed, botId]);
+
   useEffect(() => {
     const fetchBot = async () => {
       if (!botId) return;
