@@ -77,18 +77,35 @@ export interface Bot {
   userId?: string; // Optional during creation, required in DB
 }
 
-export interface MarketplaceTemplate {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  price: number;
-  installCount: number;
-  rating: number | null;
-  featured: boolean;
-  botConfig: Record<string, unknown>;
-  tags?: string[];
-  previewUrl?: string;
+export interface PageContent {
+  headline: string;
+  subheadline?: string;
+  features?: string[];
+  ctaText?: string;
+  heroImage?: string;
+  sections?: { title: string; body: string }[];
+  brandColor?: string;
+}
+
+export interface SeoMetadata {
+  title: string;
+  description?: string;
+  keywords?: string[];
+  canonicalUrl?: string;
+  ogImage?: string;
+}
+
+export interface WebsitePage {
+  id?: string;
+  userId?: string;
+  botId?: string;
+  title: string;
+  slug: string;
+  content: PageContent;
+  seoMetadata?: SeoMetadata;
+  published?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Lead {
@@ -107,9 +124,13 @@ export interface Lead {
 export interface Conversation {
   id: string;
   botId: string;
-  messages: { role: 'user' | 'model'; text: string; timestamp: number }[];
+  sessionId: string;
+  messages: { role: 'user' | 'model' | 'assistant'; text: string; timestamp: number }[];
   sentiment: 'Positive' | 'Neutral' | 'Negative';
   timestamp: number;
+  leadId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AnalyticsData {
@@ -187,4 +208,16 @@ export interface ResellerPayment {
   periodEnd: string;
   status: 'pending' | 'processed' | 'failed';
   processedAt?: string;
+}
+
+export type MarketingContentType = 'email' | 'ad' | 'blog' | 'social';
+
+export interface MarketingContent {
+  id: string;
+  userId: string;
+  contentType: MarketingContentType;
+  title?: string;
+  content: string;
+  metadata?: Record<string, unknown>;
+  createdAt?: string;
 }
