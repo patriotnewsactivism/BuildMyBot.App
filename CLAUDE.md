@@ -16,20 +16,29 @@ npm run build        # TypeScript compile + production build
 npm run preview      # Preview production build
 ```
 
+### Testing
+```bash
+npm run test         # Run unit tests with Vitest
+npm run test:e2e     # Run Playwright E2E tests
+npm run test:e2e:ui  # Run E2E tests with interactive UI
+```
+
 ### Build & Deploy
 ```bash
 # Docker deployment
 docker build -t buildmybot .
-docker run -p 8080:80 buildmybot
+docker run -p 80:80 buildmybot
 
 # Google Cloud Build (via cloudbuild.yaml)
 gcloud builds submit --config cloudbuild.yaml
 ```
 
-### Testing
-Currently no test suite configured. When adding tests, use standard React testing patterns.
-
 ## Architecture
+
+### Backend Architecture
+- **Backend**: Supabase (Postgres, Auth, Edge Functions)
+- Database operations abstracted via `services/dbService.ts` for clean separation of concerns
+- All Firebase dependencies have been removed (migration complete)
 
 ### File Structure
 ```
@@ -57,8 +66,7 @@ Currently no test suite configured. When adding tests, use standard React testin
 │   ├── supabaseClient.ts # Supabase client initialization
 │   ├── dbService.ts      # Database abstraction (real-time subscriptions)
 │   ├── geminiService.ts  # Google Gemini AI integration
-│   ├── openaiService.ts  # OpenAI GPT integration
-│   └── firebaseConfig.ts # Legacy Firebase (being phased out)
+│   └── openaiService.ts  # OpenAI GPT integration
 └── supabase/             # Backend schema & functions (empty = in progress)
 ```
 
@@ -91,6 +99,10 @@ Supabase Auth with special "God Mode" logic in App.tsx:86-97:
 - **OpenAI** (services/openaiService.ts): For GPT-4o/GPT-4o Mini completions
 - Both services handle streaming responses and conversation logging
 
+### Error Tracking
+- Sentry integration for production error monitoring
+- Source maps uploaded automatically during build
+
 ### User Roles & Plans
 ```typescript
 enum UserRole { OWNER, ADMIN, RESELLER }
@@ -107,6 +119,7 @@ enum PlanType { FREE, STARTER, PROFESSIONAL, EXECUTIVE, ENTERPRISE }
 - Knowledge base file upload (PDF, URL, text)
 - RAG training interface
 - Preview chat for testing
+- Specialized personas: City Government, Recruitment, Travel, Real Estate
 
 ### Lead CRM (components/CRM/)
 - Hot lead detection with 0-100 scoring
@@ -135,12 +148,13 @@ enum PlanType { FREE, STARTER, PROFESSIONAL, EXECUTIVE, ENTERPRISE }
 - Pre-built bot templates by industry
 - One-click installation via marketplace-install-template endpoint
 
-## Backend Migration (Firebase → Supabase)
+## Backend Architecture
 
-**Current State:** Dual-mode operation
-- Auth: Supabase (active)
-- Database: Supabase (active for bots, leads, profiles)
-- Legacy: Firebase config still present (firebaseConfig.ts)
+**Current State:** Supabase-only operation
+- Auth: Supabase Auth with JWT
+- Database: Supabase Postgres with real-time subscriptions
+- Edge Functions: Deployed for secure backend operations
+- Storage: Supabase Storage for file uploads
 
 **Target Schema:** See PLAN.md sections 2-3 for full schema and RLS policies.
 
@@ -170,16 +184,22 @@ Required in `.env`:
 # OpenAI
 VITE_OPENAI_API_KEY=sk-...
 
+# Gemini (optional)
+VITE_GEMINI_API_KEY=...
+
 # Supabase (active)
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 
+# Sentry (optional)
+VITE_SENTRY_DSN=...
+VITE_SENTRY_ORG=...
+VITE_SENTRY_PROJECT=...
+VITE_SENTRY_AUTH_TOKEN=...
+
 # Vercel deployments may require NEXT_PUBLIC_ prefix
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-
-# Firebase (legacy - being phased out)
-VITE_FIREBASE_API_KEY=...
 ```
 
 ## Development Workflow
@@ -212,39 +232,39 @@ VITE_FIREBASE_API_KEY=...
 
 ## Deployment
 
-### Cloud Run (via Docker)
+### Docker
 Dockerfile configured with:
 - Node 22 build stage
 - nginx static file serving
-- Port 8080 exposure
+- Port 80 exposure
 
-### Cloud Build
+### Google Cloud Build
 cloudbuild.yaml defines:
 1. Docker image build
-2. Push to gcr.io/wtp-apps/buildmybot
-3. Deploy to Cloud Run
+2. Push to gcr.io/$PROJECT_ID/buildmybot
+3. Deploy to Cloud Run (manual step required)
 
 ### Vercel/Netlify
 Standard Vite SPA deployment:
 - Build command: `npm run build`
 - Output directory: `dist`
-- Environment variables required (see .env.example)
+- Environment variables required (see .env section)
 
 ## Known Limitations
 
-- No automated test suite yet
-- Supabase schema migration incomplete (schema.sql is empty)
-- Edge Functions not yet deployed
-- Firebase dependencies still present (cleanup pending)
+- No automated test suite yet (Vitest/Playwright configured but no tests written)
 - Some mock data used for analytics (MOCK_ANALYTICS_DATA in constants.ts)
+- Stripe billing integration not yet implemented
+- pgvector for RAG knowledge base search not fully configured
 
 ## Next Development Priorities
 
 See PLAN.md sections 7-13 for full roadmap. Key items:
-1. Complete Supabase schema migration (apply SQL from PLAN.md)
-2. Deploy Edge Functions for secure backend operations
-3. Implement RLS policies for multi-tenant isolation
-4. Remove Firebase dependencies entirely
+1. ✅ Supabase schema migration (complete)
+2. ✅ Edge Functions deployed
+3. ✅ RLS policies implemented
+4. ✅ Firebase dependencies removed
 5. Add comprehensive test coverage
 6. Implement Stripe billing integration
-7. Deploy pgvector for RAG knowledge base search
+7. Configure pgvector for enhanced RAG knowledge base search
+8. Create data migration scripts for existing Firebase users (if needed)
