@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, AlertCircle, Loader } from 'lucide-react';
+import { Send, Bot, User, AlertCircle, Loader, ShieldCheck } from 'lucide-react';
 import { generateBotResponse } from '../../services/openaiService';
 import { dbService } from '../../services/dbService';
-import { Bot as BotType } from '../../types';
+import { Bot as BotType, Conversation } from '../../types';
+import { calculateLeadScore, extractLeadDetection, getScoreBand } from '../../services/leadCapture';
 
 // Generate a unique session ID for this chat session
 const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -12,12 +13,14 @@ interface FullPageChatProps {
 }
 
 export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
-  const [messages, setMessages] = useState<{role: 'user'|'assistant', text: string}[]>([]);
+  const [messages, setMessages] = useState<{role: 'user'|'assistant', text: string, timestamp: number}[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [bot, setBot] = useState<BotType | null>(null);
   const [sessionId] = useState(generateSessionId());
   const [error, setError] = useState<string | null>(null);
+  const [leadCapture, setLeadCapture] = useState<{ email: string; id?: string; score?: number } | null>(null);
+  const [leadError, setLeadError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Check for embed mode in URL params
@@ -31,7 +34,13 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
         if (foundBot) {
           setBot(foundBot);
           setTimeout(() => {
-             setMessages([{ role: 'assistant', text: "Hello! How can I help you today?" }]);
+             const welcomeMessage = { role: 'assistant' as const, text: "Hello! How can I help you today?", timestamp: Date.now() };
+             setMessages([welcomeMessage]);
+             dbService.appendConversationMessage({
+               sessionId,
+               botId: foundBot.id,
+               message: { ...welcomeMessage },
+             });
           }, 500);
         } else {
           setError("Bot not found");
@@ -42,7 +51,23 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
       }
     };
     fetchBot();
-  }, [botId]);
+  }, [botId, sessionId]);
+
+  useEffect(() => {
+    if (!bot) return;
+    const unsubscribe = dbService.subscribeToConversationSession(sessionId, bot.id, (conversation) => {
+      if (conversation?.messages) {
+        const syncedMessages = conversation.messages.map((msg) => ({
+          role: msg.role === 'user' ? 'user' as const : 'assistant' as const,
+          text: msg.text,
+          timestamp: msg.timestamp,
+        }));
+        setMessages(syncedMessages);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [bot, sessionId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -53,15 +78,59 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
   const handleSend = async () => {
     if (!input.trim() || !bot) return;
 
-    const userMsg = { role: 'user' as const, text: input };
+    const userMsg = { role: 'user' as const, text: input, timestamp: Date.now() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
     setError(null);
+    setLeadError(null);
+
+    try {
+      await dbService.appendConversationMessage({
+        sessionId,
+        botId: bot.id,
+        message: userMsg,
+        leadId: leadCapture?.id,
+      });
+    } catch (logError) {
+      console.error('Unable to store conversation message', logError);
+    }
+
+    const detection = extractLeadDetection(userMsg.text);
+    if (detection?.email && !leadCapture) {
+      const score = calculateLeadScore(detection);
+      try {
+        const createdLead = await dbService.createLead({
+          botId: bot.id,
+          name: detection.name || 'Website Visitor',
+          email: detection.email,
+          phone: detection.phone,
+          score,
+          sourceUrl: window.location.href,
+        });
+
+        if (createdLead) {
+          setLeadCapture({ email: createdLead.email, id: createdLead.id, score: createdLead.score });
+          try {
+            await dbService.appendConversationMessage({
+              sessionId,
+              botId: bot.id,
+              message: { role: 'assistant', text: 'Lead captured automatically from this chat session.', timestamp: Date.now() },
+              leadId: createdLead.id,
+            });
+          } catch (logError) {
+            console.error('Unable to store lead capture message', logError);
+          }
+        }
+      } catch (captureError) {
+        console.error('Lead capture failed', captureError);
+        setLeadError('Unable to save lead right now.');
+      }
+    }
 
     try {
       // Convert messages to OpenAI service format
-      const history = messages.map(m => ({
+      const history = [...messages, userMsg].map(m => ({
         role: m.role === 'assistant' ? 'model' as const : 'user' as const,
         text: m.text
       }));
@@ -79,8 +148,22 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
       const delay = bot.responseDelay || 0;
 
       setTimeout(() => {
-        setMessages(prev => [...prev, { role: 'assistant', text: response }]);
-        setIsTyping(false);
+        (async () => {
+          const assistantMessage = { role: 'assistant' as const, text: response, timestamp: Date.now() };
+          setMessages(prev => [...prev, assistantMessage]);
+          try {
+            await dbService.appendConversationMessage({
+              sessionId,
+              botId: bot.id,
+              message: assistantMessage,
+              sentiment: 'Positive',
+              leadId: leadCapture?.id,
+            });
+          } catch (logError) {
+            console.error('Unable to store assistant message', logError);
+          }
+          setIsTyping(false);
+        })();
       }, delay);
     } catch (e) {
       console.error("Chat error:", e);
@@ -110,6 +193,9 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
                     <div className="flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
                         <span className="text-[10px] text-slate-500">Online</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5">
+                      <ShieldCheck size={10} /> Session {sessionId.slice(-6)}
                     </div>
                 </div>
             </div>
@@ -158,6 +244,16 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
                 <div className="text-center mt-1">
                     <span className="text-[9px] text-slate-300 font-medium">Powered by BuildMyBot</span>
                 </div>
+                {leadCapture && (
+                  <div className="mt-2 text-center text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-100 rounded p-1">
+                    Lead captured: {leadCapture.email} • Score {leadCapture.score ?? calculateLeadScore({ email: leadCapture.email })} ({getScoreBand(leadCapture.score ?? calculateLeadScore({ email: leadCapture.email }))})
+                  </div>
+                )}
+                {leadError && (
+                  <div className="mt-2 text-center text-[10px] text-red-600 bg-red-50 border border-red-100 rounded p-1 flex items-center justify-center gap-1">
+                    <AlertCircle size={12} /> {leadError}
+                  </div>
+                )}
             </div>
         </div>
       );
@@ -177,8 +273,16 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
                <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                   <span className="text-xs text-slate-500">Online Now</span>
-               </div>
-             </div>
+                </div>
+                <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-1 flex-wrap">
+                  <ShieldCheck size={12} /> Session {sessionId.slice(-6)}
+                  {leadCapture && (
+                    <span className="ml-2 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[10px] border border-emerald-100">
+                      Lead saved ({leadCapture.email})
+                    </span>
+                  )}
+                </div>
+              </div>
           </div>
 
           {/* Messages */}
@@ -227,6 +331,11 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
              <div className="text-center mt-2">
                <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Powered by BuildMyBot</span>
              </div>
+             {leadError && (
+               <div className="mt-2 text-center text-[11px] text-red-600 bg-red-50 border border-red-100 rounded p-2 flex items-center gap-1 justify-center">
+                 <AlertCircle size={14} /> {leadError}
+               </div>
+             )}
           </div>
        </div>
     </div>
