@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwnerField(target) {
+      return target.userId is string && target.userId == request.auth.uid;
+    }
+
+    function resourceOwnerMatches() {
+      return isSignedIn() && resource != null && isOwnerField(resource.data);
+    }
+
+    function requestOwnerMatches() {
+      return isSignedIn() && request.resource != null && isOwnerField(request.resource.data);
+    }
+
+    function ownerCanWrite() {
+      return resourceOwnerMatches() && requestOwnerMatches();
+    }
+
+    match /profiles/{userId} {
+      allow create: if isSignedIn() && userId == request.auth.uid && requestOwnerMatches();
+      allow read: if isSignedIn() && userId == request.auth.uid;
+      allow update, delete: if ownerCanWrite() && userId == request.auth.uid;
+    }
+
+    match /bots/{botId} {
+      allow create: if requestOwnerMatches();
+      allow read: if resourceOwnerMatches();
+      allow update, delete: if ownerCanWrite();
+    }
+
+    match /leads/{leadId} {
+      allow create: if requestOwnerMatches();
+      allow read: if resourceOwnerMatches();
+      allow update, delete: if ownerCanWrite();
+    }
+
+    match /conversations/{conversationId} {
+      allow create: if requestOwnerMatches();
+      allow read: if resourceOwnerMatches();
+      allow update, delete: if ownerCanWrite();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
