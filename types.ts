@@ -58,6 +58,20 @@ export interface Bot {
   userId?: string; // Optional during creation, required in DB
 }
 
+export interface MarketplaceTemplate {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+  installCount: number;
+  rating: number | null;
+  featured: boolean;
+  botConfig: Record<string, unknown>;
+  tags?: string[];
+  previewUrl?: string;
+}
+
 export interface Lead {
   id: string;
   name: string;
@@ -92,6 +106,28 @@ export interface ResellerStats {
   pendingPayout: number;
   addOnCommission: number; // 50% of add-on sales
   arrears: number; // Deducted from next payment
+}
+
+export interface ReferralRecord {
+  id: string;
+  resellerId: string;
+  referredUserId: string;
+  code: string;
+  status: string;
+  createdAt: string;
+  clientProfile?: Pick<User, 'id' | 'name' | 'email' | 'companyName' | 'plan'>;
+}
+
+export interface ResellerEarning {
+  id: string;
+  resellerId: string;
+  customerId: string;
+  amount: number;
+  commissionRate: number;
+  status: 'pending' | 'paid' | 'failed';
+  periodStart?: string;
+  periodEnd?: string;
+  paidAt?: string;
 }
 
 // Add-on features that can be sold to clients
