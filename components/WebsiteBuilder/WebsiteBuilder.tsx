@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Layout, Rocket, Monitor, Smartphone, CheckCircle, RefreshCcw, Save, CloudUpload, Download, Globe } from 'lucide-react';
 import { generateWebsiteStructure } from '../../services/openaiService';
 import { dbService } from '../../services/dbService';
-import { buildStaticHtml, createFirebaseStaticExport, slugifyPageSlug, uploadPageToStorage } from '../../services/websiteService';
+import { buildStaticHtml, createStaticExport, slugifyPageSlug, uploadPageToStorage } from '../../services/websiteService';
 import { PageContent, WebsitePage } from '../../types';
 
 const defaultPage: WebsitePage = {
@@ -190,7 +190,7 @@ export const WebsiteBuilder: React.FC = () => {
     if (!saved) return;
 
     const html = buildStaticHtml(saved);
-    const exportFile = createFirebaseStaticExport(saved, html);
+    const exportFile = createStaticExport(saved, html);
     const anchor = document.createElement('a');
     anchor.href = exportFile.url;
     anchor.download = exportFile.fileName;
