@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Layout, Rocket, Monitor, Smartphone, CheckCircle, RefreshCcw, Save, CloudUpload, Download, Globe } from 'lucide-react';
+import { Layout, Rocket, Monitor, Smartphone, CheckCircle, RefreshCcw, Save, Upload, Download, Globe } from 'lucide-react';
 import { generateWebsiteStructure } from '../../services/openaiService';
 import { dbService } from '../../services/dbService';
 import { buildStaticHtml, createStaticExport, slugifyPageSlug, uploadPageToStorage } from '../../services/websiteService';
@@ -311,7 +311,7 @@ export const WebsiteBuilder: React.FC = () => {
                  disabled={isPublishing}
                  className="flex-1 bg-slate-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-slate-800 flex items-center justify-center gap-2"
                >
-                 <CloudUpload size={16} /> {isPublishing ? 'Publishing...' : 'Publish'}
+                 <Upload size={16} /> {isPublishing ? 'Publishing...' : 'Publish'}
                </button>
              </div>
              <button
