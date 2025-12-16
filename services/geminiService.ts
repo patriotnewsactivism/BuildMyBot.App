@@ -1,124 +1,128 @@
-// NOTE: Filename retained as geminiService.ts to prevent breaking imports in other files,
-// but the implementation has been switched to OpenAI GPT-4o Mini as requested.
+import { GoogleGenAI, Type } from "@google/genai";
 
-const API_KEY = process.env.OPENAI_API_KEY || process.env.REACT_APP_OPENAI_API_KEY || ''; 
+// Initialize Gemini Client
+// The API Key is injected automatically by the environment.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generateBotResponse = async (
   systemPrompt: string,
   history: { role: 'user' | 'model'; text: string }[],
   lastMessage: string,
-  modelName: string = 'gpt-4o-mini',
-  context?: string // New: Knowledge Base context
+  modelName: string = 'gemini-2.5-flash',
+  context?: string
 ): Promise<string> => {
-  if (!API_KEY) return "Configuration Error: OPENAI_API_KEY is missing. Please check your cloud deployment settings.";
-
   try {
-    // Inject Context into System Prompt if available
-    let finalSystemPrompt = systemPrompt;
-    if (context && context.trim().length > 0) {
-      finalSystemPrompt += `\n\n[CONTEXT / KNOWLEDGE BASE]\nUse the following information to answer user questions. If the answer is not in this context, say you don't know, but offer to take their contact info.\n\n${context}`;
-    }
+    const fullSystemInstruction = context 
+      ? `${systemPrompt}\n\n### KNOWLEDGE BASE:\n${context}\n\n### INSTRUCTIONS:\nAnswer strictly based on the provided Knowledge Base. If the answer is not in the text, state that you do not have that information.`
+      : systemPrompt;
 
-    // Map internal roles to OpenAI roles
-    const messages = [
-      { role: "system", content: finalSystemPrompt },
-      ...history.map(h => ({
-        role: h.role === 'model' ? 'assistant' : 'user',
-        content: h.text
-      })),
-      { role: "user", content: lastMessage }
-    ];
+    // We use generateContent for single-turn or stateless multi-turn if we manage history manually.
+    // However, keeping history management simple here by concatenating for context or using chats.
+    // For specific control, we will map the history to the Gemini format manually in the prompt or use chat.
+    
+    // Constructing a chat-like history for the model
+    let prompt = "";
+    history.forEach(msg => {
+       prompt += `${msg.role === 'model' ? 'Assistant' : 'User'}: ${msg.text}\n`;
+    });
+    prompt += `User: ${lastMessage}\nAssistant:`;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({
-        model: modelName,
-        messages: messages,
+    const response = await ai.models.generateContent({
+      model: modelName.includes('gemini') ? modelName : 'gemini-2.5-flash', // Fallback if legacy ID passed
+      contents: prompt,
+      config: {
+        systemInstruction: fullSystemInstruction,
         temperature: 0.7,
-        max_tokens: 500
-      })
+      },
     });
 
-    const data = await response.json();
-
-    if (data.error) {
-        console.error("OpenAI API Error:", data.error);
-        return "I'm having trouble connecting to the AI service right now.";
-    }
-
-    return data.choices[0]?.message?.content || "No response generated.";
-
-  } catch (error) {
-    console.error("OpenAI Network Error:", error);
-    return "Network error. Please check your connection.";
+    return response.text || "I apologize, but I couldn't generate a response.";
+  } catch (error: any) {
+    console.error("Gemini Error:", error);
+    return "I'm having trouble connecting to the AI service right now. Please check your internet connection.";
   }
 };
 
-export const generateMarketingContent = async (
-  type: 'email' | 'social' | 'ad' | 'website' | 'viral-thread' | 'story',
-  topic: string,
-  tone: string
-): Promise<string> => {
-  if (!API_KEY) return "Simulated Content: Please add OPENAI_API_KEY to your environment variables.";
+export const scrapeWebsiteContent = async (url: string): Promise<string> => {
+  if (!url) return "";
 
   try {
-    let prompt = `Act as a world-class marketing copywriter. Write a ${tone} ${type} about ${topic}. Keep it engaging and conversion-focused.`;
-    
-    if (type === 'viral-thread') {
-        prompt = `Write a viral Twitter/X thread about ${topic}. Use a hook in the first tweet, short punchy sentences, and a call to action at the end. Tone: ${tone}.`;
-    } else if (type === 'story') {
-        prompt = `Write a script for a 15-second Instagram/TikTok Story about ${topic}. Include visual cues in brackets [like this]. Tone: ${tone}.`;
+    let targetUrl = url;
+    if (!targetUrl.startsWith('http')) {
+      targetUrl = 'https://' + targetUrl;
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.8
-      })
+    // 1. Scrape using Jina via CORS Proxy to avoid browser blocking
+    const proxyUrl = 'https://corsproxy.io/?';
+    const jinaUrl = `https://r.jina.ai/${targetUrl}`;
+    
+    const scrapeResponse = await fetch(proxyUrl + encodeURIComponent(jinaUrl));
+    
+    if (!scrapeResponse.ok) throw new Error("Failed to scrape website.");
+    
+    const rawText = await scrapeResponse.text();
+    const truncatedText = rawText.substring(0, 30000); // Gemini has a huge context window
+
+    // 2. Summarize using Gemini 2.5 Flash
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Analyze this website content and extract structured data:\n1. Business Name & Description\n2. Key Services\n3. Contact Info\n4. Pricing/Hours\n\nCONTENT:\n${truncatedText}`,
+        config: {
+            systemInstruction: 'You are a precise Data Extractor. Extract business facts from raw HTML/Text.',
+        }
     });
 
-    const data = await response.json();
-    return data.choices[0]?.message?.content || "Failed to generate content.";
-  } catch (error) {
-    console.error("Marketing Gen Error:", error);
-    return "Error generating marketing content.";
+    return response.text || rawText.substring(0, 1000);
+
+  } catch (error: any) {
+    console.error("Scrape Error:", error);
+    throw new Error("Failed to scrape website. " + (error.message || ""));
   }
+};
+
+export const generateMarketingContent = async (type: string, topic: string, tone: string): Promise<string> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Write a ${type} about ${topic}. Return ONLY the content, no filler.`,
+            config: {
+                systemInstruction: `You are an expert Copywriter. Tone: ${tone}.`,
+                temperature: 0.8
+            }
+        });
+        return response.text || "";
+    } catch (e) {
+        console.error(e);
+        return "Failed to generate content.";
+    }
 };
 
 export const generateWebsiteStructure = async (businessName: string, description: string): Promise<string> => {
-   if (!API_KEY) return "{}";
-
-   try {
-    const prompt = `Create a single-page landing page structure for a business named "${businessName}". 
-    Description: ${description}. 
-    Return ONLY a JSON object (no markdown formatting) with keys: "headline", "subheadline", "features" (array of strings), "ctaText".`;
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${API_KEY}`
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: prompt }],
-          response_format: { type: "json_object" }
-        })
-      });
-  
-      const data = await response.json();
-      return data.choices[0]?.message?.content || "{}";
-   } catch (e) {
-     return "{}";
-   }
-}
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Generate landing page structure for "${businessName}". Description: ${description}`,
+            config: {
+                systemInstruction: 'You are a Website Builder AI. Output JSON only.',
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        headline: { type: Type.STRING },
+                        subheadline: { type: Type.STRING },
+                        features: { 
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING }
+                        },
+                        ctaText: { type: Type.STRING }
+                    },
+                    required: ['headline', 'subheadline', 'features', 'ctaText']
+                }
+            }
+        });
+        return response.text || "{}";
+    } catch (e) {
+        console.error(e);
+        throw e;
+    }
+};

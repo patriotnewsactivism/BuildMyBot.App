@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap } from 'lucide-react';
+import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Shield } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
-import { generateBotResponse } from '../../services/geminiService';
+import { generateBotResponse } from '../../services/openaiService';
 
 interface LandingProps {
   onLogin: () => void;
@@ -215,6 +216,12 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       icon: Gavel,
       color: 'amber',
       desc: 'Instant case intake. Capture high-value clients when they need you most. Automate the initial screening process securely.'
+    },
+    {
+      title: 'Bail Bonds',
+      icon: Shield,
+      color: 'red',
+      desc: '24/7 response for families who need someone out now. Collect arrest details, explain fees, and dispatch an agent instantly.'
     },
     {
       title: 'Politicians',
@@ -554,7 +561,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                    <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 font-bold text-xl">2</div>
                    <div>
                      <h4 className="font-bold text-lg">Triggers "Hot Lead" Status</h4>
-                     <p className="text-slate-400 text-sm">When score > 80, the bot asks for name & phone number.</p>
+                     <p className="text-slate-400 text-sm">When score &gt; 80, the bot asks for name & phone number.</p>
                    </div>
                  </div>
                  <div className="flex gap-4">

@@ -1,6 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { initSentry } from './services/sentryInit';
+import { initPostHog } from './services/posthogInit';
+
+// Initialize observability tools
+initSentry(); // Error tracking and performance monitoring
+initPostHog(); // Product analytics and user behavior tracking
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

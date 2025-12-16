@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Search, MessageSquare, Clock, User, Smile, Frown, Meh, Filter, Download } from 'lucide-react';
 import { Conversation } from '../../types';
@@ -12,6 +13,14 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
 
   const activeConversation = conversations.find(c => c.id === selectedConversationId) || conversations[0];
 
+  React.useEffect(() => {
+    if (conversations.length === 0) return;
+    const found = conversations.find((c) => c.id === selectedConversationId);
+    if (!found) {
+      setSelectedConversationId(conversations[0].id);
+    }
+  }, [conversations, selectedConversationId]);
+
   const getSentimentIcon = (sentiment: string) => {
     switch (sentiment) {
       case 'Positive': return <Smile className="text-emerald-500" size={16} />;
@@ -20,8 +29,17 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
     }
   };
 
+  const getTimestamp = (conversation: Conversation) => {
+    if (conversation.createdAt) return new Date(conversation.createdAt).getTime();
+    return conversation.timestamp;
+  };
+
+  const getSessionSuffix = (conversation: Conversation) =>
+    conversation.sessionId ? conversation.sessionId.slice(-6) : 'unknown';
+
   const filteredConversations = conversations.filter(c => 
-    c.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.sessionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.messages.some(m => m.text.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -53,10 +71,13 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
                }`}
              >
                <div className="flex justify-between items-start mb-1">
-                 <span className="font-medium text-slate-700 text-sm">Visitor #{conv.id.substring(0,4)}</span>
-                 <span className="text-[10px] text-slate-400">{new Date(conv.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-               </div>
-               <p className="text-xs text-slate-500 truncate mb-2">{conv.messages[conv.messages.length - 1].text}</p>
+                 <div className="flex flex-col">
+                  <span className="font-medium text-slate-700 text-sm">Visitor #{conv.id.substring(0,4)}</span>
+                  <span className="text-[10px] text-slate-400">Session {getSessionSuffix(conv)}</span>
+                 </div>
+                 <span className="text-[10px] text-slate-400">{new Date(getTimestamp(conv)).toLocaleTimeString(undefined, {hour: '2-digit', minute:'2-digit'})}</span>
+                </div>
+               <p className="text-xs text-slate-500 truncate mb-2">{conv.messages[conv.messages.length - 1]?.text || 'No messages yet'}</p>
                <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-200 text-[10px] font-medium text-slate-600">
                     {getSentimentIcon(conv.sentiment)} {conv.sentiment}
@@ -64,6 +85,11 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
                   <div className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
                     {conv.messages.length} msgs
                   </div>
+                  {conv.leadId && (
+                    <div className="text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded text-emerald-600 border border-emerald-100">
+                      Lead #{conv.leadId.substring(0, 6)}
+                    </div>
+                  )}
                </div>
              </div>
            ))}
@@ -87,17 +113,37 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
                 <div>
                   <h3 className="font-bold text-slate-800">Visitor #{activeConversation.id.substring(0,4)}</h3>
                   <div className="flex items-center gap-2 text-xs text-slate-500">
-                     <Clock size={12} /> {new Date(activeConversation.timestamp).toLocaleString()}
+                     <Clock size={12} /> {new Date(getTimestamp(activeConversation)).toLocaleString()}
                      <span className="mx-1">•</span>
                      <span className="flex items-center gap-1">{getSentimentIcon(activeConversation.sentiment)} {activeConversation.sentiment} Sentiment</span>
+                     <span className="mx-1">•</span>
+                     <span className="text-slate-500">Session {getSessionSuffix(activeConversation)}</span>
                   </div>
+                  {activeConversation.leadId && (
+                    <div className="flex items-center gap-1 text-[11px] text-emerald-700 mt-1">
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100">Lead #{activeConversation.leadId.substring(0,6)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">
                  <button className="p-2 text-slate-400 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition">
                    <Filter size={18} />
                  </button>
-                 <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition">
+                 <button 
+                   onClick={() => {
+                     if (!activeConversation) return;
+                     const dataStr = JSON.stringify(activeConversation, null, 2);
+                     const blob = new Blob([dataStr], { type: 'application/json' });
+                     const url = URL.createObjectURL(blob);
+                     const link = document.createElement('a');
+                     link.href = url;
+                     link.download = `conversation-${activeConversation.sessionId || activeConversation.id}.json`;
+                     link.click();
+                     URL.revokeObjectURL(url);
+                   }}
+                   className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition"
+                 >
                    <Download size={16} /> Export JSON
                  </button>
               </div>
@@ -116,7 +162,7 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
                        {msg.text}
                      </div>
                      <p className={`text-[10px] text-slate-400 mt-1 ${msg.role === 'user' ? 'text-left' : 'text-right'}`}>
-                       {new Date(msg.timestamp).toLocaleTimeString()}
+                       {new Date(msg.timestamp || getTimestamp(activeConversation)).toLocaleTimeString()}
                      </p>
                   </div>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
