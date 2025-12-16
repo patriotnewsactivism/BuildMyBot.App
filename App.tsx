@@ -280,6 +280,18 @@ function App() {
     setTimeout(() => setNotification(null), 4000);
   };
 
+  const handleConversationLogged = (conversation: Conversation) => {
+    setChatLogs((prev) => {
+      const existingIndex = prev.findIndex((c) => c.id === conversation.id);
+      if (existingIndex !== -1) {
+        const updated = [...prev];
+        updated[existingIndex] = conversation;
+        return updated;
+      }
+      return [conversation, ...prev];
+    });
+  };
+
   const handleSaveBot = (bot: BotType) => {
      dbService.saveBot(bot);
      setNotification("Bot saved successfully!");
@@ -469,6 +481,7 @@ function App() {
               onSave={handleSaveBot} 
               customDomain={user.customDomain} 
               onLeadDetected={handleLeadDetected} 
+              onConversationLogged={handleConversationLogged}
           />}
           
           {currentView === 'reseller' && <ResellerDashboard user={user} stats={INITIAL_RESELLER_STATS} />}
