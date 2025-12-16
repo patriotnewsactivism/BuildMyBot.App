@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Mail, Instagram, Megaphone, Loader, Copy, Check, FileText, Undo2, AlertCircle } from 'lucide-react';
+import { Mail, Instagram, Megaphone, Loader, Copy, Check, FileText, Undo2, AlertCircle, LucideIcon } from 'lucide-react';
 import { marketingService } from '../../services/marketingService';
 import { MarketingContent, MarketingContentType } from '../../types';
 
 type ToolConfig = {
   id: MarketingContentType;
   label: string;
-  icon: React.ComponentType<{ size?: number }>;
+  icon: LucideIcon;
   desc: string;
 };
 
