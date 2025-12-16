@@ -22,6 +22,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, A
 import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame, Loader } from 'lucide-react';
 import { supabase } from './services/supabaseClient';
 import { dbService } from './services/dbService';
+import { calculateLeadScore } from './services/leadCapture';
 
 const INITIAL_CHAT_LOGS: Conversation[] = []; 
 const INITIAL_RESELLER_STATS: ResellerStats = {
@@ -172,9 +173,15 @@ function App() {
        setLeads(updatedLeads);
     });
 
+    // Subscribe to Conversations
+    const unsubscribeConversations = dbService.subscribeToConversations((updatedConversations) => {
+      setChatLogs(updatedConversations);
+    });
+
     return () => {
       unsubscribeBots();
       unsubscribeLeads();
+      unsubscribeConversations();
     };
   }, []); // Empty dependency - subscriptions only need to be set up once
 
@@ -264,20 +271,22 @@ function App() {
     dbService.saveLead(updatedLead);
   };
 
-  const handleLeadDetected = (email: string) => {
+  const handleLeadDetected = async (email: string) => {
     // This is called by BotBuilder test chat
-    const newLead: Lead = {
-      id: Date.now().toString(),
-      name: 'Website Visitor',
-      email: email,
-      score: 85,
-      status: 'New',
-      botId: 'test-bot',
-      createdAt: new Date().toISOString()
-    };
-    dbService.saveLead(newLead);
-    setNotification("New Hot Lead Detected from Chat! 🔥");
-    setTimeout(() => setNotification(null), 4000);
+    const score = calculateLeadScore({ email, transcript: 'Detected via test chat' });
+    try {
+      await dbService.createLead({
+        botId: 'test-bot',
+        name: 'Website Visitor',
+        email,
+        score,
+        sourceUrl: window.location.href
+      });
+      setNotification("New Hot Lead Detected from Chat! 🔥");
+      setTimeout(() => setNotification(null), 4000);
+    } catch (error) {
+      console.error('Failed to record lead', error);
+    }
   };
 
   const handleSaveBot = (bot: BotType) => {

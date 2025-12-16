@@ -74,9 +74,13 @@ export interface Lead {
 export interface Conversation {
   id: string;
   botId: string;
-  messages: { role: 'user' | 'model'; text: string; timestamp: number }[];
+  sessionId: string;
+  messages: { role: 'user' | 'model' | 'assistant'; text: string; timestamp: number }[];
   sentiment: 'Positive' | 'Neutral' | 'Negative';
   timestamp: number;
+  leadId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AnalyticsData {
