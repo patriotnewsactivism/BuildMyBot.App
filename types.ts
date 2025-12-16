@@ -209,3 +209,15 @@ export interface ResellerPayment {
   status: 'pending' | 'processed' | 'failed';
   processedAt?: string;
 }
+
+export type MarketingContentType = 'email' | 'ad' | 'blog' | 'social';
+
+export interface MarketingContent {
+  id: string;
+  userId: string;
+  contentType: MarketingContentType;
+  title?: string;
+  content: string;
+  metadata?: Record<string, unknown>;
+  createdAt?: string;
+}
