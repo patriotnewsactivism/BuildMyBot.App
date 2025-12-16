@@ -16,13 +16,13 @@ import { PartnerProgramPage } from './components/Landing/PartnerProgramPage';
 import { PartnerSignup } from './components/Auth/PartnerSignup';
 import { FullPageChat } from './components/Chat/FullPageChat';
 import { AuthModal } from './components/Auth/AuthModal';
-import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation } from './types';
+import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation, MarketplaceTemplate } from './types';
 import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame } from 'lucide-react';
-import { auth } from './services/firebaseConfig';
+import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame, Loader } from 'lucide-react';
+import { supabase } from './services/supabaseClient';
 import { dbService } from './services/dbService';
-import { onAuthStateChanged } from 'firebase/auth';
+import { calculateLeadScore } from './services/leadCapture';
 
 const INITIAL_CHAT_LOGS: Conversation[] = []; 
 const INITIAL_RESELLER_STATS: ResellerStats = {
@@ -30,10 +30,17 @@ const INITIAL_RESELLER_STATS: ResellerStats = {
   totalRevenue: 0,
   commissionRate: 0.20,
   pendingPayout: 0,
+  addOnCommission: 0,
+  arrears: 0,
 };
+
+// Define privileged admins here
+const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org'];
+const LIMITED_ADMIN_EMAILS = ['ben@texasplanninglaw.com'];
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isBooting, setIsBooting] = useState(true); // Premium loading state
   const [currentView, setCurrentView] = useState('dashboard');
   const [showPartnerPage, setShowPartnerPage] = useState(false);
   const [showPartnerSignup, setShowPartnerSignup] = useState(false);
@@ -50,13 +57,6 @@ function App() {
   const [notification, setNotification] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Manual Routing Check for Full Page Chat
-  const currentPath = window.location.pathname;
-  if (currentPath.startsWith('/chat/')) {
-     const botId = currentPath.split('/')[2];
-     return <FullPageChat botId={botId} />;
-  }
-
   // --- Capture Referral Code ---
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -65,34 +65,103 @@ function App() {
       localStorage.setItem('bmb_ref_code', refCode);
       console.log('Referral captured:', refCode);
     }
+
+    // Fake boot sequence for premium feel
+    const timer = window.setTimeout(() => setIsBooting(false), 1200);
+
+    // Safety net: if something blocks the initial timer (e.g. throttled timers/background tabs),
+    // ensure we still render the landing page instead of getting stuck on the preloader.
+    const safetyTimer = window.setTimeout(() => setIsBooting(false), 4000);
+
+    const handleLoad = () => setIsBooting(false);
+    window.addEventListener('load', handleLoad);
+
+    return () => {
+      window.removeEventListener('load', handleLoad);
+      window.clearTimeout(timer);
+      window.clearTimeout(safetyTimer);
+    };
   }, []);
 
-  // --- Real-time Data Subscriptions ---
+  // Manual Routing Check for Full Page Chat (must be after all hooks)
+  const currentPath = window.location.pathname;
+  const isChatRoute = currentPath.startsWith('/chat/');
+  const isPublicLandingRoute = currentPath === '/landing' || currentPath === '/public';
+
+  // --- Supabase Auth Listener (runs once on mount) ---
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
+    if (!supabase) return;
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
         setIsLoggedIn(true);
-        // Fetch full user profile from Firestore
-        // Use onSnapshot for user profile to get real-time plan updates
-        const profile = await dbService.getUserProfile(firebaseUser.uid);
+        const email = session.user.email?.toLowerCase();
+
+        const buildPrivilegedProfile = (role: UserRole): User => ({
+          id: session.user.id,
+          name: session.user.user_metadata?.full_name || (role === UserRole.LIMITED_ADMIN ? 'Admin Viewer' : 'Master Admin'),
+          email: session.user.email || '',
+          role,
+          plan: PlanType.ENTERPRISE,
+          companyName: 'BuildMyBot HQ',
+          avatarUrl: session.user.user_metadata?.avatar_url,
+        });
+
+        // CHECK FOR PRIVILEGED ADMINS
+        if (email) {
+          if (MASTER_EMAILS.includes(email)) {
+            const adminProfile = buildPrivilegedProfile(UserRole.MASTER_ADMIN);
+            setUser(adminProfile);
+            setCurrentView('admin');
+            await dbService.saveUserProfile(adminProfile);
+            return;
+          }
+
+          if (LIMITED_ADMIN_EMAILS.includes(email)) {
+            const adminProfile = buildPrivilegedProfile(UserRole.LIMITED_ADMIN);
+            setUser(adminProfile);
+            setCurrentView('admin');
+            await dbService.saveUserProfile(adminProfile);
+            return;
+          }
+        }
+
+        // Standard User Flow
+        const profile = await dbService.getUserProfile(session.user.id);
         if (profile) {
           setUser(profile);
         } else {
-          // Fallback if profile creation is lagging
+          // Fallback if profile creation is lagging (create a basic free user in state)
           setUser({
-            id: firebaseUser.uid,
-            name: firebaseUser.email?.split('@')[0] || 'User',
-            email: firebaseUser.email || '',
+            id: session.user.id,
+            name: email?.split('@')[0] || 'User',
+            email: email || '',
             role: UserRole.OWNER,
             plan: PlanType.FREE,
             companyName: 'My Company'
           });
         }
-      } else {
-        setIsLoggedIn(false);
-        setUser(null);
+      } else if (event === 'SIGNED_OUT') {
+        // Use functional update to check current user state without adding dependency
+        setUser((currentUser) => {
+          if (currentUser && currentUser.id.startsWith('demo-user')) {
+            // Don't reset demo users
+            return currentUser;
+          }
+          setIsLoggedIn(false);
+          return null;
+        });
       }
     });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []); // Empty dependency - auth listener only needs to be set up once
+
+  // --- Real-time Data Subscriptions (separate from auth to avoid loop) ---
+  useEffect(() => {
+    if (!supabase) return;
 
     // Subscribe to Bots
     const unsubscribeBots = dbService.subscribeToBots((updatedBots) => {
@@ -104,12 +173,44 @@ function App() {
        setLeads(updatedLeads);
     });
 
+    // Subscribe to Conversations
+    const unsubscribeConversations = dbService.subscribeToConversations((updatedConversations) => {
+      setChatLogs(updatedConversations);
+    });
+
     return () => {
-      unsubscribeAuth();
       unsubscribeBots();
       unsubscribeLeads();
+      unsubscribeConversations();
     };
-  }, []);
+  }, []); // Empty dependency - subscriptions only need to be set up once
+
+  // Track referrals with backend function once user is authenticated
+  useEffect(() => {
+    const referralCode = typeof window !== 'undefined' ? localStorage.getItem('bmb_ref_code') : null;
+    const alreadyTracked = typeof window !== 'undefined' ? localStorage.getItem('bmb_ref_tracked') : null;
+
+    if (!referralCode || alreadyTracked === referralCode || !user || !supabase) return;
+
+    const trackReferral = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const authedUserId = data.session?.user?.id;
+
+        if (!authedUserId || authedUserId.startsWith('demo-user')) {
+          return;
+        }
+
+        await edgeFunctions.trackReferral(referralCode, authedUserId);
+        setUser((prev) => (prev ? { ...prev, referredBy: referralCode } : prev));
+        localStorage.setItem('bmb_ref_tracked', referralCode);
+      } catch (err) {
+        console.error('Failed to track referral:', err);
+      }
+    };
+
+    trackReferral();
+  }, [user?.id]);
 
   // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
@@ -118,21 +219,42 @@ function App() {
   const avgResponseTime = "0.8s";
 
   const handleAdminLogin = () => {
-      // For demo purposes, we still allow a mock admin override
-      setUser({ 
-        id: 'admin', 
-        name: 'Master Admin', 
-        email: 'admin@buildmybot.app', 
-        role: UserRole.ADMIN, 
-        plan: PlanType.ENTERPRISE, 
-        companyName: 'BuildMyBot HQ' 
-      });
+      // Manual trigger for demo purposes if needed (from footer)
+      handleManualAuth('admin@buildmybot.app', 'Master Admin', 'BuildMyBot HQ');
+  };
+
+  // Fallback authentication for when Supabase Config is invalid or blocked
+  const handleManualAuth = (email: string, name?: string, companyName?: string) => {
+      const normalizedEmail = email.toLowerCase();
+      const isMaster = MASTER_EMAILS.includes(normalizedEmail);
+      const isLimitedAdmin = LIMITED_ADMIN_EMAILS.includes(normalizedEmail);
+      const role = isMaster ? UserRole.MASTER_ADMIN : isLimitedAdmin ? UserRole.LIMITED_ADMIN : UserRole.OWNER;
+      const plan = role === UserRole.MASTER_ADMIN || role === UserRole.LIMITED_ADMIN ? PlanType.ENTERPRISE : PlanType.FREE;
+
+      const newUser: User = {
+          id: role === UserRole.MASTER_ADMIN ? 'master-admin' : role === UserRole.LIMITED_ADMIN ? 'limited-admin' : 'demo-user-' + Date.now(),
+          name: name || email.split('@')[0],
+          email: email,
+          role,
+          plan,
+          companyName: companyName || (role === UserRole.MASTER_ADMIN || role === UserRole.LIMITED_ADMIN ? 'BuildMyBot HQ' : 'Demo Company'),
+          createdAt: new Date().toISOString()
+      };
+
+      setUser(newUser);
       setIsLoggedIn(true);
-      setCurrentView('admin');
+      setAuthModalOpen(false);
+      
+      if (role === UserRole.MASTER_ADMIN || role === UserRole.LIMITED_ADMIN) {
+          setCurrentView('admin');
+      }
+      
+      setNotification("Logged in (Demo Mode)");
+      setTimeout(() => setNotification(null), 3000);
   };
 
   const handlePartnerSignup = (data: any) => {
-    // In a real flow, this would create the user in Firebase with RESELLER role
+    // In a real flow, this would create the user in DB with RESELLER role
     setUser({ 
       id: 'reseller-' + Date.now(),
       email: data.email,
@@ -148,24 +270,24 @@ function App() {
     setShowPartnerPage(false);
   };
 
-  const handleInstallTemplate = (template: any) => {
-    const newBot: BotType = {
-      id: `b${Date.now()}`,
-      name: template.name,
-      type: template.category === 'All' ? 'Custom' : template.category,
-      systemPrompt: `You are a helpful assistant specialized in ${template.category}. ${template.description}. Act professionally and help the user achieve their goals.`,
-      model: 'gpt-4o-mini',
-      temperature: 0.7,
-      knowledgeBase: [],
-      active: true,
-      conversationsCount: 0,
-      themeColor: ['#1e3a8a', '#be123c', '#047857', '#d97706'][Math.floor(Math.random() * 4)],
-      maxMessages: 20,
-      randomizeIdentity: true
-    };
-    
-    // Save to Firestore
-    dbService.saveBot(newBot);
+  const handleInstallTemplate = (template: MarketplaceTemplate) => {
+    if (!supabase) {
+      const newBot: BotType = {
+        id: `b${Date.now()}`,
+        name: template.name,
+        type: template.category === 'All' ? 'Custom' : template.category,
+        systemPrompt: `You are a helpful assistant specialized in ${template.category}. ${template.description}. Act professionally and help the user achieve their goals.`,
+        model: 'gpt-4o-mini',
+        temperature: 0.7,
+        knowledgeBase: [],
+        active: true,
+        conversationsCount: 0,
+        themeColor: ['#1e3a8a', '#be123c', '#047857', '#d97706'][Math.floor(Math.random() * 4)],
+        maxMessages: 20,
+        randomizeIdentity: true
+      };
+      dbService.saveBot(newBot);
+    }
     
     setNotification(`Installed "${template.name}" successfully!`);
     setTimeout(() => setNotification(null), 3000);
@@ -176,20 +298,34 @@ function App() {
     dbService.saveLead(updatedLead);
   };
 
-  const handleLeadDetected = (email: string) => {
+  const handleLeadDetected = async (email: string) => {
     // This is called by BotBuilder test chat
-    const newLead: Lead = {
-      id: Date.now().toString(),
-      name: 'Website Visitor',
-      email: email,
-      score: 85,
-      status: 'New',
-      sourceBotId: 'test-bot',
-      createdAt: new Date().toISOString()
-    };
-    dbService.saveLead(newLead);
-    setNotification("New Hot Lead Detected from Chat! 🔥");
-    setTimeout(() => setNotification(null), 4000);
+    const score = calculateLeadScore({ email, transcript: 'Detected via test chat' });
+    try {
+      await dbService.createLead({
+        botId: 'test-bot',
+        name: 'Website Visitor',
+        email,
+        score,
+        sourceUrl: window.location.href
+      });
+      setNotification("New Hot Lead Detected from Chat! 🔥");
+      setTimeout(() => setNotification(null), 4000);
+    } catch (error) {
+      console.error('Failed to record lead', error);
+    }
+  };
+
+  const handleConversationLogged = (conversation: Conversation) => {
+    setChatLogs((prev) => {
+      const existingIndex = prev.findIndex((c) => c.id === conversation.id);
+      if (existingIndex !== -1) {
+        const updated = [...prev];
+        updated[existingIndex] = conversation;
+        return updated;
+      }
+      return [conversation, ...prev];
+    });
   };
 
   const handleSaveBot = (bot: BotType) => {
@@ -203,8 +339,7 @@ function App() {
     setAuthModalOpen(true);
   };
 
-  // If not logged in, show Public Landing Page or Partner Page
-  if (!isLoggedIn || !user) {
+  const renderPublicExperience = () => {
     if (showPartnerSignup) {
         return <PartnerSignup onBack={() => setShowPartnerSignup(false)} onComplete={handlePartnerSignup} />;
     }
@@ -213,18 +348,54 @@ function App() {
     }
     return (
       <>
-        <LandingPage 
-          onLogin={() => openAuth('login')} 
-          onNavigateToPartner={() => setShowPartnerPage(true)} 
-          onAdminLogin={handleAdminLogin} 
+        <LandingPage
+          onLogin={() => openAuth('login')}
+          onNavigateToPartner={() => setShowPartnerPage(true)}
+          onAdminLogin={handleAdminLogin}
         />
-        <AuthModal 
-          isOpen={authModalOpen} 
-          onClose={() => setAuthModalOpen(false)} 
-          defaultMode={authMode} 
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          defaultMode={authMode}
+          onLoginSuccess={handleManualAuth}
         />
       </>
     );
+  };
+
+  // Handle full page chat route (must be after all hooks, before other renders)
+  if (isChatRoute) {
+    const botId = currentPath.split('/')[2];
+    return <FullPageChat botId={botId} />;
+  }
+
+  if (isPublicLandingRoute) {
+    return renderPublicExperience();
+  }
+
+  if (isBooting) {
+      return (
+        <div className="h-screen w-full bg-slate-900 flex items-center justify-center">
+            <div className="flex flex-col items-center animate-fade-in">
+                <div className="w-20 h-20 bg-blue-900 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-900/50 mb-6 animate-bounce-slow">
+                    <BotIcon size={48} className="text-white" />
+                </div>
+                <h1 className="text-white font-bold text-2xl tracking-widest uppercase mb-2">BuildMyBot</h1>
+                <p className="text-blue-400 text-xs font-mono tracking-wide mb-6">INITIALIZING SYSTEM...</p>
+                <div className="flex gap-1.5">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                </div>
+            </div>
+        </div>
+      );
+  }
+
+  // If not logged in, show Public Landing Page or Partner Page
+  // This logic guarantees the landing page is the default view
+  if (!isLoggedIn || !user) {
+    return renderPublicExperience();
   }
 
   return (
@@ -346,6 +517,7 @@ function App() {
               onSave={handleSaveBot} 
               customDomain={user.customDomain} 
               onLeadDetected={handleLeadDetected} 
+              onConversationLogged={handleConversationLogged}
           />}
           
           {currentView === 'reseller' && <ResellerDashboard user={user} stats={INITIAL_RESELLER_STATS} />}
@@ -364,7 +536,7 @@ function App() {
           
           {currentView === 'billing' && <Billing user={user} />}
           
-          {currentView === 'admin' && <AdminDashboard />}
+          {currentView === 'admin' && <AdminDashboard readOnly={user.role === UserRole.LIMITED_ADMIN} />}
           
           {currentView === 'settings' && <Settings user={user} onUpdateUser={(u) => { setUser(u); dbService.saveUserProfile(u); }} />}
           

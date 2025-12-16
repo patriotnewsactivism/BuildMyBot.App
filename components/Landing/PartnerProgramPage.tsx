@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CheckCircle, DollarSign, TrendingUp, Users, ArrowRight, Calculator, Shield, Zap, Globe, ArrowLeft, LayoutDashboard } from 'lucide-react';
 import { RESELLER_TIERS } from '../../constants';
@@ -234,6 +235,9 @@ export const PartnerProgramPage: React.FC<PartnerProps> = ({ onBack, onLogin, on
          <button onClick={onSignup} className="px-8 py-3 bg-blue-900 text-white rounded-lg font-bold hover:bg-blue-950 shadow-lg">
             Create Partner Account
          </button>
+         <div className="mt-8 pt-8 border-t border-slate-200 text-xs text-slate-400">
+             © 2025 BuildMyBot.app. All rights reserved. • Houston, TX
+         </div>
       </footer>
     </div>
   );

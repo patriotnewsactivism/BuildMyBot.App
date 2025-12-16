@@ -1,6 +1,9 @@
+
 export enum UserRole {
   OWNER = 'OWNER',
   ADMIN = 'ADMIN',
+  MASTER_ADMIN = 'MASTER_ADMIN',
+  LIMITED_ADMIN = 'LIMITED_ADMIN',
   RESELLER = 'RESELLER',
 }
 
@@ -19,6 +22,25 @@ export interface PhoneAgentConfig {
   introMessage: string;
 }
 
+export type CallStatus = 'initiated' | 'in-progress' | 'completed' | 'failed';
+
+export interface PhoneCall {
+  id: string;
+  userId: string;
+  botId?: string | null;
+  twilioCallSid?: string | null;
+  fromNumber?: string | null;
+  toNumber?: string | null;
+  status: CallStatus;
+  durationSeconds?: number | null;
+  recordingUrl?: string | null;
+  transcript?: string | null;
+  metadata?: Record<string, unknown>;
+  leadId?: string | null;
+  createdAt?: string;
+  endedAt?: string | null;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -32,14 +54,14 @@ export interface User {
   customDomain?: string; // White-label domain (e.g., app.myagency.com)
   referredBy?: string; // Code of the reseller who referred this user
   phoneConfig?: PhoneAgentConfig;
-  status?: 'Active' | 'Suspended'; // For admin management
+  status?: 'Active' | 'Suspended' | 'Pending'; // For admin management
   createdAt?: string; // ISO date string
 }
 
 export interface Bot {
   id: string;
   name: string;
-  type: 'Customer Support' | 'Sales' | 'Booking' | 'Custom';
+  type: string;
   systemPrompt: string;
   model: string;
   temperature: number;
@@ -52,6 +74,38 @@ export interface Bot {
   randomizeIdentity?: boolean; // Human-like behavior
   avatar?: string; // Custom avatar URL/Base64
   responseDelay?: number; // Simulated typing delay in ms
+  userId?: string; // Optional during creation, required in DB
+}
+
+export interface PageContent {
+  headline: string;
+  subheadline?: string;
+  features?: string[];
+  ctaText?: string;
+  heroImage?: string;
+  sections?: { title: string; body: string }[];
+  brandColor?: string;
+}
+
+export interface SeoMetadata {
+  title: string;
+  description?: string;
+  keywords?: string[];
+  canonicalUrl?: string;
+  ogImage?: string;
+}
+
+export interface WebsitePage {
+  id?: string;
+  userId?: string;
+  botId?: string;
+  title: string;
+  slug: string;
+  content: PageContent;
+  seoMetadata?: SeoMetadata;
+  published?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Lead {
@@ -61,16 +115,22 @@ export interface Lead {
   phone?: string;
   score: number;
   status: 'New' | 'Contacted' | 'Qualified' | 'Closed';
-  sourceBotId: string;
+  botId: string; // References bots(id) - renamed from sourceBotId to match database
+  sourceUrl?: string; // Source URL where lead was captured
   createdAt: string;
+  userId?: string; // Optional during capture, required in DB
 }
 
 export interface Conversation {
   id: string;
   botId: string;
-  messages: { role: 'user' | 'model'; text: string; timestamp: number }[];
+  sessionId: string;
+  messages: { role: 'user' | 'model' | 'assistant'; text: string; timestamp: number }[];
   sentiment: 'Positive' | 'Neutral' | 'Negative';
   timestamp: number;
+  leadId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AnalyticsData {
@@ -84,4 +144,80 @@ export interface ResellerStats {
   totalRevenue: number;
   commissionRate: number;
   pendingPayout: number;
+  addOnCommission: number; // 50% of add-on sales
+  arrears: number; // Deducted from next payment
+}
+
+export interface ReferralRecord {
+  id: string;
+  resellerId: string;
+  referredUserId: string;
+  code: string;
+  status: string;
+  createdAt: string;
+  clientProfile?: Pick<User, 'id' | 'name' | 'email' | 'companyName' | 'plan'>;
+}
+
+export interface ResellerEarning {
+  id: string;
+  resellerId: string;
+  customerId: string;
+  amount: number;
+  commissionRate: number;
+  status: 'pending' | 'paid' | 'failed';
+  periodStart?: string;
+  periodEnd?: string;
+  paidAt?: string;
+}
+
+// Add-on features that can be sold to clients
+export interface AddOn {
+  id: string;
+  name: string;
+  description: string;
+  price: number; // Monthly price
+  oneTimePrice?: number; // One-time setup fee (optional)
+  category: 'ai' | 'integration' | 'support' | 'feature' | 'storage';
+  resellerCommission: number; // Always 0.50 (50%)
+  isActive: boolean;
+}
+
+// Add-on purchase record
+export interface AddOnPurchase {
+  id: string;
+  userId: string;
+  addOnId: string;
+  resellerId?: string; // Reseller who sold it
+  purchaseDate: string;
+  price: number;
+  resellerEarnings: number; // 50% of price
+  companyEarnings: number; // 50% of price
+  status: 'active' | 'cancelled' | 'pending';
+  waivedBy?: string; // Reseller ID if waived
+  discountPercent?: number; // If reseller reduced price
+}
+
+// Reseller payment record with arrears tracking
+export interface ResellerPayment {
+  id: string;
+  resellerId: string;
+  amount: number;
+  arrears: number; // Deducted from this payment
+  netAmount: number; // amount - arrears
+  periodStart: string;
+  periodEnd: string;
+  status: 'pending' | 'processed' | 'failed';
+  processedAt?: string;
+}
+
+export type MarketingContentType = 'email' | 'ad' | 'blog' | 'social';
+
+export interface MarketingContent {
+  id: string;
+  userId: string;
+  contentType: MarketingContentType;
+  title?: string;
+  content: string;
+  metadata?: Record<string, unknown>;
+  createdAt?: string;
 }
