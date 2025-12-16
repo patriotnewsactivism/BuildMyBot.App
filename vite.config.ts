@@ -21,6 +21,11 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 8080
+    },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: './vitest.setup.ts'
     }
   };
 });
