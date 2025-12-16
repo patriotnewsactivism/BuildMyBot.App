@@ -9,18 +9,17 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      // Upload source maps to Sentry for better error tracking
       sentryVitePlugin({
         org: env.VITE_SENTRY_ORG,
         project: env.VITE_SENTRY_PROJECT,
         authToken: env.VITE_SENTRY_AUTH_TOKEN,
-        disable: mode === 'development', // Don't upload source maps in dev
+        disable: mode === 'development',
         silent: true,
       }),
     ],
     resolve: {
       alias: {
-        '@': path.resolve('./'),
+        '@': path.resolve(__dirname, './src'),
       },
     },
     define: {
@@ -29,19 +28,20 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       setupFiles: './vitest.setup.ts',
-      globals: true
+      globals: true,
+      exclude: ['**/node_modules/**', 'e2e/**'],
+      server: {
+        deps: {
+          inline: ['@supabase/supabase-js']
+        }
+      }
     },
     build: {
       outDir: 'dist',
-      sourcemap: true // Enable source maps for Sentry error tracking
+      sourcemap: true
     },
     server: {
       port: 8080
     },
-    test: {
-      globals: true,
-      environment: 'jsdom',
-      setupFiles: './vitest.setup.ts'
-    }
   };
 });

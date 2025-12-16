@@ -170,7 +170,6 @@ export interface ResellerEarning {
   paidAt?: string;
 }
 
-// Add-on features that can be sold to clients
 export interface AddOn {
   id: string;
   name: string;
@@ -182,7 +181,6 @@ export interface AddOn {
   isActive: boolean;
 }
 
-// Add-on purchase record
 export interface AddOnPurchase {
   id: string;
   userId: string;
@@ -197,7 +195,6 @@ export interface AddOnPurchase {
   discountPercent?: number; // If reseller reduced price
 }
 
-// Reseller payment record with arrears tracking
 export interface ResellerPayment {
   id: string;
   resellerId: string;
@@ -223,12 +220,17 @@ export interface MarketingContent {
 }
 
 export interface MarketplaceTemplate {
-    id: string;
-    name: string;
-    description: string;
-    category: string;
-    tags: string[];
-    author: string;
-    image: string;
-    installs: number;
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+  installCount: number;
+  rating: number;
+  featured: boolean;
+  botConfig: Record<string, any>;
+  tags: string[];
+  previewUrl?: string;
+  image?: string;
+  author?: string;
 }

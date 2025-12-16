@@ -3,16 +3,13 @@ import { Search, ShoppingBag, Star, Download, Eye, Tag, Zap, Loader, CheckCircle
 import { supabase } from '../../services/supabaseClient';
 import { edgeFunctions } from '../../services/edgeFunctions';
 import { MarketplaceTemplate } from '../../types';
-import { collectTemplateTags, filterTemplates } from '../../utils/templates';
 
 interface MarketplaceProps {
   onInstall?: (template: MarketplaceTemplate, newBotId?: string) => void;
 }
 
 // Fallback templates for when database is unavailable
-// Comprehensive list covering all major industries
 const FALLBACK_TEMPLATES: MarketplaceTemplate[] = [
-  // Real Estate
   {
     id: 't1',
     name: 'Real Estate Scheduler',
@@ -25,771 +22,67 @@ const FALLBACK_TEMPLATES: MarketplaceTemplate[] = [
     botConfig: {},
     tags: ['Scheduling', 'Lead Gen']
   },
-  {
-    id: 't2',
-    name: 'Property Management Assistant',
-    category: 'Real Estate',
-    description: 'Handles tenant inquiries, maintenance requests, and rent payment questions 24/7.',
-    price: 29,
-    installCount: 890,
-    rating: 4.7,
-    featured: false,
-    botConfig: {},
-    tags: ['Support', 'Tenants']
-  },
-
-  // Healthcare
-  {
-    id: 't3',
-    name: 'Dental Clinic Front Desk',
-    category: 'Healthcare',
-    description: 'Compassionate receptionist that handles emergencies, bookings, and insurance FAQs.',
-    price: 29,
-    installCount: 2100,
-    rating: 4.7,
-    featured: false,
-    botConfig: {},
-    tags: ['Healthcare', 'Booking']
-  },
-  {
-    id: 't4',
-    name: 'Medical Practice Intake',
-    category: 'Healthcare',
-    description: 'Collects patient information, symptoms, and schedules appointments with appropriate providers.',
-    price: 49,
-    installCount: 1560,
-    rating: 4.9,
-    featured: true,
-    botConfig: {},
-    tags: ['Healthcare', 'Intake']
-  },
-  {
-    id: 't5',
-    name: 'Mental Health Support',
-    category: 'Healthcare',
-    description: 'Empathetic first-contact for therapy practices. Screens clients and books consultations.',
-    price: 39,
-    installCount: 720,
-    rating: 4.8,
-    featured: false,
-    botConfig: {},
-    tags: ['Mental Health', 'Booking']
-  },
-
-  // Technology
-  {
-    id: 't6',
-    name: 'SaaS Support Pro',
-    category: 'Technology',
-    description: 'Trained on technical documentation structure. Handles L1 support tickets and API queries.',
-    price: 49,
-    installCount: 856,
-    rating: 4.9,
-    featured: false,
-    botConfig: {},
-    tags: ['Support', 'Technical']
-  },
-  {
-    id: 't7',
-    name: 'IT Helpdesk Agent',
-    category: 'Technology',
-    description: 'Resolves common IT issues, password resets, and escalates complex tickets intelligently.',
-    price: 39,
-    installCount: 1120,
-    rating: 4.6,
-    featured: false,
-    botConfig: {},
-    tags: ['IT Support', 'Helpdesk']
-  },
-
-  // Retail & E-commerce
-  {
-    id: 't8',
-    name: 'E-commerce Sales Rep',
-    category: 'Retail',
-    description: 'Product recommender that upsells items based on user preferences and cart contents.',
-    price: 0,
-    installCount: 3400,
-    rating: 4.6,
-    featured: true,
-    botConfig: {},
-    tags: ['Sales', 'Retail']
-  },
-  {
-    id: 't9',
-    name: 'Order Tracking Assistant',
-    category: 'Retail',
-    description: 'Answers shipping questions, tracks orders, and handles return/exchange requests.',
-    price: 19,
-    installCount: 2890,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['Support', 'Logistics']
-  },
-
-  // Fitness & Wellness
-  {
-    id: 't10',
-    name: 'Gym Membership Closer',
-    category: 'Fitness',
-    description: 'High-energy sales agent designed to book trial sessions and overcome pricing objections.',
-    price: 19,
-    installCount: 520,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['Sales', 'Fitness']
-  },
-  {
-    id: 't11',
-    name: 'Personal Training Scheduler',
-    category: 'Fitness',
-    description: 'Books training sessions, handles class registrations, and answers program questions.',
-    price: 0,
-    installCount: 680,
-    rating: 4.4,
-    featured: false,
-    botConfig: {},
-    tags: ['Scheduling', 'Fitness']
-  },
-
-  // Legal
-  {
-    id: 't12',
-    name: 'Law Firm Intake Specialist',
-    category: 'Legal',
-    description: 'Screens potential clients, collects case details, and schedules consultations with attorneys.',
-    price: 59,
-    installCount: 430,
-    rating: 4.8,
-    featured: false,
-    botConfig: {},
-    tags: ['Legal', 'Intake']
-  },
-  {
-    id: 't13',
-    name: 'Immigration Consultant',
-    category: 'Legal',
-    description: 'Answers visa questions, explains processes, and qualifies leads for immigration services.',
-    price: 49,
-    installCount: 320,
-    rating: 4.7,
-    featured: false,
-    botConfig: {},
-    tags: ['Legal', 'Immigration']
-  },
-
-  // Government & Public Sector
-  {
-    id: 't14',
-    name: 'City Services Guide',
-    category: 'Government',
-    description: 'Helps citizens navigate city services, permits, and public information requests.',
-    price: 0,
-    installCount: 890,
-    rating: 4.6,
-    featured: true,
-    botConfig: {},
-    tags: ['Government', 'Services']
-  },
-  {
-    id: 't15',
-    name: 'County Information Bot',
-    category: 'Government',
-    description: 'Answers questions about county departments, tax info, and public records.',
-    price: 0,
-    installCount: 560,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['Government', 'Information']
-  },
-
-  // Education
-  {
-    id: 't16',
-    name: 'University Admissions Guide',
-    category: 'Education',
-    description: 'Answers prospective student questions about programs, deadlines, and application requirements.',
-    price: 29,
-    installCount: 1230,
-    rating: 4.7,
-    featured: false,
-    botConfig: {},
-    tags: ['Education', 'Admissions']
-  },
-  {
-    id: 't17',
-    name: 'Online Course Assistant',
-    category: 'Education',
-    description: 'Supports e-learning students with course navigation, deadlines, and content questions.',
-    price: 19,
-    installCount: 980,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['Education', 'Support']
-  },
-
-  // Hospitality & Travel
-  {
-    id: 't18',
-    name: 'Hotel Concierge Bot',
-    category: 'Hospitality',
-    description: 'Handles reservations, room service orders, and local recommendations for guests.',
-    price: 39,
-    installCount: 760,
-    rating: 4.8,
-    featured: false,
-    botConfig: {},
-    tags: ['Hospitality', 'Concierge']
-  },
-  {
-    id: 't19',
-    name: 'Travel Agency Specialist',
-    category: 'Hospitality',
-    description: 'Assists with trip planning, package inquiries, and booking assistance.',
-    price: 29,
-    installCount: 540,
-    rating: 4.6,
-    featured: false,
-    botConfig: {},
-    tags: ['Travel', 'Booking']
-  },
-  {
-    id: 't20',
-    name: 'Restaurant Reservations',
-    category: 'Hospitality',
-    description: 'Takes reservations, answers menu questions, and handles special dietary requests.',
-    price: 0,
-    installCount: 1890,
-    rating: 4.7,
-    featured: true,
-    botConfig: {},
-    tags: ['Restaurant', 'Booking']
-  },
-
-  // Financial Services
-  {
-    id: 't21',
-    name: 'Insurance Quote Assistant',
-    category: 'Financial',
-    description: 'Collects information for insurance quotes and schedules agent consultations.',
-    price: 49,
-    installCount: 670,
-    rating: 4.6,
-    featured: false,
-    botConfig: {},
-    tags: ['Insurance', 'Lead Gen']
-  },
-  {
-    id: 't22',
-    name: 'Mortgage Pre-Qualifier',
-    category: 'Financial',
-    description: 'Pre-screens mortgage applicants and schedules consultations with loan officers.',
-    price: 59,
-    installCount: 420,
-    rating: 4.8,
-    featured: false,
-    botConfig: {},
-    tags: ['Mortgage', 'Qualification']
-  },
-  {
-    id: 't23',
-    name: 'Tax Preparation Intake',
-    category: 'Financial',
-    description: 'Collects client info, explains services, and books tax preparation appointments.',
-    price: 29,
-    installCount: 890,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['Tax', 'Intake']
-  },
-
-  // Automotive
-  {
-    id: 't24',
-    name: 'Car Dealership Sales',
-    category: 'Automotive',
-    description: 'Qualifies buyers, schedules test drives, and answers vehicle specification questions.',
-    price: 39,
-    installCount: 780,
-    rating: 4.7,
-    featured: false,
-    botConfig: {},
-    tags: ['Automotive', 'Sales']
-  },
-  {
-    id: 't25',
-    name: 'Auto Service Scheduler',
-    category: 'Automotive',
-    description: 'Books service appointments, provides estimates, and answers maintenance questions.',
-    price: 19,
-    installCount: 1120,
-    rating: 4.6,
-    featured: false,
-    botConfig: {},
-    tags: ['Automotive', 'Service']
-  },
-
-  // Home Services
-  {
-    id: 't26',
-    name: 'HVAC Service Bot',
-    category: 'Home Services',
-    description: 'Schedules HVAC repairs, provides quotes, and handles emergency service requests.',
-    price: 29,
-    installCount: 560,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['HVAC', 'Service']
-  },
-  {
-    id: 't27',
-    name: 'Plumbing Emergency Line',
-    category: 'Home Services',
-    description: '24/7 plumbing support. Triages emergencies and schedules service calls.',
-    price: 29,
-    installCount: 480,
-    rating: 4.6,
-    featured: false,
-    botConfig: {},
-    tags: ['Plumbing', 'Emergency']
-  },
-  {
-    id: 't28',
-    name: 'Cleaning Service Booker',
-    category: 'Home Services',
-    description: 'Provides instant quotes and schedules residential or commercial cleaning services.',
-    price: 0,
-    installCount: 1340,
-    rating: 4.4,
-    featured: false,
-    botConfig: {},
-    tags: ['Cleaning', 'Booking']
-  },
-
-  // Recruitment & HR
-  {
-    id: 't29',
-    name: 'Recruitment Screener',
-    category: 'Recruitment',
-    description: 'Pre-screens job applicants, collects resumes, and schedules interviews.',
-    price: 49,
-    installCount: 670,
-    rating: 4.8,
-    featured: false,
-    botConfig: {},
-    tags: ['HR', 'Screening']
-  },
-  {
-    id: 't30',
-    name: 'Employee FAQ Bot',
-    category: 'Recruitment',
-    description: 'Answers HR policy questions, PTO balances, and benefits information for employees.',
-    price: 39,
-    installCount: 520,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['HR', 'Internal']
-  },
-
-  // Non-Profit
-  {
-    id: 't31',
-    name: 'Donation Assistant',
-    category: 'Non-Profit',
-    description: 'Guides donors through giving options and answers questions about the organization\'s mission.',
-    price: 0,
-    installCount: 340,
-    rating: 4.7,
-    featured: false,
-    botConfig: {},
-    tags: ['Non-Profit', 'Donations']
-  },
-  {
-    id: 't32',
-    name: 'Volunteer Coordinator',
-    category: 'Non-Profit',
-    description: 'Registers volunteers, explains opportunities, and schedules orientation sessions.',
-    price: 0,
-    installCount: 280,
-    rating: 4.6,
-    featured: false,
-    botConfig: {},
-    tags: ['Non-Profit', 'Volunteers']
-  },
-
-  // Events & Entertainment
-  {
-    id: 't33',
-    name: 'Event Ticketing Bot',
-    category: 'Entertainment',
-    description: 'Answers event questions, guides ticket purchases, and handles seating inquiries.',
-    price: 29,
-    installCount: 890,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['Events', 'Tickets']
-  },
-  {
-    id: 't34',
-    name: 'Venue Booking Assistant',
-    category: 'Entertainment',
-    description: 'Handles venue inquiries, provides quotes, and schedules site visits.',
-    price: 39,
-    installCount: 430,
-    rating: 4.6,
-    featured: false,
-    botConfig: {},
-    tags: ['Venues', 'Booking']
-  },
-
-  // Beauty & Personal Care
-  {
-    id: 't35',
-    name: 'Salon Appointment Bot',
-    category: 'Beauty',
-    description: 'Books hair, nail, and spa appointments. Recommends services based on preferences.',
-    price: 0,
-    installCount: 2340,
-    rating: 4.7,
-    featured: true,
-    botConfig: {},
-    tags: ['Salon', 'Booking']
-  },
-  {
-    id: 't36',
-    name: 'Med Spa Consultant',
-    category: 'Beauty',
-    description: 'Explains treatments, provides pricing, and schedules consultations for aesthetic services.',
-    price: 39,
-    installCount: 560,
-    rating: 4.8,
-    featured: false,
-    botConfig: {},
-    tags: ['Med Spa', 'Consultation']
-  },
-
-  // Pet Services
-  {
-    id: 't37',
-    name: 'Veterinary Clinic Bot',
-    category: 'Pet Services',
-    description: 'Schedules vet appointments, answers pet health FAQs, and handles prescription refills.',
-    price: 29,
-    installCount: 780,
-    rating: 4.6,
-    featured: false,
-    botConfig: {},
-    tags: ['Veterinary', 'Booking']
-  },
-  {
-    id: 't38',
-    name: 'Pet Grooming Scheduler',
-    category: 'Pet Services',
-    description: 'Books grooming appointments and answers questions about services and pricing.',
-    price: 0,
-    installCount: 1120,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['Grooming', 'Pets']
-  },
-
-  // Professional Services
-  {
-    id: 't39',
-    name: 'Accounting Firm Intake',
-    category: 'Professional',
-    description: 'Qualifies business clients, explains services, and schedules consultations.',
-    price: 39,
-    installCount: 340,
-    rating: 4.7,
-    featured: false,
-    botConfig: {},
-    tags: ['Accounting', 'B2B']
-  },
-  {
-    id: 't40',
-    name: 'Consulting Discovery Bot',
-    category: 'Professional',
-    description: 'Conducts initial discovery calls, qualifies prospects, and books strategy sessions.',
-    price: 49,
-    installCount: 290,
-    rating: 4.8,
-    featured: false,
-    botConfig: {},
-    tags: ['Consulting', 'Sales']
-  },
-
-  // Church & Religious Organizations
-  {
-    id: 't41',
-    name: 'Church Welcome Bot',
-    category: 'Religious',
-    description: 'Welcomes visitors, answers questions about services, and helps newcomers get connected.',
-    price: 0,
-    installCount: 670,
-    rating: 4.8,
-    featured: false,
-    botConfig: {},
-    tags: ['Church', 'Welcome']
-  },
-  {
-    id: 't42',
-    name: 'Ministry Event Coordinator',
-    category: 'Religious',
-    description: 'Manages event registrations, volunteer sign-ups, and ministry program inquiries.',
-    price: 19,
-    installCount: 340,
-    rating: 4.6,
-    featured: false,
-    botConfig: {},
-    tags: ['Church', 'Events']
-  },
-
-  // Construction & Trades
-  {
-    id: 't43',
-    name: 'General Contractor Lead Gen',
-    category: 'Construction',
-    description: 'Qualifies construction leads, collects project details, and schedules estimates.',
-    price: 39,
-    installCount: 560,
-    rating: 4.7,
-    featured: false,
-    botConfig: {},
-    tags: ['Construction', 'Lead Gen']
-  },
-  {
-    id: 't44',
-    name: 'Roofing Estimate Bot',
-    category: 'Construction',
-    description: 'Collects roof damage reports, schedules inspections, and provides initial estimates.',
-    price: 29,
-    installCount: 480,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['Roofing', 'Estimates']
-  },
-  {
-    id: 't45',
-    name: 'Electrician Service Scheduler',
-    category: 'Construction',
-    description: 'Books electrical service calls, handles emergency requests, and provides basic troubleshooting.',
-    price: 0,
-    installCount: 720,
-    rating: 4.6,
-    featured: false,
-    botConfig: {},
-    tags: ['Electrical', 'Service']
-  },
-
-  // Agriculture & Farming
-  {
-    id: 't46',
-    name: 'Farm Supply Assistant',
-    category: 'Agriculture',
-    description: 'Answers product questions, checks inventory, and processes orders for farm supplies.',
-    price: 29,
-    installCount: 230,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['Agriculture', 'Sales']
-  },
-  {
-    id: 't47',
-    name: 'Veterinary Farm Services',
-    category: 'Agriculture',
-    description: 'Schedules large animal vet visits, answers livestock health questions, and manages emergencies.',
-    price: 39,
-    installCount: 180,
-    rating: 4.7,
-    featured: false,
-    botConfig: {},
-    tags: ['Veterinary', 'Farm']
-  },
-
-  // Childcare & Daycare
-  {
-    id: 't48',
-    name: 'Daycare Enrollment Bot',
-    category: 'Childcare',
-    description: 'Answers parent questions, explains programs, and schedules tours for childcare centers.',
-    price: 0,
-    installCount: 890,
-    rating: 4.8,
-    featured: true,
-    botConfig: {},
-    tags: ['Childcare', 'Enrollment']
-  },
-  {
-    id: 't49',
-    name: 'After School Program Info',
-    category: 'Childcare',
-    description: 'Provides program details, pricing, and registration for after-school activities.',
-    price: 19,
-    installCount: 450,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['Education', 'Programs']
-  },
-
-  // Photography & Creative Services
-  {
-    id: 't50',
-    name: 'Photography Booking Bot',
-    category: 'Creative',
-    description: 'Books photo sessions, explains packages, and answers questions about services.',
-    price: 0,
-    installCount: 1120,
-    rating: 4.7,
-    featured: false,
-    botConfig: {},
-    tags: ['Photography', 'Booking']
-  },
-  {
-    id: 't51',
-    name: 'Wedding Vendor Assistant',
-    category: 'Creative',
-    description: 'Handles inquiries for wedding photographers, videographers, and florists.',
-    price: 29,
-    installCount: 560,
-    rating: 4.8,
-    featured: false,
-    botConfig: {},
-    tags: ['Wedding', 'Vendors']
-  },
-
-  // Moving & Storage
-  {
-    id: 't52',
-    name: 'Moving Company Quote Bot',
-    category: 'Moving',
-    description: 'Collects move details, provides instant estimates, and schedules in-home surveys.',
-    price: 29,
-    installCount: 680,
-    rating: 4.6,
-    featured: false,
-    botConfig: {},
-    tags: ['Moving', 'Quotes']
-  },
-  {
-    id: 't53',
-    name: 'Storage Facility Assistant',
-    category: 'Moving',
-    description: 'Answers unit availability questions, explains pricing, and reserves storage units.',
-    price: 0,
-    installCount: 890,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['Storage', 'Booking']
-  },
-
-  // Security Services
-  {
-    id: 't54',
-    name: 'Home Security Consultant',
-    category: 'Security',
-    description: 'Explains security packages, schedules consultations, and answers monitoring questions.',
-    price: 39,
-    installCount: 430,
-    rating: 4.7,
-    featured: false,
-    botConfig: {},
-    tags: ['Security', 'Sales']
-  },
-
-  // Funeral & Memorial Services
-  {
-    id: 't55',
-    name: 'Funeral Home Assistant',
-    category: 'Memorial',
-    description: 'Compassionate support for families. Explains services, pricing, and schedules arrangements.',
-    price: 49,
-    installCount: 210,
-    rating: 4.9,
-    featured: false,
-    botConfig: {},
-    tags: ['Funeral', 'Support']
-  },
-
-  // Staffing & Temp Agencies
-  {
-    id: 't56',
-    name: 'Staffing Agency Intake',
-    category: 'Staffing',
-    description: 'Collects candidate information, matches skills to jobs, and schedules interviews.',
-    price: 39,
-    installCount: 520,
-    rating: 4.6,
-    featured: false,
-    botConfig: {},
-    tags: ['Staffing', 'Recruitment']
-  },
-  {
-    id: 't57',
-    name: 'Temp Worker Dispatcher',
-    category: 'Staffing',
-    description: 'Manages shift assignments, handles availability updates, and communicates job details.',
-    price: 49,
-    installCount: 340,
-    rating: 4.5,
-    featured: false,
-    botConfig: {},
-    tags: ['Staffing', 'Dispatch']
-  },
-
-  // Printing & Signage
-  {
-    id: 't58',
-    name: 'Print Shop Quote Bot',
-    category: 'Printing',
-    description: 'Provides instant quotes for business cards, banners, and promotional materials.',
-    price: 0,
-    installCount: 780,
-    rating: 4.4,
-    featured: false,
-    botConfig: {},
-    tags: ['Printing', 'Quotes']
-  },
-
-  // Tutoring & Test Prep
-  {
-    id: 't59',
-    name: 'Tutoring Service Matcher',
-    category: 'Education',
-    description: 'Matches students with tutors, explains programs, and schedules trial sessions.',
-    price: 29,
-    installCount: 670,
-    rating: 4.7,
-    featured: false,
-    botConfig: {},
-    tags: ['Tutoring', 'Education']
-  },
-  {
-    id: 't60',
-    name: 'SAT/ACT Prep Advisor',
-    category: 'Education',
-    description: 'Explains test prep programs, answers questions, and enrolls students in courses.',
-    price: 39,
-    installCount: 420,
-    rating: 4.8,
-    featured: false,
-    botConfig: {},
-    tags: ['Test Prep', 'Education']
-  }
 ];
+
+const collectTemplateTags = (templates: MarketplaceTemplate[]): string[] => {
+  const allTags = templates.flatMap(t => t.tags || []);
+  return Array.from(new Set(allTags));
+};
+
+const filterTemplates = (templates: MarketplaceTemplate[], filters: {
+  category: string;
+  searchTerm: string;
+  priceFilter: 'all' | 'free' | 'paid';
+  selectedTags: string[];
+  sortBy: 'popular' | 'rating' | 'newest';
+}) => {
+  let filtered = templates;
+
+  if (filters.category !== 'All') {
+    if (filters.category === 'Featured') {
+      filtered = filtered.filter(t => t.featured);
+    } else {
+      filtered = filtered.filter(t => t.category === filters.category);
+    }
+  }
+
+  if (filters.searchTerm) {
+    const lowercasedTerm = filters.searchTerm.toLowerCase();
+    filtered = filtered.filter(t =>
+      t.name.toLowerCase().includes(lowercasedTerm) ||
+      t.description.toLowerCase().includes(lowercasedTerm) ||
+      t.category.toLowerCase().includes(lowercasedTerm)
+    );
+  }
+
+  if (filters.priceFilter === 'free') {
+    filtered = filtered.filter(t => t.price === 0);
+  } else if (filters.priceFilter === 'paid') {
+    filtered = filtered.filter(t => t.price > 0);
+  }
+
+  if (filters.selectedTags.length > 0) {
+    filtered = filtered.filter(t =>
+      filters.selectedTags.every(tag => t.tags?.includes(tag))
+    );
+  }
+
+  switch (filters.sortBy) {
+    case 'rating':
+      filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      break;
+    case 'newest':
+      // Assuming ID is a timestamp or sequential
+      filtered.sort((a, b) => b.id.localeCompare(a.id));
+      break;
+    case 'popular':
+    default:
+      filtered.sort((a, b) => (b.installCount || 0) - (a.installCount || 0));
+      break;
+  }
+
+  return filtered;
+};
 
 export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
   const [filter, setFilter] = useState('All');
@@ -805,7 +98,6 @@ export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
   const [installedIds, setInstalledIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch templates from database on mount
   useEffect(() => {
     const fetchTemplates = async () => {
       if (!supabase) {
@@ -822,13 +114,11 @@ export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
 
         if (fetchError) {
           console.error('Error fetching templates:', fetchError);
-          // Keep fallback templates on error
           return;
         }
 
         if (data && data.length > 0) {
-          // Map database fields to component interface
-          const mappedTemplates: MarketplaceTemplate[] = data.map(t => ({
+          const mappedTemplates: MarketplaceTemplate[] = data.map((t: any) => ({
             id: t.id,
             name: t.name,
             category: t.category,
@@ -856,7 +146,6 @@ export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
     fetchTemplates();
   }, []);
 
-  // Handle template installation
   const handleInstall = async (template: MarketplaceTemplate) => {
     setInstallingId(template.id);
     setError(null);
@@ -875,10 +164,8 @@ export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
 
       const response = await edgeFunctions.installTemplate(template.id);
 
-      // Mark as installed
       setInstalledIds(prev => new Set(prev).add(template.id));
 
-      // Update install count locally
       setTemplates(prev => prev.map(t =>
         t.id === template.id
           ? { ...t, installCount: t.installCount + 1 }
@@ -886,7 +173,6 @@ export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
       ));
       setPreviewTemplate(null);
 
-      // Notify parent component
       if (onInstall) {
         onInstall(template, response.bot.id);
       }
@@ -961,7 +247,6 @@ export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
         </div>
       </div>
 
-      {/* Search & Filter */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row gap-4 items-center">
           <div className="relative flex-1 w-full">
@@ -1015,7 +300,7 @@ export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
             <Tag size={14} /> Filter by tags
           </div>
           <div className="flex flex-wrap gap-2">
-            {availableTags.map(tag => (
+            {availableTags.map((tag: any) => (
               <button
                 key={tag}
                 onClick={() => toggleTag(tag)}
@@ -1035,7 +320,6 @@ export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
         </div>
       </div>
 
-      {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTemplates.map(template => (
           <div key={template.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition group flex flex-col h-full">
@@ -1054,7 +338,7 @@ export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
                 <p className="text-sm text-slate-500 leading-relaxed mb-4">{template.description}</p>
                 {template.tags && template.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {template.tags.map(tag => (
+                    {template.tags.map((tag: any) => (
                       <span key={tag} className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider bg-slate-100 text-slate-600 px-2 py-1 rounded">
                         <Tag size={10} /> {tag}
                       </span>
@@ -1122,7 +406,7 @@ export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
                 </div>
                 <p className="text-sm text-slate-600 mt-2">{previewTemplate.description}</p>
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {previewTemplate.tags?.map(tag => (
+                  {previewTemplate.tags?.map((tag: any) => (
                     <span key={tag} className="px-2 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">
                       <Tag size={10} className="inline mr-1" /> {tag}
                     </span>
@@ -1138,7 +422,7 @@ export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
                     <Info size={16} /> Highlights
                   </div>
                   <ul className="space-y-2 text-sm text-slate-600 list-disc list-inside">
-                    {(previewTemplate.tags || ['Fast setup', 'Lead capture', '24/7 coverage']).slice(0, 4).map(tag => (
+                    {(previewTemplate.tags || ['Fast setup', 'Lead capture', '24/7 coverage']).slice(0, 4).map((tag: any) => (
                       <li key={tag}>{tag}</li>
                     ))}
                     <li>Optimized to be installed via marketplace-install-template</li>
