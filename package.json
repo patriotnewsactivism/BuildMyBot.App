@@ -7,18 +7,27 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
+    "check-links": "node scripts/check-links.js"
   },
   "dependencies": {
     "@google/genai": "^1.31.0",
+    "@sentry/react": "^10.30.0",
+    "@sentry/vite-plugin": "^4.6.1",
     "@supabase/supabase-js": "^2.39.7",
     "firebase": "^12.6.0",
     "lucide-react": "^0.344.0",
+    "posthog-js": "^1.306.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^2.12.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.1",
     "@testing-library/user-event": "^14.6.1",
@@ -26,7 +35,9 @@
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.2.1",
+    "broken-link-checker-local": "^0.2.1",
     "jsdom": "^24.1.0",
+    "playwright": "^1.57.0",
     "typescript": "^5.4.2",
     "vite": "^5.1.5",
     "vitest": "^2.0.5"
