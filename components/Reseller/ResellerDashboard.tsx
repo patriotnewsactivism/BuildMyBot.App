@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { DollarSign, Users, TrendingUp, Copy, CheckCircle, Shield, Lock, CreditCard, ChevronRight, AlertTriangle, Building, LayoutDashboard, Loader } from 'lucide-react';
-import { ResellerStats, User } from '../../types';
+import { ReferralRecord, ResellerEarning, ResellerStats, User } from '../../types';
 import { RESELLER_TIERS, PLANS } from '../../constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { dbService } from '../../services/dbService';
+import { resellerService } from '../../services/resellerService';
+import { computeResellerStats } from '../../utils/reseller';
 
 interface ResellerProps {
   user: User;
@@ -21,38 +22,45 @@ const mockEarnings = [
 
 export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats: initialStats }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'clients' | 'payouts'>('overview');
-  const [referredUsers, setReferredUsers] = useState<User[]>([]);
+  const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
+  const [earnings, setEarnings] = useState<ResellerEarning[]>([]);
+  const earningsRef = useRef<ResellerEarning[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [realStats, setRealStats] = useState<ResellerStats>(initialStats);
 
   useEffect(() => {
-    if (user.resellerCode) {
-      const unsubscribe = dbService.subscribeToReferrals(user.resellerCode, (users) => {
-        setReferredUsers(users);
-        
-        // Calculate real stats
-        const clientCount = users.length;
-        const totalRev = users.reduce((acc, u) => acc + (PLANS[u.plan]?.price || 0), 0);
-        
-        // Determine commission tier
-        const currentTier = RESELLER_TIERS.find(t => clientCount >= t.min && clientCount <= t.max) || RESELLER_TIERS[0];
-        
-        setRealStats({
-          totalClients: clientCount,
-          totalRevenue: totalRev,
-          commissionRate: currentTier.commission,
-          pendingPayout: totalRev * currentTier.commission,
-          addOnCommission: 0, // TODO: Calculate from add-on purchases
-          arrears: 0, // TODO: Pull from reseller payment records
-        });
-        
-        setIsLoading(false);
-      });
-      return () => unsubscribe();
-    } else {
+    const resellerId = user.id;
+
+    if (!resellerId) {
       setIsLoading(false);
+      return;
     }
-  }, [user.resellerCode]);
+
+    const loadData = async () => {
+      setIsLoading(true);
+      const [referralData, earningsData] = await Promise.all([
+        resellerService.fetchReferrals(resellerId),
+        resellerService.fetchEarnings(resellerId),
+      ]);
+
+      setReferrals(referralData);
+      setEarnings(earningsData);
+      earningsRef.current = earningsData;
+      setRealStats(computeResellerStats(referralData, earningsData));
+      setIsLoading(false);
+    };
+
+    const unsubscribe = resellerService.subscribeToReferrals(resellerId, (updatedReferrals) => {
+      setReferrals(updatedReferrals);
+      setRealStats(computeResellerStats(updatedReferrals, earningsRef.current));
+    });
+
+    loadData();
+
+    return () => {
+      unsubscribe();
+    };
+  }, [user.id]);
   
   const currentTier = RESELLER_TIERS.find(t => realStats.totalClients >= t.min && realStats.totalClients <= t.max) || RESELLER_TIERS[0];
   const nextTier = RESELLER_TIERS.find(t => t.min > realStats.totalClients);
@@ -162,25 +170,28 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats: initia
                      </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-100 text-sm">
-                     {referredUsers.map((client, i) => {
-                         const price = PLANS[client.plan]?.price || 0;
+                     {referrals.map((referral) => {
+                         const profile = referral.clientProfile;
+                         const price = profile?.plan ? PLANS[profile.plan]?.price || 0 : 0;
                          const commission = price * realStats.commissionRate;
-                         
+                         const statusLabel = referral.status || 'active';
+                         const statusColor = statusLabel === 'active' ? 'text-emerald-600' : statusLabel === 'pending' ? 'text-amber-600' : 'text-slate-500';
+
                          return (
-                         <tr key={i} className="hover:bg-slate-50 transition">
-                             <td className="px-6 py-4 font-medium text-slate-800">{client.companyName}</td>
+                         <tr key={referral.id} className="hover:bg-slate-50 transition">
+                             <td className="px-6 py-4 font-medium text-slate-800">{profile?.companyName || profile?.name || 'Referred client'}</td>
                              <td className="px-6 py-4">
                                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                     client.plan === 'EXECUTIVE' ? 'bg-blue-100 text-blue-800' :
-                                     client.plan === 'PROFESSIONAL' ? 'bg-emerald-100 text-emerald-800' :
+                                     profile?.plan === 'EXECUTIVE' ? 'bg-blue-100 text-blue-800' :
+                                     profile?.plan === 'PROFESSIONAL' ? 'bg-emerald-100 text-emerald-800' :
                                      'bg-slate-100 text-slate-600'
-                                 }`}>{client.plan}</span>
+                                 }`}>{profile?.plan || 'Unknown'}</span>
                              </td>
-                             <td className="px-6 py-4 text-slate-500">{client.email}</td>
+                             <td className="px-6 py-4 text-slate-500">{profile?.email || referral.referredUserId}</td>
                              <td className="px-6 py-4">
-                                <span className="flex items-center gap-1.5 text-emerald-600">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                    Active
+                                <span className={`flex items-center gap-1.5 ${statusColor}`}>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                                    {statusLabel}
                                 </span>
                              </td>
                              <td className="px-6 py-4 font-mono font-medium text-slate-700">${commission.toFixed(2)}/mo</td>
@@ -191,10 +202,19 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats: initia
                              </td>
                          </tr>
                      )})}
-                     {referredUsers.length === 0 && (
+                     {referrals.length === 0 && !isLoading && (
                         <tr>
                             <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
                                 No clients referred yet. Share your link to start earning!
+                            </td>
+                        </tr>
+                     )}
+                     {isLoading && (
+                        <tr>
+                            <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
+                                <div className="inline-flex items-center gap-2">
+                                  <Loader className="animate-spin" size={16} /> Loading referrals...
+                                </div>
                             </td>
                         </tr>
                      )}
