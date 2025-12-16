@@ -1,6 +1,7 @@
 
 import { supabase } from './supabaseClient';
-import { Bot, Lead, Conversation, User, PlanType } from '../types';
+import { Bot, Lead, Conversation, User, PlanType, WebsitePage } from '../types';
+import { slugifyPageSlug } from './websiteService';
 
 // Helper functions to convert between camelCase (TypeScript) and snake_case (PostgreSQL)
 const toSnakeCase = (str: string): string =>
@@ -263,5 +264,75 @@ export const dbService = {
       .from('profiles')
       .update({ status: 'Active' })
       .eq('id', uid);
+  },
+
+  // --- WEBSITE PAGES ---
+  getWebsitePages: async (): Promise<WebsitePage[]> => {
+    const client = supabase;
+    if (!client) return [];
+
+    const { data: auth } = await client.auth.getUser();
+    const userId = auth?.user?.id;
+    if (!userId) return [];
+
+    const { data, error } = await client
+      .from('website_pages')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+
+    if (error || !data) {
+      if (error) console.error('Error fetching website pages:', error);
+      return [];
+    }
+
+    return arrayToCamelCase<WebsitePage>(data as Record<string, unknown>[]);
+  },
+
+  saveWebsitePage: async (page: WebsitePage): Promise<WebsitePage | null> => {
+    const client = supabase;
+    if (!client) return null;
+
+    const { data: auth } = await client.auth.getUser();
+    const userId = auth?.user?.id;
+    if (!userId) {
+      console.error('Cannot save website page: user not logged in');
+      return null;
+    }
+
+    const payload = objectToSnakeCase({
+      ...page,
+      id: page.id,
+      userId,
+      slug: page.slug || slugifyPageSlug(page.title),
+      published: page.published ?? false
+    });
+
+    const { data, error } = await client
+      .from('website_pages')
+      .upsert(payload)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving website page:', error);
+      return null;
+    }
+
+    return objectToCamelCase<WebsitePage>(data as Record<string, unknown>);
+  },
+
+  setWebsitePagePublished: async (pageId: string, published: boolean) => {
+    const client = supabase;
+    if (!client) return;
+
+    const { error } = await client
+      .from('website_pages')
+      .update({ published })
+      .eq('id', pageId);
+
+    if (error) {
+      console.error('Error updating page publish state:', error);
+    }
   }
 };
