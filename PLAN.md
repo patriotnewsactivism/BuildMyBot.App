@@ -7,7 +7,8 @@ This document defines the **architecture**, **schema**, **security model**, **ba
 # 1. System Architecture
 
 **Current State:** React + Vite + Firebase (Firestore/Auth)
-**Target Architecture:**
+
+**Target Architecture (Phase 1 — Near-Term Stabilization):**
 React + Vite (Frontend SPA)
 ↓
 Supabase Auth (JWT)
@@ -16,6 +17,18 @@ Supabase Edge Functions (secure backend)
 ↓
 Supabase Postgres (RLS-protected tables)
 ↳ pgvector for embeddings
+↳ Stripe webhooks for billing
+↓
+OpenAI GPT-4o (LLM + embeddings)
+
+**Target Architecture (Phase 2 — SEO & Scale Migration):**
+Next.js (App Router) for SSR/SSG/ISR marketing + dashboard surfaces
+↓
+Supabase Auth (JWT) with server-side session validation
+↓
+Supabase Edge Functions (secure backend)
+↓
+Supabase Postgres (RLS-protected tables) with pgvector
 ↳ Stripe webhooks for billing
 ↓
 OpenAI GPT-4o (LLM + embeddings)
@@ -113,6 +126,14 @@ RLS policy file included in repository.
 - Tracks reseller-client relationship  
 
 Each function lives in `supabase/functions/<name>`.
+
+### 4.7. Background Queue Integration (planned)
+- Queue provider: Inngest or Trigger.dev (evaluate cost, latency, retries)  
+- Workloads: embeddings, phone transcriptions, bulk imports, long-running marketing jobs  
+- Ingress: Edge Functions enqueue jobs with auth context and tenant IDs  
+- Guarantees: at-least-once with idempotency keys, exponential backoff, DLQ monitoring  
+- Observability: structured logs, per-tenant metrics, alerting on retry exhaustion  
+- Security: RLS-aware payloads only; no secrets in queue payloads; server-side env for credentials  
 
 ---
 
@@ -223,6 +244,17 @@ Each function lives in `supabase/functions/<name>`.
 - SEO & landing page polish  
 - Final docs  
 
+## Milestone 5 – Next.js Migration (3–4 weeks)
+- Stand up Next.js App Router with Tailwind + shadcn-compatible components  
+- Migrate marketing pages to SSG/SSR with ISR for high-traffic sections  
+- Implement programmatic sitemap and robots.txt (production vs staging rules)  
+- Implement structured data (JSON-LD) for Product/FAQ and OpenGraph defaults  
+- Add server-side Supabase auth helpers (cookies, server actions) and protect dashboard routes  
+- Create API route proxies to Edge Functions to keep secrets server-side  
+- Enable image/font optimization, route-level code splitting, and streaming where applicable  
+- Run Lighthouse + axe-core accessibility checks in CI; ensure WCAG 2.1 AA for new pages  
+- Cutover plan: dual-run Vite + Next.js during migration, gate by subpath or subdomain, then deprecate Vite build  
+
 ---
 
 # 8. DevOps & Deployment
@@ -246,6 +278,13 @@ GitHub Actions:
 3. Test
 4. Build
 5. Deploy
+
+### Supabase Migration Completion Checklist
+- [ ] Deploy all Edge Functions (`ai-complete`, `create-lead`, `embed-knowledge-base`, `billing-overage-check`, `marketplace-install-template`, `reseller-track-referral`)  
+- [ ] Run and validate data-migration script end-to-end  
+- [ ] Verify RLS policies per table for owner/reseller/admin contexts; add regression tests  
+- [ ] Confirm no service-role or secret keys are exposed to clients; enforce server-only env usage  
+- [ ] Validate PostgREST and client SDK permissions against RLS expectations  
 
 ---
 
