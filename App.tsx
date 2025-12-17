@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Layout/Sidebar';
 import { BotBuilder } from './components/BotBuilder/BotBuilder';
@@ -23,6 +25,9 @@ import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, Arr
 import { supabase } from './services/supabaseClient';
 import { dbService } from './services/dbService';
 import { calculateLeadScore } from './services/leadCapture';
+import { edgeFunctions } from './services/edgeFunctions';
+import { initSentry } from './services/sentryInit';
+import { initPostHog } from './services/posthogInit';
 
 const INITIAL_CHAT_LOGS: Conversation[] = []; 
 const INITIAL_RESELLER_STATS: ResellerStats = {
@@ -56,6 +61,11 @@ function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [notification, setNotification] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    initSentry();
+    initPostHog();
+  }, []);
 
   // --- Capture Referral Code ---
   useEffect(() => {
@@ -189,12 +199,13 @@ function App() {
   useEffect(() => {
     const referralCode = typeof window !== 'undefined' ? localStorage.getItem('bmb_ref_code') : null;
     const alreadyTracked = typeof window !== 'undefined' ? localStorage.getItem('bmb_ref_tracked') : null;
+    const supabaseClient = supabase;
 
-    if (!referralCode || alreadyTracked === referralCode || !user || !supabase) return;
+    if (!referralCode || alreadyTracked === referralCode || !user || !supabaseClient) return;
 
     const trackReferral = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await supabaseClient.auth.getSession();
         const authedUserId = data.session?.user?.id;
 
         if (!authedUserId || authedUserId.startsWith('demo-user')) {

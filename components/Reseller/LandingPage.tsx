@@ -267,6 +267,28 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     }
   ];
 
+  const statColorThemes: Record<string, { bg: string; text: string }> = {
+    blue: { bg: 'bg-blue-50', text: 'text-blue-600' },
+    red: { bg: 'bg-red-50', text: 'text-red-600' },
+    amber: { bg: 'bg-amber-50', text: 'text-amber-600' },
+    emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600' },
+  };
+
+  const industryColorThemes: Record<string, { icon: string; text: string }> = {
+    blue: { icon: 'bg-blue-100 text-blue-600', text: 'text-blue-600' },
+    emerald: { icon: 'bg-emerald-100 text-emerald-600', text: 'text-emerald-600' },
+    red: { icon: 'bg-red-100 text-red-600', text: 'text-red-600' },
+    cyan: { icon: 'bg-cyan-100 text-cyan-600', text: 'text-cyan-600' },
+    amber: { icon: 'bg-amber-100 text-amber-600', text: 'text-amber-600' },
+    slate: { icon: 'bg-slate-100 text-slate-600', text: 'text-slate-600' },
+    orange: { icon: 'bg-orange-100 text-orange-600', text: 'text-orange-600' },
+    purple: { icon: 'bg-purple-100 text-purple-600', text: 'text-purple-600' },
+    lime: { icon: 'bg-lime-100 text-lime-600', text: 'text-lime-600' },
+    indigo: { icon: 'bg-indigo-100 text-indigo-600', text: 'text-indigo-600' },
+    pink: { icon: 'bg-pink-100 text-pink-600', text: 'text-pink-600' },
+    sky: { icon: 'bg-sky-100 text-sky-600', text: 'text-sky-600' },
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden">
       {modalContent && <InfoModal />}
@@ -477,17 +499,20 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
                          {[
-                            {l: 'Active Chats', v: '1,240', i: MessageSquare, c: 'blue'},
-                            {l: 'Hot Leads', v: '328', i: Flame, c: 'red'},
-                            {l: 'Response', v: '0.8s', i: Zap, c: 'amber'},
-                            {l: 'Revenue', v: '$4,200', i: TrendingUp, c: 'emerald'}
-                         ].map((s, i) => (
-                            <div key={i} className="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
-                               <div className={`w-8 h-8 rounded-lg bg-${s.c}-50 text-${s.c}-600 flex items-center justify-center mb-3`}><s.i size={16}/></div>
-                               <div className="text-xl md:text-2xl font-bold text-slate-800">{s.v}</div>
-                               <div className="text-xs text-slate-500">{s.l}</div>
-                            </div>
-                         ))}
+                          {l: 'Active Chats', v: '1,240', i: MessageSquare, c: 'blue'},
+                          {l: 'Hot Leads', v: '328', i: Flame, c: 'red'},
+                          {l: 'Response', v: '0.8s', i: Zap, c: 'amber'},
+                          {l: 'Revenue', v: '$4,200', i: TrendingUp, c: 'emerald'}
+                         ].map((s, i) => {
+                            const theme = statColorThemes[s.c] ?? statColorThemes.blue;
+                            return (
+                              <div key={i} className="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
+                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 ${theme.bg} ${theme.text}`}><s.i size={16}/></div>
+                                 <div className="text-xl md:text-2xl font-bold text-slate-800">{s.v}</div>
+                                 <div className="text-xs text-slate-500">{s.l}</div>
+                              </div>
+                            );
+                         })}
                       </div>
 
                       {/* Mock Chart Area */}
@@ -519,7 +544,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {industries.map((ind, i) => (
               <div key={i} className="p-8 rounded-2xl bg-slate-50 hover:bg-white hover:shadow-xl transition-all duration-300 border border-slate-100 group">
-                <div className={`w-12 h-12 bg-${ind.color}-100 text-${ind.color}-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform ${industryColorThemes[ind.color]?.icon ?? industryColorThemes.blue.icon}`}>
                   <ind.icon size={24} />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-3">{ind.title}</h3>

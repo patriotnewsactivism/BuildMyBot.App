@@ -157,7 +157,7 @@ test.describe('Widget Integration', () => {
     await expect(heading).toBeVisible();
 
     // Check console for error (but page should still work)
-    const consoleMessages = [];
+    const consoleMessages: string[] = [];
     page.on('console', (msg) => consoleMessages.push(msg.text()));
 
     await page.waitForTimeout(1000);
