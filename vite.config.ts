@@ -21,15 +21,11 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve('./'),
+        '@supabase/supabase-js': '@supabase/supabase-js/dist/module/index.js',
       },
     },
     define: {
       'process.env': env
-    },
-    test: {
-      environment: 'jsdom',
-      setupFiles: './vitest.setup.ts',
-      globals: true
     },
     build: {
       outDir: 'dist',
@@ -39,9 +35,9 @@ export default defineConfig(({ mode }) => {
       port: 8080
     },
     test: {
-      globals: true,
       environment: 'jsdom',
-      setupFiles: './vitest.setup.ts'
+      setupFiles: './vitest.setup.ts',
+      globals: true
     }
   };
 });
