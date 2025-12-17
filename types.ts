@@ -223,12 +223,18 @@ export interface MarketingContent {
 }
 
 export interface MarketplaceTemplate {
-    id: string;
-    name: string;
-    description: string;
-    category: string;
-    tags: string[];
-    author: string;
-    image: string;
-    installs: number;
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  price: number;
+  installCount: number;
+  rating?: number;
+  featured?: boolean;
+  botConfig?: Record<string, unknown>;
+  previewUrl?: string;
+  author?: string;
+  image?: string;
+  installs?: number;
 }
