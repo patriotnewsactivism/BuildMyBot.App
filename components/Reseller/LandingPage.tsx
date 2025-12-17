@@ -25,6 +25,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   const [demoIdentity, setDemoIdentity] = useState({ name: 'Bot', color: '#1e3a8a' });
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const hasGreeted = useRef(false);
+  const chatHistoryRef = useRef(chatHistory);
+  const demoIdentityRef = useRef(demoIdentity);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Initialize random identity on mount
@@ -40,17 +42,25 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     }
   }, [chatHistory, isTyping, isChatOpen]);
 
+  useEffect(() => {
+    chatHistoryRef.current = chatHistory;
+  }, [chatHistory]);
+
+  useEffect(() => {
+    demoIdentityRef.current = demoIdentity;
+  }, [demoIdentity]);
+
   // Open Greeting
   useEffect(() => {
-    if (isChatOpen && !hasGreeted.current && chatHistory.length === 0) {
+    if (isChatOpen && !hasGreeted.current && chatHistoryRef.current.length === 0) {
         setIsTyping(true);
         hasGreeted.current = true;
         setTimeout(() => {
-            setChatHistory([{ role: 'model', text: `Hi! I'm ${demoIdentity.name}. I can qualify leads, schedule appointments, and answer questions 24/7. How can I help your business grow today?` }]);
+            setChatHistory([{ role: 'model', text: `Hi! I'm ${demoIdentityRef.current.name}. I can qualify leads, schedule appointments, and answer questions 24/7. How can I help your business grow today?` }]);
             setIsTyping(false);
         }, 1500);
     }
-  }, [isChatOpen, demoIdentity]);
+  }, [isChatOpen]);
 
   const handleDemoSend = async () => {
     if (!chatInput.trim()) return;
@@ -133,7 +143,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
             content = (
                 <>
                   <p>BuildMyBot helps businesses scale their personal touch. In a world of infinite noise, responsiveness is the only competitive advantage that matters.</p>
-                  <p>We built this platform for Influencers, Agencies, and Business Owners who are tired of leaving money on the table because they couldn't answer the phone or reply to a DM fast enough.</p>
+                  <p>We built this platform for Influencers, Agencies, and Business Owners who are tired of leaving money on the table because they couldn’t answer the phone or reply to a DM fast enough.</p>
                 </>
             );
             break;
@@ -141,7 +151,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
             title = 'Contact Support';
             content = (
                 <>
-                  <p>Have questions? We're here to help.</p>
+                  <p>Have questions? We’re here to help.</p>
                   <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 my-4">
                       <p className="font-bold text-slate-800">Sales Inquiries</p>
                       <p className="text-blue-900">sales@buildmybot.app</p>
@@ -434,10 +444,10 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         </div>
 
         <div className="max-w-7xl mx-auto text-center relative z-10">
-           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-blue-100 text-blue-900 text-xs font-bold uppercase tracking-wide mb-6 shadow-sm hover:shadow-md transition cursor-pointer" onClick={() => openModal('features')}>
-             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-             New: Auto-Qualify "Hot Leads"
-           </div>
+             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-blue-100 text-blue-900 text-xs font-bold uppercase tracking-wide mb-6 shadow-sm hover:shadow-md transition cursor-pointer" onClick={() => openModal('features')}>
+               <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+               New: Auto-Qualify “Hot Leads”
+             </div>
            <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight mb-6 leading-tight">
              Capture Every Lead. <br/> 
              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-900 to-sky-600">Automate Every Answer.</span>
@@ -567,7 +577,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                  <Flame size={12} fill="currentColor" /> Hot Lead System
               </div>
               <h2 className="text-3xl md:text-5xl font-extrabold mb-6 leading-tight">
-                It doesn't just chat. <br/>
+                It doesn’t just chat. <br/>
                 <span className="text-blue-400">It closes deals.</span>
               </h2>
               <p className="text-lg text-slate-300 mb-8 leading-relaxed">
@@ -579,13 +589,13 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                    <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xl">1</div>
                    <div>
                      <h4 className="font-bold text-lg">Qualifies Automatically</h4>
-                     <p className="text-slate-400 text-sm">The AI identifies who is "just looking" vs who is ready to buy.</p>
+                     <p className="text-slate-400 text-sm">The AI identifies who is “just looking” vs who is ready to buy.</p>
                    </div>
                  </div>
                  <div className="flex gap-4">
                    <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 font-bold text-xl">2</div>
                    <div>
-                     <h4 className="font-bold text-lg">Triggers "Hot Lead" Status</h4>
+                     <h4 className="font-bold text-lg">Triggers “Hot Lead” Status</h4>
                      <p className="text-slate-400 text-sm">When score &gt; 80, the bot asks for name & phone number.</p>
                    </div>
                  </div>
@@ -622,8 +632,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
                      {/* Chat Screen Background */}
                      <div className="mt-auto p-4 space-y-3">
-                        <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-xs self-end ml-12">I'm ready to move forward. Can we talk pricing?</div>
-                        <div className="bg-slate-700 text-white p-3 rounded-2xl rounded-bl-none text-xs self-start mr-12">Absolutely! What's the best number to reach you at right now?</div>
+                        <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-xs self-end ml-12">I’m ready to move forward. Can we talk pricing?</div>
+                        <div className="bg-slate-700 text-white p-3 rounded-2xl rounded-bl-none text-xs self-start mr-12">Absolutely! What’s the best number to reach you at right now?</div>
                         <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-xs self-end ml-12">555-012-3456</div>
                      </div>
                   </div>

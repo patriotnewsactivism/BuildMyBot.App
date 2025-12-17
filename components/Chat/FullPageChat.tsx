@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, Bot, User, AlertCircle, Loader, ShieldCheck } from 'lucide-react';
 import { generateBotResponse } from '../../services/openaiService';
 import { dbService } from '../../services/dbService';
@@ -22,6 +22,7 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
   const [leadCapture, setLeadCapture] = useState<{ email: string; id?: string; score?: number } | null>(null);
   const [leadError, setLeadError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const handleSendRef = useRef<() => Promise<void> | void>(() => {});
 
   // Check for embed mode in URL params
   const isEmbed = window.location.search.includes('mode=embed');
@@ -54,7 +55,7 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
             setInput(message.text);
             // Auto-send if requested
             if (message.autoSend) {
-              setTimeout(() => handleSend(), 100);
+              setTimeout(() => handleSendRef.current(), 100);
             }
           }
           break;
@@ -141,7 +142,7 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
     }
   }, [messages, isTyping]);
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!input.trim() || !bot) return;
 
     const userMsg = { role: 'user' as const, text: input, timestamp: Date.now() };
@@ -236,7 +237,11 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
       setError(e instanceof Error ? e.message : "Failed to get response");
       setIsTyping(false);
     }
-  };
+  }, [bot, input, leadCapture, messages, sessionId]);
+
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  }, [handleSend]);
 
   if (!bot) {
     return (
