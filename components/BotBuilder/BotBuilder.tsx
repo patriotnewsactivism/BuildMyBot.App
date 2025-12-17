@@ -288,6 +288,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     onConversationLogged({
       id: conversationId,
       botId: activeBot.id,
+      sessionId: conversationId,
       messages: normalizedMessages,
       sentiment: deriveSentiment(messages),
       timestamp: Date.now()
