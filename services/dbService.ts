@@ -1,6 +1,7 @@
 
 import { supabase } from './supabaseClient';
 import { Bot, Lead, Conversation, User, PlanType, WebsitePage } from '../types';
+import { edgeFunctions } from './edgeFunctions';
 import { slugifyPageSlug } from './websiteService';
 
 // Helper functions to convert between camelCase (TypeScript) and snake_case (PostgreSQL)
