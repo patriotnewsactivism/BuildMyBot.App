@@ -23,6 +23,7 @@ import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, Arr
 import { supabase } from './services/supabaseClient';
 import { dbService } from './services/dbService';
 import { calculateLeadScore } from './services/leadCapture';
+import { edgeFunctions } from './services/edgeFunctions';
 
 const INITIAL_CHAT_LOGS: Conversation[] = []; 
 const INITIAL_RESELLER_STATS: ResellerStats = {
@@ -189,12 +190,13 @@ function App() {
   useEffect(() => {
     const referralCode = typeof window !== 'undefined' ? localStorage.getItem('bmb_ref_code') : null;
     const alreadyTracked = typeof window !== 'undefined' ? localStorage.getItem('bmb_ref_tracked') : null;
+    const supabaseClient = supabase;
 
-    if (!referralCode || alreadyTracked === referralCode || !user || !supabase) return;
+    if (!referralCode || alreadyTracked === referralCode || !user || !supabaseClient) return;
 
     const trackReferral = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await supabaseClient.auth.getSession();
         const authedUserId = data.session?.user?.id;
 
         if (!authedUserId || authedUserId.startsWith('demo-user')) {
