@@ -12,6 +12,8 @@ interface LandingProps {
 
 const HUMAN_NAMES = ['Sarah', 'Michael', 'Jessica', 'David', 'Emma', 'James'];
 const AVATAR_COLORS = ['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed'];
+const NOTIFICATION_NAMES = ['Alex from Denver', 'Sarah from NYC', 'Mike from Austin', 'Emily from LA', 'David from Miami', 'Jessica from Chicago', 'Chris from Seattle', 'Amanda from Boston'];
+const NOTIFICATION_ACTIONS = ['just signed up', 'captured 5 new leads', 'closed a $2,500 deal', 'upgraded to Professional', 'built their first bot'];
 
 export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartner, onAdminLogin }) => {
   const [modalContent, setModalContent] = useState<'privacy' | 'terms' | 'about' | 'contact' | 'features' | null>(null);
@@ -60,8 +62,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   // Live notification state for social proof
   const [liveNotifications, setLiveNotifications] = useState<{name: string; action: string; time: string}[]>([]);
   const [showNotification, setShowNotification] = useState(false);
-  const notificationNames = ['Alex from Denver', 'Sarah from NYC', 'Mike from Austin', 'Emily from LA', 'David from Miami', 'Jessica from Chicago', 'Chris from Seattle', 'Amanda from Boston'];
-  const notificationActions = ['just signed up', 'captured 5 new leads', 'closed a $2,500 deal', 'upgraded to Professional', 'built their first bot'];
+  const chatHistoryRef = useRef(chatHistory);
+  const demoIdentityRef = useRef(demoIdentity);
 
 
   // Initialize random identity on mount
@@ -74,8 +76,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   // Live notification popup - social proof
   useEffect(() => {
     const showRandomNotification = () => {
-      const name = notificationNames[Math.floor(Math.random() * notificationNames.length)];
-      const action = notificationActions[Math.floor(Math.random() * notificationActions.length)];
+      const name = NOTIFICATION_NAMES[Math.floor(Math.random() * NOTIFICATION_NAMES.length)];
+      const action = NOTIFICATION_ACTIONS[Math.floor(Math.random() * NOTIFICATION_ACTIONS.length)];
       setLiveNotifications([{ name, action, time: 'Just now' }]);
       setShowNotification(true);
       setTimeout(() => setShowNotification(false), 4000);
@@ -134,13 +136,21 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     }
   }, [chatHistory, isTyping, isChatOpen]);
 
+  useEffect(() => {
+    chatHistoryRef.current = chatHistory;
+  }, [chatHistory]);
+
+  useEffect(() => {
+    demoIdentityRef.current = demoIdentity;
+  }, [demoIdentity]);
+
   // Open Greeting - only depends on isChatOpen, uses ref for identity to avoid re-triggers
   useEffect(() => {
-    if (isChatOpen && !hasGreeted.current && chatHistory.length === 0) {
+    if (isChatOpen && !hasGreeted.current && chatHistoryRef.current.length === 0) {
         setIsTyping(true);
         hasGreeted.current = true;
         // Capture current identity value to avoid stale closure
-        const currentName = demoIdentity.name;
+        const currentName = demoIdentityRef.current.name;
         setTimeout(() => {
             setChatHistory([{ role: 'model', text: `Hi! I'm ${currentName}. I can qualify leads, schedule appointments, and answer questions 24/7. How can I help your business grow today?` }]);
             setIsTyping(false);
@@ -298,7 +308,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
             content = (
                 <>
                   <p>BuildMyBot helps businesses scale their personal touch. In a world of infinite noise, responsiveness is the only competitive advantage that matters.</p>
-                  <p>We built this platform for Influencers, Agencies, and Business Owners who are tired of leaving money on the table because they couldn't answer the phone or reply to a DM fast enough.</p>
+                  <p>We built this platform for Influencers, Agencies, and Business Owners who are tired of leaving money on the table because they couldn’t answer the phone or reply to a DM fast enough.</p>
                 </>
             );
             break;
@@ -306,7 +316,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
             title = 'Contact Support';
             content = (
                 <>
-                  <p>Have questions? We're here to help.</p>
+                  <p>Have questions? We’re here to help.</p>
                   <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 my-4">
                       <p className="font-bold text-slate-800">Sales Inquiries</p>
                       <p className="text-blue-900">sales@buildmybot.app</p>
@@ -888,7 +898,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
               <Star size={12} fill="currentColor" /> Real Results
             </div>
             <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-4">
-              Don't Take Our Word For It
+              Don’t Take Our Word For It
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               See what business owners just like you are saying about BuildMyBot
@@ -903,7 +913,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                     <Star key={i} size={20} fill="#f59e0b" className="text-amber-400" />
                   ))}
                 </div>
-                <p className="text-lg text-slate-700 mb-6 leading-relaxed">"{t.quote}"</p>
+                <p className="text-lg text-slate-700 mb-6 leading-relaxed">“{t.quote}”</p>
                 <div className="flex items-center gap-4">
                   <div
                     className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg"
@@ -1258,17 +1268,17 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                     <div className="space-y-4">
                        <div className="bg-slate-50 p-4 rounded-xl rounded-tl-none border border-slate-100">
                           <p className="text-xs font-bold text-slate-400 mb-1">Incoming Call • 2m ago</p>
-                          <p className="text-slate-700 font-medium">"Hi, do you have any appointments available for a consultation this Tuesday?"</p>
+                          <p className="text-slate-700 font-medium">“Hi, do you have any appointments available for a consultation this Tuesday?”</p>
                        </div>
                        <div className="bg-indigo-50 p-4 rounded-xl rounded-tr-none border border-indigo-100 text-right">
                           <p className="text-xs font-bold text-indigo-400 mb-1">AI Agent (Sarah)</p>
-                          <p className="text-slate-800 font-medium">"Yes! We have a slot open at 2:00 PM or 4:30 PM. Which works best for you?"</p>
+                          <p className="text-slate-800 font-medium">“Yes! We have a slot open at 2:00 PM or 4:30 PM. Which works best for you?”</p>
                        </div>
                        <div className="bg-slate-50 p-4 rounded-xl rounded-tl-none border border-slate-100">
-                          <p className="text-slate-700 font-medium">"2:00 PM is perfect."</p>
+                          <p className="text-slate-700 font-medium">“2:00 PM is perfect.”</p>
                        </div>
                        <div className="bg-indigo-50 p-4 rounded-xl rounded-tr-none border border-indigo-100 text-right">
-                          <p className="text-slate-800 font-medium">"Great, I've booked you for Tuesday at 2:00 PM. Is there anything else I can help with?"</p>
+                          <p className="text-slate-800 font-medium">“Great, I’ve booked you for Tuesday at 2:00 PM. Is there anything else I can help with?”</p>
                        </div>
                     </div>
                  </div>
@@ -1320,7 +1330,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
           <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 text-white p-8 md:p-10 rounded-3xl shadow-2xl border border-blue-900/60">
             <h3 className="text-2xl md:text-3xl font-extrabold mb-4 uppercase">Unlike others, we don’t replace people—we reward them.</h3>
             <p className="text-lg leading-relaxed text-slate-100">
-              UNLIKE OTHERS, OUR ONE-OF-A-KIND SYSTEM DOESN'T "TAKE AWAY" JOBS FROM EMPLOYEES THAT WANT TO WORK. IT REPLACES JOBS ENABLING YOU THE BUSINESS TO SIGNIFICANTLY LOWER YOUR EXPENSES WHILE ENABLING THEM TO EARN SUBSTANTIALLY MORE THAN THEY DID BEFORE. OUR COMPENSATION MODEL IS MUCH MORE THAN AGGRESSIVE... IT'S UNHEARD OF!
+              UNLIKE OTHERS, OUR ONE-OF-A-KIND SYSTEM DOESN’T “TAKE AWAY” JOBS FROM EMPLOYEES THAT WANT TO WORK. IT REPLACES JOBS ENABLING YOU THE BUSINESS TO SIGNIFICANTLY LOWER YOUR EXPENSES WHILE ENABLING THEM TO EARN SUBSTANTIALLY MORE THAN THEY DID BEFORE. OUR COMPENSATION MODEL IS MUCH MORE THAN AGGRESSIVE... IT’S UNHEARD OF!
             </p>
           </div>
         </div>
@@ -1541,7 +1551,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                  <Flame size={12} fill="currentColor" /> Hot Lead System
               </div>
               <h2 className="text-3xl md:text-5xl font-extrabold mb-6 leading-tight">
-                It doesn't just chat. <br/>
+                It doesn’t just chat. <br/>
                 <span className="text-blue-400">It closes deals.</span>
               </h2>
               <p className="text-lg text-slate-300 mb-8 leading-relaxed">
@@ -1553,13 +1563,13 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                    <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xl">1</div>
                    <div>
                      <h4 className="font-bold text-lg">Qualifies Automatically</h4>
-                     <p className="text-slate-400 text-sm">The AI identifies who is "just looking" vs who is ready to buy.</p>
+                     <p className="text-slate-400 text-sm">The AI identifies who is “just looking” vs who is ready to buy.</p>
                    </div>
                  </div>
                  <div className="flex gap-4">
                    <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 font-bold text-xl">2</div>
                    <div>
-                     <h4 className="font-bold text-lg">Triggers "Hot Lead" Status</h4>
+                     <h4 className="font-bold text-lg">Triggers “Hot Lead” Status</h4>
                      <p className="text-slate-400 text-sm">When score &gt; 80, the bot asks for name & phone number.</p>
                    </div>
                  </div>
@@ -1596,8 +1606,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
                      {/* Chat Screen Background */}
                      <div className="mt-auto p-4 space-y-3">
-                        <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-xs self-end ml-12">I'm ready to move forward. Can we talk pricing?</div>
-                        <div className="bg-slate-700 text-white p-3 rounded-2xl rounded-bl-none text-xs self-start mr-12">Absolutely! What's the best number to reach you at right now?</div>
+                        <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-xs self-end ml-12">I’m ready to move forward. Can we talk pricing?</div>
+                        <div className="bg-slate-700 text-white p-3 rounded-2xl rounded-bl-none text-xs self-start mr-12">Absolutely! What’s the best number to reach you at right now?</div>
                         <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-xs self-end ml-12">555-012-3456</div>
                      </div>
                   </div>
@@ -1743,8 +1753,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
             30-Day Money-Back Guarantee
           </h2>
           <p className="text-xl text-emerald-100 max-w-3xl mx-auto mb-8 leading-relaxed">
-            Try BuildMyBot risk-free. If you don't see a measurable improvement in lead capture within 30 days,
-            we'll refund every penny. No questions asked. No hoops to jump through.
+            Try BuildMyBot risk-free. If you don’t see a measurable improvement in lead capture within 30 days,
+            we’ll refund every penny. No questions asked. No hoops to jump through.
           </p>
           <div className="flex flex-wrap justify-center gap-8 mb-10">
             {[

@@ -221,7 +221,7 @@ export const PartnerProgramPage: React.FC<PartnerProps> = ({ onBack, onLogin, on
                         <span className="text-5xl font-extrabold text-emerald-600">${partnerCommission.toLocaleString()}</span>
                         <span className="text-slate-500 font-medium">/ month</span>
                      </div>
-                     <p className="text-sm text-slate-400">That's <span className="font-bold text-slate-600">${annualIncome.toLocaleString()}</span> per year.</p>
+                     <p className="text-sm text-slate-400">That’s <span className="font-bold text-slate-600">${annualIncome.toLocaleString()}</span> per year.</p>
                   </div>
                </div>
             </div>
