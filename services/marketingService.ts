@@ -1,6 +1,6 @@
 import { MarketingContent, MarketingContentType } from '../types';
-import { edgeFunctions } from './edgeFunctions';
 import { supabase } from './supabaseClient';
+import { generateMarketingContent } from './openaiService';
 
 export const mapMarketingContentRow = (row: Record<string, any>): MarketingContent => ({
   id: row.id,
@@ -26,49 +26,85 @@ export const marketingService = {
     templateId?: string;
     templateContent?: string;
   }): Promise<MarketingContent> {
-    const response = await edgeFunctions.aiCompleteMarketing({
-      variant: params.type,
-      topic: params.topic,
-      tone: params.tone,
-      templateId: params.templateId,
-      templateContent: params.templateContent,
-      title: buildMarketingTitle(params.type, params.topic),
-    });
+    // Use local AI service directly instead of non-existent edge function
+    const contentText = await generateMarketingContent(params.type, params.topic, params.tone);
 
-    if (response.marketingContent) {
-      return mapMarketingContentRow(response.marketingContent);
+    const title = buildMarketingTitle(params.type, params.topic);
+    const metadata = {
+      tone: params.tone,
+      topic: params.topic,
+      templateId: params.templateId,
+    };
+
+    // Try to save to Supabase marketing_content table
+    let savedContent: MarketingContent | null = null;
+
+    try {
+      if (supabase) {
+        const { data: session } = await supabase.auth.getSession();
+        const userId = session?.session?.user?.id;
+
+        if (userId) {
+          const { data, error } = await supabase
+            .from('marketing_content')
+            .insert({
+              user_id: userId,
+              content_type: params.type,
+              title,
+              content: contentText,
+              metadata,
+            })
+            .select()
+            .single();
+
+          if (!error && data) {
+            savedContent = mapMarketingContentRow(data);
+          }
+        }
+      }
+    } catch (saveError) {
+      console.warn('Failed to save marketing content to database:', saveError);
+      // Continue without saving - we'll return the content anyway
+    }
+
+    // Return saved content or a temporary object
+    if (savedContent) {
+      return savedContent;
     }
 
     return {
-      id: '',
+      id: `temp-${Date.now()}`,
       userId: '',
       contentType: params.type,
-      title: buildMarketingTitle(params.type, params.topic),
-      content: response.message,
-      metadata: {
-        tone: params.tone,
-        topic: params.topic,
-        templateId: params.templateId,
-      },
-      createdAt: '',
+      title,
+      content: contentText,
+      metadata,
+      createdAt: new Date().toISOString(),
     };
   },
 
   async listContent(limit = 15): Promise<MarketingContent[]> {
     if (!supabase) {
-      throw new Error('Supabase is not configured. Please set your environment variables.');
+      console.warn('Supabase is not configured.');
+      return [];
     }
 
-    const { data, error } = await supabase
-      .from('marketing_content')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
+    try {
+      const { data, error } = await supabase
+        .from('marketing_content')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
-    if (error) {
-      throw error;
+      if (error) {
+        console.warn('Failed to load marketing content:', error);
+        return [];
+      }
+
+      return (data || []).map(mapMarketingContentRow);
+    } catch (err) {
+      console.warn('Error loading marketing content:', err);
+      return [];
     }
-
-    return (data || []).map(mapMarketingContentRow);
   },
 };
