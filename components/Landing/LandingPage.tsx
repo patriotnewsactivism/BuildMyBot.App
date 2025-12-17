@@ -515,6 +515,20 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     sky: { icon: 'bg-sky-100 text-sky-700', border: 'border-sky-100', accent: 'text-sky-700' }
   };
 
+  const statColorThemes: Record<string, { bg: string; text: string }> = {
+    blue: { bg: 'bg-blue-50', text: 'text-blue-600' },
+    red: { bg: 'bg-red-50', text: 'text-red-600' },
+    amber: { bg: 'bg-amber-50', text: 'text-amber-600' },
+    emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600' },
+  };
+
+  const timelineColorThemes: Record<string, { badgeBg: string; badgeText: string; circleBg: string; shadow: string }> = {
+    blue: { badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', circleBg: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
+    purple: { badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', circleBg: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
+    emerald: { badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700', circleBg: 'bg-emerald-500', shadow: 'shadow-emerald-500/30' },
+    amber: { badgeBg: 'bg-amber-100', badgeText: 'text-amber-700', circleBg: 'bg-amber-500', shadow: 'shadow-amber-500/30' },
+  };
+
   // ROI calculation
   const roiImprovedConversion = Math.min(roiCurrentConversion * 2.5, 80); // 2.5x improvement, max 80%
   const roiCurrentRevenue = roiLeadsPerMonth * roiAvgDealValue * (roiCurrentConversion / 100);
@@ -777,27 +791,30 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                    
                    {/* Main Content */}
                    <div className="flex-1 p-4 md:p-8 overflow-hidden">
-                      <div className="flex justify-between items-center mb-8">
-                         <div>
-                            <h2 className="text-2xl font-bold text-slate-800">Overview</h2>
-                            <p className="text-slate-500 text-sm">Welcome back, Alex.</p>
-                         </div>
+                          <div className="flex justify-between items-center mb-8">
+                             <div>
+                                <h2 className="text-2xl font-bold text-slate-800">Overview</h2>
+                                <p className="text-slate-500 text-sm">Welcome back, Alex.</p>
+                             </div>
                          <button className="bg-blue-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hidden md:block">+ Create Bot</button>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
-                         {[
-                            {l: 'Active Chats', v: '1,240', i: MessageSquare, c: 'blue'},
-                            {l: 'Hot Leads', v: '328', i: Flame, c: 'red'},
-                            {l: 'Response', v: '0.8s', i: Zap, c: 'amber'},
-                            {l: 'Revenue', v: '$4,200', i: TrendingUp, c: 'emerald'}
-                         ].map((s, i) => (
-                            <div key={i} className="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
-                               <div className={`w-8 h-8 rounded-lg bg-${s.c}-50 text-${s.c}-600 flex items-center justify-center mb-3`}><s.i size={16}/></div>
-                               <div className="text-xl md:text-2xl font-bold text-slate-800">{s.v}</div>
-                               <div className="text-xs text-slate-500">{s.l}</div>
-                            </div>
-                         ))}
+                        {[ 
+                           {l: 'Active Chats', v: '1,240', i: MessageSquare, c: 'blue'},
+                           {l: 'Hot Leads', v: '328', i: Flame, c: 'red'},
+                           {l: 'Response', v: '0.8s', i: Zap, c: 'amber'},
+                           {l: 'Revenue', v: '$4,200', i: TrendingUp, c: 'emerald'}
+                         ].map((s, i) => {
+                            const theme = statColorThemes[s.c] ?? statColorThemes.blue;
+                            return (
+                              <div key={i} className="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
+                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 ${theme.bg} ${theme.text}`}><s.i size={16}/></div>
+                                 <div className="text-xl md:text-2xl font-bold text-slate-800">{s.v}</div>
+                                 <div className="text-xs text-slate-500">{s.l}</div>
+                              </div>
+                            );
+                         })}
                       </div>
 
                       {/* Mock Chart Area */}
@@ -970,7 +987,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                 <div key={idx} className={`flex flex-col md:flex-row items-center gap-8 ${item.side === 'right' ? 'md:flex-row-reverse' : ''}`}>
                   <div className={`flex-1 ${item.side === 'right' ? 'md:text-left' : 'md:text-right'}`}>
                     <div className={`bg-white p-8 rounded-2xl shadow-xl border border-slate-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1`}>
-                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-${item.color}-100 text-${item.color}-700 text-xs font-bold mb-4`}>
+                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-4 ${timelineColorThemes[item.color]?.badgeBg ?? timelineColorThemes.blue.badgeBg} ${timelineColorThemes[item.color]?.badgeText ?? timelineColorThemes.blue.badgeText}`}>
                         Step {item.step}
                       </div>
                       <h3 className="text-2xl font-bold text-slate-900 mb-3">{item.title}</h3>
@@ -979,7 +996,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                   </div>
 
                   {/* Center icon */}
-                  <div className={`relative z-10 w-20 h-20 rounded-full bg-${item.color}-500 flex items-center justify-center shadow-lg shadow-${item.color}-500/30`}>
+                  <div className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center shadow-lg ${timelineColorThemes[item.color]?.circleBg ?? timelineColorThemes.blue.circleBg} ${timelineColorThemes[item.color]?.shadow ?? timelineColorThemes.blue.shadow}`}>
                     <item.icon size={32} className="text-white" />
                   </div>
 

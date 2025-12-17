@@ -93,7 +93,7 @@ export const uploadPageToStorage = async (page: WebsitePage, html: string): Prom
   return data.publicUrl;
 };
 
-export const createFirebaseStaticExport = (page: WebsitePage, html: string) => {
+export const createStaticExport = (page: WebsitePage, html: string) => {
   const blob = new Blob([html], { type: 'text/html' });
   const slug = page.slug || slugifyPageSlug(page.title);
   const fileName = `${slug}.html`;
