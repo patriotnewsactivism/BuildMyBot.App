@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Layout/Sidebar';
 import { BotBuilder } from './components/BotBuilder/BotBuilder';
@@ -24,6 +26,8 @@ import { supabase } from './services/supabaseClient';
 import { dbService } from './services/dbService';
 import { calculateLeadScore } from './services/leadCapture';
 import { edgeFunctions } from './services/edgeFunctions';
+import { initSentry } from './services/sentryInit';
+import { initPostHog } from './services/posthogInit';
 
 const INITIAL_CHAT_LOGS: Conversation[] = []; 
 const INITIAL_RESELLER_STATS: ResellerStats = {
@@ -57,6 +61,11 @@ function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [notification, setNotification] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    initSentry();
+    initPostHog();
+  }, []);
 
   // --- Capture Referral Code ---
   useEffect(() => {
