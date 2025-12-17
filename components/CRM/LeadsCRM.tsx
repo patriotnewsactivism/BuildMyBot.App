@@ -206,7 +206,7 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
                           <Check size={32} />
                        </div>
                        <h4 className="font-bold text-lg text-slate-800">Email Sent!</h4>
-                       <p className="text-slate-500">Lead status updated to 'Contacted'.</p>
+                       <p className="text-slate-500">Lead status updated to ‘Contacted’.</p>
                    </div>
                ) : (
                    <div className="p-6 space-y-4">
