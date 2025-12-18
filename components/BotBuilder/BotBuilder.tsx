@@ -593,7 +593,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                         <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
                            <Upload size={18} className="text-blue-900" /> Upload PDF/Text
                         </h3>
-                        <p className="text-xs text-slate-500 mb-4">Drop a PDF, TXT, or Markdown file to embed it into your bot's knowledge base.</p>
+                        <p className="text-xs text-slate-500 mb-4">Drop a PDF, TXT, or Markdown file to embed it into your bot’s knowledge base.</p>
                         <label className="flex items-center justify-between w-full border-2 border-dashed border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-600 cursor-pointer hover:border-blue-300 hover:bg-blue-50/50 transition">
                           <span>{uploadingFileName ? `Processing ${uploadingFileName}...` : 'Choose a file to upload'}</span>
                           <Upload size={16} className="text-blue-900" />
@@ -724,7 +724,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                               <Code size={18} className="text-blue-900"/> Website Embed
                            </h3>
                            <p className="text-sm text-slate-600 mb-4">
-                              Copy and paste this code into your website's <code>&lt;head&gt;</code> tag.
+                              Copy and paste this code into your website’s <code>&lt;head&gt;</code> tag.
                            </p>
                            <div className="bg-slate-900 text-slate-300 p-4 rounded-lg font-mono text-xs overflow-x-auto relative group">
                               <pre>{embedCode}</pre>
