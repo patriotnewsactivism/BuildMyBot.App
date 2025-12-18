@@ -55,7 +55,8 @@ function App() {
   const [bots, setBots] = useState<BotType[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [chatLogs, setChatLogs] = useState<Conversation[]>(INITIAL_CHAT_LOGS);
-  
+  const [analyticsData, setAnalyticsData] = useState<{ date: string; conversations: number; leads: number }[]>(MOCK_ANALYTICS_DATA);
+
   // UI State
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -195,6 +196,29 @@ function App() {
     };
   }, []); // Empty dependency - subscriptions only need to be set up once
 
+  // --- Analytics Data Fetching ---
+  useEffect(() => {
+    if (!user?.id || user.id.startsWith('demo-user') || user.id.startsWith('master-admin') || user.id === 'limited-admin') {
+      return;
+    }
+
+    // Fetch real analytics data from Supabase
+    const fetchAnalytics = async () => {
+      const data = await dbService.getWeeklyAnalytics(user.id);
+      if (data.length > 0) {
+        setAnalyticsData(data);
+      }
+    };
+    fetchAnalytics();
+
+    // Refresh analytics every 5 minutes
+    const analyticsInterval = setInterval(fetchAnalytics, 5 * 60 * 1000);
+
+    return () => {
+      clearInterval(analyticsInterval);
+    };
+  }, [user?.id]);
+
   // Track referrals with backend function once user is authenticated
   useEffect(() => {
     const referralCode = typeof window !== 'undefined' ? localStorage.getItem('bmb_ref_code') : null;
@@ -226,8 +250,47 @@ function App() {
   // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
   const totalLeads = leads.length;
-  const estSavings = totalConversations * 5; 
-  const avgResponseTime = "0.8s";
+  const estSavings = totalConversations * 5;
+
+  // Calculate real lead source breakdown
+  const leadsByBot = leads.reduce((acc, lead) => {
+    const botName = bots.find(b => b.id === lead.botId)?.name || 'Unknown';
+    acc[botName] = (acc[botName] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const topBotSource = Object.entries(leadsByBot).sort((a, b) => b[1] - a[1])[0];
+  const topBotPercentage = totalLeads > 0 ? Math.round((topBotSource?.[1] / totalLeads) * 100) : 0;
+  const topBotName = topBotSource?.[0] || 'N/A';
+
+  // Calculate real average response time from conversation messages
+  const avgResponseTime = React.useMemo(() => {
+    if (chatLogs.length === 0) return "N/A";
+
+    const responseTimes: number[] = [];
+
+    chatLogs.forEach(log => {
+      if (!log.messages || log.messages.length < 2) return;
+
+      for (let i = 0; i < log.messages.length - 1; i++) {
+        const msg = log.messages[i];
+        const nextMsg = log.messages[i + 1];
+
+        // Calculate time between user message and bot response
+        if (msg.role === 'user' && (nextMsg.role === 'assistant' || nextMsg.role === 'model')) {
+          const diff = new Date(nextMsg.timestamp).getTime() - new Date(msg.timestamp).getTime();
+          if (diff > 0 && diff < 300000) { // Filter out unrealistic times (< 5 minutes)
+            responseTimes.push(diff / 1000); // Convert to seconds
+          }
+        }
+      }
+    });
+
+    if (responseTimes.length === 0) return "0.8s";
+
+    const avg = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
+    return avg < 1 ? `${Math.round(avg * 1000)}ms` : `${avg.toFixed(1)}s`;
+  }, [chatLogs]);
 
   const handleAdminLogin = () => {
       // Manual trigger for demo purposes if needed (from footer)
@@ -492,7 +555,7 @@ function App() {
                   <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80">
                      <h3 className="font-bold text-slate-800 mb-4">Conversation Volume</h3>
                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={MOCK_ANALYTICS_DATA}>
+                        <AreaChart data={analyticsData}>
                           <defs>
                             <linearGradient id="colorConvos" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#1e3a8a" stopOpacity={0.1}/>
@@ -510,13 +573,19 @@ function App() {
                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80 flex flex-col">
                       <h3 className="font-bold text-slate-800 mb-4">Lead Sources</h3>
                       <div className="flex-1 flex items-center justify-center">
-                         <div className="text-center space-y-2">
-                            <div className="text-4xl font-bold text-blue-900">82%</div>
-                            <p className="text-sm text-slate-500">from Sales Bot</p>
-                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
-                               <div className="bg-blue-900 h-full w-[82%]"></div>
-                            </div>
-                         </div>
+                         {totalLeads === 0 ? (
+                           <div className="text-center text-slate-400">
+                             <p className="text-sm">No leads captured yet</p>
+                           </div>
+                         ) : (
+                           <div className="text-center space-y-2">
+                              <div className="text-4xl font-bold text-blue-900">{topBotPercentage}%</div>
+                              <p className="text-sm text-slate-500">from {topBotName}</p>
+                              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
+                                 <div className="bg-blue-900 h-full" style={{width: `${topBotPercentage}%`}}></div>
+                              </div>
+                           </div>
+                         )}
                       </div>
                   </div>
                </div>

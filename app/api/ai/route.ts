@@ -7,8 +7,7 @@ type AiRequestBody = {
   action?:
     | 'generateBotResponse'
     | 'generateMarketingContent'
-    | 'generateWebsiteStructure'
-    | 'scrapeWebsite';
+    | 'generateWebsiteStructure';
   payload?: Record<string, unknown>;
 };
 
@@ -154,8 +153,6 @@ export async function POST(req: Request) {
         return await handleGenerateMarketingContent(payload);
       case 'generateWebsiteStructure':
         return await handleGenerateWebsiteStructure(payload);
-      case 'scrapeWebsite':
-        return await handleScrapeWebsite(String(payload.url || ''));
       default:
         return NextResponse.json({ error: 'Unsupported AI action.' }, { status: 400 });
     }
