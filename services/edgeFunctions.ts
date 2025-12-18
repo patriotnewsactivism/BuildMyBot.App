@@ -296,6 +296,30 @@ export const edgeFunctions = {
 
     return response.json();
   },
+
+  /**
+   * Scrape and summarize website content
+   * Uses Jina.ai reader and GPT summarization
+   */
+  scrapeUrl: async (
+    url: string,
+    summarize: boolean = true
+  ): Promise<{ content: string; url: string; method: string; rawLength: number; summarized: boolean }> => {
+    const headers = await getAuthHeaders();
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/scrape-url`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ url, summarize }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to scrape URL');
+    }
+
+    return response.json();
+  },
 };
 
 export default edgeFunctions;
