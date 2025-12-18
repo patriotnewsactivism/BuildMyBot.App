@@ -56,6 +56,7 @@ function App() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [chatLogs, setChatLogs] = useState<Conversation[]>(INITIAL_CHAT_LOGS);
   const [analyticsData, setAnalyticsData] = useState<{ date: string; conversations: number; leads: number }[]>(MOCK_ANALYTICS_DATA);
+  const [resellerStats, setResellerStats] = useState<ResellerStats>(INITIAL_RESELLER_STATS);
 
   // UI State
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -174,13 +175,40 @@ function App() {
   useEffect(() => {
     if (!supabase) return;
 
-    // Subscribe to Bots
+    // Track previous counts to detect new items
+    let previousLeadCount = 0;
+    let previousBotCount = 0;
+
+    // Subscribe to Bots with notification trigger
     const unsubscribeBots = dbService.subscribeToBots((updatedBots) => {
+       // Check if new bot was added
+       if (updatedBots.length > previousBotCount && previousBotCount > 0) {
+         const newBot = updatedBots[updatedBots.length - 1];
+         setNotification(`🤖 New Bot Created: ${newBot.name}`);
+         setTimeout(() => setNotification(null), 4000);
+       }
+       previousBotCount = updatedBots.length;
        setBots(updatedBots);
     });
 
-    // Subscribe to Leads
+    // Subscribe to Leads with notification trigger
     const unsubscribeLeads = dbService.subscribeToLeads((updatedLeads) => {
+       // Check if new lead was added
+       if (updatedLeads.length > previousLeadCount && previousLeadCount > 0) {
+         const newLead = updatedLeads[updatedLeads.length - 1];
+         const score = newLead.score || 0;
+
+         // Trigger notification for new leads
+         if (score >= 80) {
+           setNotification(`🔥 Hot Lead: ${newLead.name || newLead.email} (Score: ${score})`);
+         } else if (score >= 60) {
+           setNotification(`✨ Warm Lead: ${newLead.name || newLead.email} (Score: ${score})`);
+         } else {
+           setNotification(`📧 New Lead: ${newLead.name || newLead.email}`);
+         }
+         setTimeout(() => setNotification(null), 5000);
+       }
+       previousLeadCount = updatedLeads.length;
        setLeads(updatedLeads);
     });
 
@@ -218,6 +246,27 @@ function App() {
       clearInterval(analyticsInterval);
     };
   }, [user?.id]);
+
+  // --- Reseller Stats Fetching ---
+  useEffect(() => {
+    if (!user?.id || user.role !== UserRole.RESELLER) {
+      return;
+    }
+
+    // Fetch real reseller stats from Supabase
+    const fetchResellerStats = async () => {
+      const stats = await dbService.getResellerStats(user.id);
+      setResellerStats(stats);
+    };
+    fetchResellerStats();
+
+    // Refresh stats every 5 minutes
+    const statsInterval = setInterval(fetchResellerStats, 5 * 60 * 1000);
+
+    return () => {
+      clearInterval(statsInterval);
+    };
+  }, [user?.id, user?.role]);
 
   // Track referrals with backend function once user is authenticated
   useEffect(() => {
@@ -383,8 +432,16 @@ function App() {
         score,
         sourceUrl: window.location.href
       });
-      setNotification("New Hot Lead Detected from Chat! 🔥");
-      setTimeout(() => setNotification(null), 4000);
+
+      // Dynamic notification based on lead score
+      if (score >= 80) {
+        setNotification("🔥 Hot Lead Detected! Score: " + score);
+      } else if (score >= 60) {
+        setNotification("✨ New Warm Lead Captured! Score: " + score);
+      } else {
+        setNotification("📧 New Lead Captured: " + email);
+      }
+      setTimeout(() => setNotification(null), 5000);
     } catch (error) {
       console.error('Failed to record lead', error);
     }
@@ -600,7 +657,7 @@ function App() {
               onConversationLogged={handleConversationLogged}
           />}
           
-          {currentView === 'reseller' && <ResellerDashboard user={user} stats={INITIAL_RESELLER_STATS} />}
+          {currentView === 'reseller' && <ResellerDashboard user={user} stats={resellerStats} />}
           
           {currentView === 'marketing' && <MarketingTools />}
           

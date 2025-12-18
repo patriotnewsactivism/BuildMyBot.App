@@ -589,7 +589,14 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                       </div>
                       <button onClick={() => setIsChatOpen(false)} className="p-1 hover:bg-white/10 rounded"><X size={18}/></button>
                   </div>
-                  
+
+                  {/* Demo Disclaimer Banner */}
+                  <div className="bg-blue-50 border-b border-blue-200 px-3 py-2">
+                      <p className="text-[10px] text-blue-800 text-center font-medium">
+                          🎭 <strong>Interactive Demo</strong> - Try our AI (no signup required)
+                      </p>
+                  </div>
+
                   <div className="flex-1 bg-slate-50 overflow-y-auto p-4 space-y-4" ref={chatScrollRef}>
                       <div className="text-center text-[10px] text-slate-400 font-medium uppercase tracking-wider my-2">Powered by GPT-4o</div>
                       {chatHistory.map((msg, i) => (
@@ -1345,10 +1352,10 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
          <div className="max-w-7xl mx-auto px-6 relative z-10">
             <div className="text-center mb-16">
                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-blue-300 text-xs font-bold uppercase tracking-wide mb-6">
-                 Live Interactive Demos
+                 Try It Live - No Signup Required
                </div>
                <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">See the Magic in Action</h2>
-               <p className="text-lg text-slate-400">Try our AI capabilities right here, right now.</p>
+               <p className="text-lg text-slate-400">Fully functional AI tools you can test right now. Uses your OpenAI key if configured.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
