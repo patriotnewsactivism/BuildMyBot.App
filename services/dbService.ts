@@ -568,5 +568,93 @@ export const dbService = {
       console.error('Error in getWeeklyAnalytics:', error);
       return [];
     }
+  },
+
+  /**
+   * Get real reseller statistics
+   * Returns client count, revenue, commissions, etc.
+   */
+  getResellerStats: async (userId: string): Promise<{
+    totalClients: number;
+    totalRevenue: number;
+    commissionRate: number;
+    pendingPayout: number;
+    addOnCommission: number;
+    arrears: number;
+  }> => {
+    const client = supabase;
+    if (!client) {
+      return {
+        totalClients: 0,
+        totalRevenue: 0,
+        commissionRate: 0.20,
+        pendingPayout: 0,
+        addOnCommission: 0,
+        arrears: 0,
+      };
+    }
+
+    try {
+      // Fetch reseller clients
+      const { data: clients, error: clientsError} = await client
+        .from('reseller_clients')
+        .select('*')
+        .eq('reseller_id', userId);
+
+      if (clientsError) {
+        console.error('Error fetching reseller clients:', clientsError);
+      }
+
+      // Fetch commissions
+      const { data: commissions, error: commissionsError } = await client
+        .from('commissions')
+        .select('*')
+        .eq('reseller_id', userId);
+
+      if (commissionsError) {
+        console.error('Error fetching commissions:', commissionsError);
+      }
+
+      // Calculate stats
+      const totalClients = clients?.length || 0;
+      const allCommissions = commissions || [];
+
+      const totalRevenue = allCommissions.reduce((sum, c) => sum + (c.amount || 0), 0);
+      const pendingPayout = allCommissions
+        .filter(c => !c.paid)
+        .reduce((sum, c) => sum + (c.amount || 0), 0);
+
+      const addOnCommission = allCommissions
+        .filter(c => c.commission_type === 'addon')
+        .reduce((sum, c) => sum + (c.amount || 0), 0);
+
+      // Get user's commission rate from profile
+      const { data: profile } = await client
+        .from('profiles')
+        .select('reseller_tier')
+        .eq('id', userId)
+        .single();
+
+      const commissionRate = profile?.reseller_tier || 0.20;
+
+      return {
+        totalClients,
+        totalRevenue,
+        commissionRate,
+        pendingPayout,
+        addOnCommission,
+        arrears: 0, // TODO: Calculate arrears from failed payments
+      };
+    } catch (error) {
+      console.error('Error in getResellerStats:', error);
+      return {
+        totalClients: 0,
+        totalRevenue: 0,
+        commissionRate: 0.20,
+        pendingPayout: 0,
+        addOnCommission: 0,
+        arrears: 0,
+      };
+    }
   }
 };
