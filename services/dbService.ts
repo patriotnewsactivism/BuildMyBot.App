@@ -487,5 +487,86 @@ export const dbService = {
     if (error) {
       console.error('Error updating page publish state:', error);
     }
+  },
+
+  // --- ANALYTICS ---
+
+  /**
+   * Get weekly analytics data for charts
+   * Returns conversation and lead counts grouped by day for the last 7 days
+   */
+  getWeeklyAnalytics: async (userId: string): Promise<{ date: string; conversations: number; leads: number }[]> => {
+    const client = supabase;
+    if (!client) return [];
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    try {
+      // Fetch conversations from the last 7 days
+      const { data: conversations, error: convError } = await client
+        .from('conversations')
+        .select('created_at')
+        .eq('owner_id', userId)
+        .gte('created_at', sevenDaysAgo.toISOString());
+
+      if (convError) {
+        console.error('Error fetching conversations for analytics:', convError);
+        return [];
+      }
+
+      // Fetch leads from the last 7 days
+      const { data: leads, error: leadsError } = await client
+        .from('leads')
+        .select('created_at')
+        .eq('owner_id', userId)
+        .gte('created_at', sevenDaysAgo.toISOString());
+
+      if (leadsError) {
+        console.error('Error fetching leads for analytics:', leadsError);
+        return [];
+      }
+
+      // Aggregate by day
+      const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const aggregatedData: Record<string, { conversations: number; leads: number }> = {};
+
+      // Initialize all 7 days with zero counts
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(sevenDaysAgo);
+        day.setDate(day.getDate() + i);
+        const dayLabel = dayLabels[day.getDay()];
+        aggregatedData[dayLabel] = { conversations: 0, leads: 0 };
+      }
+
+      // Count conversations by day
+      conversations?.forEach((conv) => {
+        const date = new Date(conv.created_at);
+        const dayLabel = dayLabels[date.getDay()];
+        if (aggregatedData[dayLabel]) {
+          aggregatedData[dayLabel].conversations++;
+        }
+      });
+
+      // Count leads by day
+      leads?.forEach((lead) => {
+        const date = new Date(lead.created_at);
+        const dayLabel = dayLabels[date.getDay()];
+        if (aggregatedData[dayLabel]) {
+          aggregatedData[dayLabel].leads++;
+        }
+      });
+
+      // Convert to array format for charts
+      return Object.entries(aggregatedData).map(([date, counts]) => ({
+        date,
+        conversations: counts.conversations,
+        leads: counts.leads,
+      }));
+    } catch (error) {
+      console.error('Error in getWeeklyAnalytics:', error);
+      return [];
+    }
   }
 };

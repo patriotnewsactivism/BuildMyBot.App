@@ -1,10 +1,10 @@
 import { sanitizeMessages } from './helpers';
+import { edgeFunctions } from './edgeFunctions';
 
 type AiAction =
   | 'generateBotResponse'
   | 'generateMarketingContent'
-  | 'generateWebsiteStructure'
-  | 'scrapeWebsite';
+  | 'generateWebsiteStructure';
 
 type CompletionResponse = { content: string };
 
@@ -30,8 +30,9 @@ async function postToAiService<TResponse>(action: AiAction, payload: Record<stri
 }
 
 export const scrapeWebsite = async (url: string): Promise<string> => {
-  const { content } = await postToAiService<CompletionResponse>('scrapeWebsite', { url });
-  return content;
+  // Use Supabase Edge Function for robust scraping with Jina.ai and SSRF protection
+  const result = await edgeFunctions.scrapeUrl(url, true);
+  return result.content;
 };
 
 export const scrapeWebsiteContent = async (url: string) => {
