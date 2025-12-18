@@ -8,6 +8,30 @@ import { calculateLeadScore, extractLeadDetection, getScoreBand } from '../../se
 // Generate a unique session ID for this chat session
 const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+// Helper function to detect and linkify URLs in text
+const linkifyText = (text: string) => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, index) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-blue-300 transition"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
+
 interface FullPageChatProps {
   botId: string;
 }
@@ -270,11 +294,11 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
                 {messages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs shadow-sm ${
-                            msg.role === 'user' 
-                            ? 'bg-blue-600 text-white rounded-br-sm' 
+                            msg.role === 'user'
+                            ? 'bg-blue-600 text-white rounded-br-sm'
                             : 'bg-white text-slate-700 border border-slate-200 rounded-bl-sm'
                         }`}>
-                            {msg.text}
+                            {linkifyText(msg.text)}
                         </div>
                     </div>
                 ))}
@@ -356,11 +380,11 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
              {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                    <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm shadow-sm ${
-                      msg.role === 'user' 
-                      ? 'bg-blue-600 text-white rounded-br-sm' 
+                      msg.role === 'user'
+                      ? 'bg-blue-600 text-white rounded-br-sm'
                       : 'bg-white text-slate-700 border border-slate-200 rounded-bl-sm'
                    }`}>
-                     {msg.text}
+                     {linkifyText(msg.text)}
                    </div>
                 </div>
              ))}
