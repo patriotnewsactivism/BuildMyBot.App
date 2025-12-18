@@ -4,10 +4,34 @@ This plan operationalizes the provided recommendations into prioritized, actiona
 
 ---
 
-## Goals
-- **Reliability & Security:** Finish Supabase migration, enforce RLS rigorously, and add robust background processing.
-- **Growth Readiness:** Ship billing, SEO-friendly marketing pages, and white-label customisation for resellers.
-- **User Experience:** Improve accessibility, performance, branding, and error handling to raise trust and conversion.
+# 1. System Architecture
+
+**Current State:** React + Vite + Firebase (Firestore/Auth)
+
+**Target Architecture (Phase 1 — Near-Term Stabilization):**
+React + Vite (Frontend SPA)
+↓
+Supabase Auth (JWT)
+↓
+Supabase Edge Functions (secure backend)
+↓
+Supabase Postgres (RLS-protected tables)
+↳ pgvector for embeddings
+↳ Stripe webhooks for billing
+↓
+OpenAI GPT-4o (LLM + embeddings)
+
+**Target Architecture (Phase 2 — SEO & Scale Migration):**
+Next.js (App Router) for SSR/SSG/ISR marketing + dashboard surfaces
+↓
+Supabase Auth (JWT) with server-side session validation
+↓
+Supabase Edge Functions (secure backend)
+↓
+Supabase Postgres (RLS-protected tables) with pgvector
+↳ Stripe webhooks for billing
+↓
+OpenAI GPT-4o (LLM + embeddings)
 
 ---
 
@@ -72,19 +96,241 @@ This plan operationalizes the provided recommendations into prioritized, actiona
 
 ---
 
-## Sequencing & Milestones
-- **Now (Week 1–2):** Finish Supabase migration (edge functions + data migration), RLS verification, type generation, and queue integration kickoff. Stabilize Playwright in CI.
-- **Next (Week 3–4):** Stripe billing + entitlements, pgvector search rollout, error boundaries, and accessibility audit with CI checks.
-- **Then (Week 5–6):** Next.js marketing site with SEO plumbing (sitemap, robots, metadata, structured data), branding refresh (palette/typography/logo), and landing page redesign with social proof and pricing.
-- **Later (Week 7+):** Widget theme editor, PWA features, ISR for dynamic pages, continued content hub build-out, and ongoing monitoring/alerting improvements.
+# 4. Edge Functions (Backend)
+
+### 4.1. `ai-complete`
+- Validates ownership  
+- Calls OpenAI  
+- Logs conversation  
+- Tracks AI token usage  
+- Enforces billing quota  
+
+### 4.2. `create-lead`
+- Validates bot ownership  
+- Creates lead record  
+- Logs usage event  
+
+### 4.3. `embed-knowledge-base`
+- Chunk text (done client-side or server-side)  
+- Generate embedding  
+- Store text + vector  
+
+### 4.4. `billing-overage-check`
+- Checks plan limits  
+- Compares usage  
+- Returns allow/deny  
+
+### 4.5. `marketplace-install-template`
+- Load template  
+- Create bot with template payload  
+
+### 4.6. `reseller-track-referral`
+- Associates referral code with new user  
+- Tracks reseller-client relationship  
+
+Each function lives in `supabase/functions/<name>`.
+
+### 4.7. Background Queue Integration (planned)
+- Queue provider: Inngest or Trigger.dev (evaluate cost, latency, retries)  
+- Workloads: embeddings, phone transcriptions, bulk imports, long-running marketing jobs  
+- Ingress: Edge Functions enqueue jobs with auth context and tenant IDs  
+- Guarantees: at-least-once with idempotency keys, exponential backoff, DLQ monitoring  
+- Observability: structured logs, per-tenant metrics, alerting on retry exhaustion  
+- Security: RLS-aware payloads only; no secrets in queue payloads; server-side env for credentials  
 
 ---
 
-## Checkpoints & Owners
-- **Security & Data:** RLS tests, audit log integrity, secret scanning.  
-- **Reliability:** Queue metrics, job retries, alert thresholds.  
-- **Growth:** SEO KPIs (index coverage, CWV), conversion on landing CTAs, billing activation rate.  
-- **UX:** Accessibility scores, error boundary coverage, widget customization satisfaction.
+# 5. Application Modules
+
+### 5.1. Bot Builder
+- Prompt editing  
+- Model selection  
+- Temperature tuning  
+- Bot settings  
+- Knowledge base management  
+- Preview chat  
+- **Specialized Personas:** City Government, Recruitment, Travel, Real Estate, etc.
+
+### 5.2. Knowledge Base
+- File upload (PDF)  
+- URL crawler  
+- Text ingestion  
+- Embedding generation  
+- Search during conversations  
+
+### 5.3. Chat Interface
+- Real-time messages  
+- Session attribution  
+- Lead capture triggers  
+- Conversation history  
+
+### 5.4. CRM
+- Lead pipeline (Kanban/List)
+- Lead scoring (Hot Lead detection)
+- CSV export  
+- Notes & metadata  
+
+### 5.5. Marketing Studio
+- Emails  
+- Ads  
+- Blog posts  
+- Scripts  
+- Social posts  
+- Viral Thread Generator
+
+### 5.6. Website Generator
+- Page editor  
+- SEO metadata  
+- Bot embed snippet  
+- Hosting via Supabase Storage or static export  
+
+### 5.7. Phone Agent
+- Twilio call flow  
+- Webhooks → transcripts  
+- Logging in `phone_calls`  
+
+### 5.8. Marketplace
+- Template installation  
+- Preview UI  
+- Category filters  
+
+### 5.9. Reseller System
+- Referral tracking  
+- Commission tracking  
+- Client oversight  
+- White-label configuration
+
+---
+
+# 6. Frontend Architecture
+
+### **Patterns**
+- React + Vite
+- Tailwind CSS for styling
+- Zustand/Context for global state  
+- Supabase JS client for auth + direct queries  
+- All sensitive calls done via Edge Functions  
+
+### **Directory Structure**
+- `components/*` – UI modules  
+- `services/*` – API + Supabase helpers  
+- `store/*` – state management  
+- `types/*` – TypeScript interfaces  
+- `utils/*` – chunking, parsing, formatting  
+
+---
+
+# 7. Operational Roadmap
+
+## Milestone 1 – Supabase Core (1–2 weeks)
+- Create schema  
+- Migrate data  
+- Implement RLS  
+- Deploy base Edge Functions  
+
+## Milestone 2 – Bot Builder, AI, CRM (2–3 weeks)
+- Bot builder integration  
+- Chat + AI completions  
+- CRM/lead views  
+- Billing enforcement  
+
+## Milestone 3 – Marketplace, Website Builder, Phone Agent (3–4 weeks)
+- Template marketplace  
+- Website generator  
+- Phone agent MVP  
+- Landing page upgrades  
+
+## Milestone 4 – Hardening & Launch (2–3 weeks)
+- Testing framework  
+- Logging + Analytics dashboards  
+- Sentry integration  
+- SEO & landing page polish  
+- Final docs  
+
+## Milestone 5 – Next.js Migration (3–4 weeks)
+- Stand up Next.js App Router with Tailwind + shadcn-compatible components  
+- Migrate marketing pages to SSG/SSR with ISR for high-traffic sections  
+- Implement programmatic sitemap and robots.txt (production vs staging rules)  
+- Implement structured data (JSON-LD) for Product/FAQ and OpenGraph defaults  
+- Add server-side Supabase auth helpers (cookies, server actions) and protect dashboard routes  
+- Create API route proxies to Edge Functions to keep secrets server-side  
+- Enable image/font optimization, route-level code splitting, and streaming where applicable  
+- Run Lighthouse + axe-core accessibility checks in CI; ensure WCAG 2.1 AA for new pages  
+- Cutover plan: dual-run Vite + Next.js during migration, gate by subpath or subdomain, then deprecate Vite build  
+
+---
+
+# 8. DevOps & Deployment
+
+### Supabase Deployment
+```bash
+supabase db push
+supabase functions deploy
+supabase start
+```
+
+### Frontend Deployment
+- Vercel
+- Netlify
+- Cloudflare Pages
+
+### CI/CD
+GitHub Actions:
+1. Install
+2. Lint
+3. Test
+4. Build
+5. Deploy
+
+### Supabase Migration Completion Checklist
+- [ ] Deploy all Edge Functions (`ai-complete`, `create-lead`, `embed-knowledge-base`, `billing-overage-check`, `marketplace-install-template`, `reseller-track-referral`)  
+- [ ] Run and validate data-migration script end-to-end  
+- [ ] Verify RLS policies per table for owner/reseller/admin contexts; add regression tests  
+- [ ] Confirm no service-role or secret keys are exposed to clients; enforce server-only env usage  
+- [ ] Validate PostgREST and client SDK permissions against RLS expectations  
+
+---
+
+# 9. API Reference (Full)
+
+- `POST /ai-complete`: Generate completions, store conversation, track usage.
+- `POST /create-lead`: Insert new lead for a bot.
+- `POST /embed-knowledge-base`: Store embeddings for semantic search.
+- `POST /billing-overage-check`: Quota enforcement.
+- `POST /marketplace-install-template`: Install a marketplace template.
+- `POST /reseller-track-referral`: Record and route new referrals.
+
+Each endpoint is fully documented in the Edge Function code.
+
+---
+
+# 10. Security
+- Full RLS enforcement
+- Separate service-role keys for backend
+- No secrets shipped to frontend
+- Token usage monitoring
+- Stripe webhook signature verification
+- JWT claims for roles
+
+---
+
+# 11. Testing Strategy
+
+### Unit Tests
+- Edge Function logic
+- Utilities
+- Services
+
+### Integration Tests
+- Supabase RPC
+- RLS protections
+- AI chat → conversation logging
+
+### End-to-End Tests
+- Bot creation
+- Chat-to-lead flow
+- Template installation
+- Billing enforcement
 
 ---
 
