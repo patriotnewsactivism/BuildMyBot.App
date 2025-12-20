@@ -1,7 +1,12 @@
+import React from 'react';
 import type { Metadata } from 'next';
 import './globals.css';
+import { getSiteUrl } from '@/utils/siteMetadata';
+
+const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: 'BuildMyBot – AI Chatbots, Marketing Automation, and Reseller Platform',
   description:
     'BuildMyBot gives teams and resellers an AI chatbot builder with CRM, marketing studio, and white-label customization backed by Supabase and secure edge functions.',
@@ -20,6 +25,7 @@ export const metadata: Metadata = {
       'Launch AI chatbots, phone agents, and marketing automations with secure Supabase, rich analytics, and white-label controls.',
     type: 'website',
     locale: 'en_US',
+    url: siteUrl,
   },
   robots: {
     index: true,
