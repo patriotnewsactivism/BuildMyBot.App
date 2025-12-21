@@ -547,7 +547,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   const roiAnnualGain = roiAdditionalRevenue * 12;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden">
+    <div className="min-h-screen bg-slate-950 font-sans text-slate-100 overflow-x-hidden">
       {modalContent && <InfoModal />}
 
       {/* Live Social Proof Notification Toast */}
@@ -658,27 +658,27 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       </div>
 
       {/* Navbar */}
-      <nav className="fixed w-full bg-white/90 backdrop-blur-md z-30 border-b border-slate-200 transition-all">
+      <nav className="fixed w-full bg-slate-950/80 backdrop-blur-md z-30 border-b border-slate-800 transition-all shadow-lg shadow-indigo-900/40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-bold text-xl text-slate-900 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
-            <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center text-white shadow-md">
+          <div className="flex items-center gap-2 font-bold text-xl text-white cursor-pointer" onClick={() => window.scrollTo(0,0)}>
+            <div className="w-8 h-8 bg-gradient-to-br from-fuchsia-500 to-blue-500 rounded-lg flex items-center justify-center text-white shadow-md shadow-fuchsia-800/40">
               <Bot size={20} />
             </div>
             BuildMyBot
           </div>
-          
+
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-            <button onClick={() => openModal('features')} className="hover:text-blue-900 transition">Features</button>
-            <a href="#voice" className="hover:text-blue-900 transition">Voice AI</a>
-            <a href="#pricing" className="hover:text-blue-900 transition">Pricing</a>
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-200">
+            <button onClick={() => openModal('features')} className="hover:text-white transition">Features</button>
+            <a href="#voice" className="hover:text-white transition">Voice AI</a>
+            <a href="#pricing" className="hover:text-white transition">Pricing</a>
             {onNavigateToPartner && (
-              <button onClick={onNavigateToPartner} className="text-blue-900 font-bold hover:text-blue-700 transition">Partner Program</button>
+              <button onClick={onNavigateToPartner} className="text-sky-200 font-bold hover:text-white transition">Partner Program</button>
             )}
           </div>
           <div className="hidden md:flex items-center gap-4">
-             <button onClick={onLogin} className="text-sm font-medium text-slate-600 hover:text-blue-900">Log in</button>
-             <button onClick={onLogin} className="px-5 py-2 bg-blue-900 text-white rounded-lg text-sm font-bold hover:bg-blue-950 transition shadow-lg shadow-blue-900/30">
+             <button onClick={onLogin} className="text-sm font-medium text-slate-200 hover:text-white">Log in</button>
+             <button onClick={onLogin} className="px-5 py-2 bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-sky-400 text-white rounded-lg text-sm font-bold hover:from-fuchsia-600 hover:via-indigo-600 hover:to-sky-500 transition shadow-lg shadow-fuchsia-900/40">
                Get Started Free
              </button>
           </div>
@@ -693,74 +693,74 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
         {/* Mobile Menu Dropdown */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-slate-100 absolute w-full px-6 py-4 flex flex-col gap-4 shadow-xl">
-             <button onClick={() => {openModal('features'); setMobileMenuOpen(false);}} className="text-left font-medium text-slate-600 py-2">Features</button>
-             <a href="#voice" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-600 py-2">Voice AI</a>
-             <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-600 py-2">Pricing</a>
+          <div className="md:hidden bg-slate-900/95 border-t border-slate-800 absolute w-full px-6 py-4 flex flex-col gap-4 shadow-xl">
+             <button onClick={() => {openModal('features'); setMobileMenuOpen(false);}} className="text-left font-medium text-slate-100 py-2">Features</button>
+             <a href="#voice" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-100 py-2">Voice AI</a>
+             <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-100 py-2">Pricing</a>
              {onNavigateToPartner && (
-               <button onClick={() => {onNavigateToPartner(); setMobileMenuOpen(false);}} className="text-left font-bold text-blue-900 py-2">Partner Program</button>
+               <button onClick={() => {onNavigateToPartner(); setMobileMenuOpen(false);}} className="text-left font-bold text-sky-200 py-2">Partner Program</button>
              )}
-             <div className="h-px bg-slate-100 my-2"></div>
-             <button onClick={onLogin} className="text-left font-medium text-blue-900 py-2">Log in</button>
-             <button onClick={onLogin} className="w-full py-3 bg-blue-900 text-white rounded-lg font-bold">Get Started Free</button>
+             <div className="h-px bg-slate-700 my-2"></div>
+             <button onClick={onLogin} className="text-left font-medium text-slate-100 py-2">Log in</button>
+             <button onClick={onLogin} className="w-full py-3 bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-sky-400 text-white rounded-lg font-bold">Get Started Free</button>
           </div>
         )}
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 relative overflow-hidden">
+      <section className="pt-32 pb-20 px-6 relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
         {/* Background Gradients */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
-           <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-           <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-           <div className="absolute -bottom-8 left-1/2 w-96 h-96 bg-emerald-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+           <div className="absolute -top-10 left-1/4 w-96 h-96 bg-fuchsia-500/30 rounded-full mix-blend-screen filter blur-3xl opacity-70 animate-blob"></div>
+           <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/30 rounded-full mix-blend-screen filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+           <div className="absolute -bottom-8 left-1/2 w-96 h-96 bg-emerald-400/25 rounded-full mix-blend-screen filter blur-3xl opacity-60 animate-blob animation-delay-4000"></div>
         </div>
 
         <div className="max-w-7xl mx-auto text-center relative z-10">
            {/* Urgency Badge */}
-           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-bold uppercase tracking-wide mb-6 shadow-lg animate-pulse cursor-pointer" onClick={() => openModal('features')}>
+           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-400 via-fuchsia-500 to-indigo-500 text-white text-xs font-bold uppercase tracking-wide mb-6 shadow-lg shadow-fuchsia-900/40 animate-pulse cursor-pointer" onClick={() => openModal('features')}>
              <Timer size={14} />
              Limited Time: Free Setup + 30-Day Trial
            </div>
 
-           <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight mb-6 leading-tight">
-             Stop Losing Leads to <span className="line-through text-red-500 opacity-60">Slow Response</span><br/>
-             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-900 via-blue-600 to-emerald-500">Close 3x More Deals on Autopilot</span>
+           <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight mb-6 leading-tight drop-shadow-lg">
+             Stop Losing Leads to <span className="line-through text-rose-300 opacity-80">Slow Response</span><br/>
+             <span className="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-300 via-sky-300 to-emerald-200">Close 3x More Deals on Autopilot</span>
            </h1>
 
-           <h2 className="text-xl md:text-2xl font-semibold text-slate-600 tracking-wide mb-4 max-w-4xl mx-auto">
+           <h2 className="text-xl md:text-2xl font-semibold text-slate-200 tracking-wide mb-4 max-w-4xl mx-auto">
              The AI employee that never sleeps, never takes breaks, and converts website visitors into paying customers 24/7/365.
            </h2>
 
            {/* Pain Point Callout */}
-           <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-500 mb-10">
+           <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-200/80 mb-10">
              <div className="flex items-center gap-2">
-               <XCircle size={16} className="text-red-400" />
+               <XCircle size={16} className="text-rose-300" />
                <span>No more missed calls</span>
              </div>
              <div className="flex items-center gap-2">
-               <XCircle size={16} className="text-red-400" />
+               <XCircle size={16} className="text-rose-300" />
                <span>No more lost leads</span>
              </div>
              <div className="flex items-center gap-2">
-               <XCircle size={16} className="text-red-400" />
+               <XCircle size={16} className="text-rose-300" />
                <span>No more slow response times</span>
              </div>
            </div>
 
            <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-6">
-              <button onClick={onLogin} className="group w-full md:w-auto px-10 py-5 bg-gradient-to-r from-blue-900 to-blue-700 text-white rounded-xl text-lg font-bold hover:from-blue-950 hover:to-blue-800 transition-all shadow-2xl shadow-blue-900/40 flex items-center justify-center gap-3 transform hover:-translate-y-1 hover:scale-105">
+              <button onClick={onLogin} className="group w-full md:w-auto px-10 py-5 bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-sky-400 text-white rounded-xl text-lg font-bold hover:from-fuchsia-600 hover:via-indigo-600 hover:to-sky-500 transition-all shadow-2xl shadow-fuchsia-900/40 flex items-center justify-center gap-3 transform hover:-translate-y-1 hover:scale-105">
                 <Gift size={22} className="group-hover:animate-bounce" />
                 Start Free - No Credit Card
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </button>
-              <button onClick={() => setIsChatOpen(true)} className="w-full md:w-auto px-8 py-5 bg-white text-slate-700 border-2 border-slate-200 rounded-xl text-lg font-bold hover:border-blue-300 hover:bg-blue-50 transition flex items-center justify-center gap-2 transform hover:-translate-y-1">
-                <Play size={20} fill="currentColor" className="text-blue-500" /> See It In Action
+              <button onClick={() => setIsChatOpen(true)} className="w-full md:w-auto px-8 py-5 bg-white/10 text-white border-2 border-white/20 rounded-xl text-lg font-bold hover:border-sky-200 hover:bg-white/15 transition flex items-center justify-center gap-2 transform hover:-translate-y-1">
+                <Play size={20} fill="currentColor" className="text-sky-300" /> See It In Action
               </button>
            </div>
 
            {/* Social Proof Mini */}
-           <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-slate-500 mb-16">
+           <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-slate-200/80 mb-16">
              <div className="flex -space-x-2">
                {['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed'].map((color, i) => (
                  <div key={i} className="w-8 h-8 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: color }}>
@@ -768,16 +768,16 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                  </div>
                ))}
              </div>
-             <span className="ml-2">Join <strong className="text-slate-900">12,847+</strong> businesses already converting more leads</span>
+             <span className="ml-2">Join <strong className="text-white">12,847+</strong> businesses already converting more leads</span>
              <div className="flex items-center gap-0.5 ml-2">
                {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="#f59e0b" className="text-amber-400" />)}
              </div>
-             <span className="font-bold text-slate-900">4.9/5</span>
+             <span className="font-bold text-white">4.9/5</span>
            </div>
            
            {/* High Fidelity Dashboard Preview */}
            <div className="relative max-w-6xl mx-auto transform hover:scale-[1.01] transition duration-700 ease-out z-20">
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl blur-lg opacity-20"></div>
+              <div className="absolute -inset-1 bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-sky-400 rounded-2xl blur-lg opacity-30"></div>
               <div className="relative bg-white rounded-xl border border-slate-200 shadow-2xl overflow-hidden">
                 {/* Browser Controls */}
                 <div className="h-10 bg-slate-50 border-b border-slate-200 flex items-center px-4 gap-2 justify-between">
