@@ -20,6 +20,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
       activeBots: 3850, // Mock for now until we query all bots
       partnerCount: 0
   });
+  const [roleUpdateEmail, setRoleUpdateEmail] = useState('');
+  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.ADMIN);
+  const [roleUpdateStatus, setRoleUpdateStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,6 +79,61 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
     setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus } : u));
   };
 
+  const handleRoleUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (readOnly || isUpdatingRole) return;
+
+    const email = roleUpdateEmail.trim().toLowerCase();
+    if (!email) {
+      setRoleUpdateStatus({ type: 'error', message: 'Please enter an email address.' });
+      return;
+    }
+
+    setIsUpdatingRole(true);
+    setRoleUpdateStatus(null);
+
+    try {
+      const updatedProfile = await dbService.setUserRoleByEmail(email, selectedRole);
+
+      if (updatedProfile) {
+        setUsers(prev => {
+          const existingIndex = prev.findIndex(u => u.id === updatedProfile.id);
+          if (existingIndex === -1) {
+            return [...prev, updatedProfile];
+          }
+          const updatedUsers = [...prev];
+          updatedUsers[existingIndex] = { ...prev[existingIndex], ...updatedProfile };
+          return updatedUsers;
+        });
+
+        setPartners(prev => {
+          const filtered = prev.filter(p => p.id !== updatedProfile.id);
+          return selectedRole === UserRole.RESELLER ? [...filtered, updatedProfile] : filtered;
+        });
+
+        setRoleUpdateStatus({
+          type: 'success',
+          message: `${email} is now set to ${selectedRole.replace(/_/g, ' ').toLowerCase()}.`,
+        });
+      } else {
+        setRoleUpdateStatus({ type: 'error', message: 'No user found with that email address.' });
+      }
+    } catch (error) {
+      console.error('Admin role update error:', error);
+      setRoleUpdateStatus({ type: 'error', message: 'Failed to update role. Please try again.' });
+    } finally {
+      setIsUpdatingRole(false);
+    }
+  };
+
+  const roleOptions = [
+    { value: UserRole.ADMIN, label: 'Admin' },
+    { value: UserRole.BETA_TESTER, label: 'Beta Tester' },
+    { value: UserRole.ADVERTISER, label: 'Advertiser' },
+    { value: UserRole.WEBMASTER, label: 'Webmaster' },
+    { value: UserRole.RESELLER, label: 'Partner / Reseller' },
+  ];
+
   if (loading) {
       return <div className="flex items-center justify-center h-96"><Loader className="animate-spin text-blue-900" size={32}/></div>;
   }
@@ -105,6 +164,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
                 </button>
             </div>
           </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-semibold text-slate-800">Assign privileged roles</h3>
+            <p className="text-sm text-slate-500">Update admin, beta, advertiser, webmaster, or partner access instantly by email.</p>
+          </div>
+          <form onSubmit={handleRoleUpdate} className="flex flex-col md:flex-row gap-3 md:items-center w-full md:w-auto">
+            <input
+              type="email"
+              value={roleUpdateEmail}
+              onChange={(e) => setRoleUpdateEmail(e.target.value)}
+              placeholder="user@example.com"
+              className="w-full md:w-64 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-blue-900 focus:border-blue-900"
+              disabled={readOnly}
+              required
+            />
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value as UserRole)}
+              className="w-full md:w-56 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-blue-900 focus:border-blue-900 bg-white"
+              disabled={readOnly}
+            >
+              {roleOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              disabled={readOnly || isUpdatingRole}
+              className="px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-950 disabled:opacity-60 disabled:cursor-not-allowed text-sm font-semibold shadow-sm"
+            >
+              {isUpdatingRole ? 'Updating...' : 'Set Role'}
+            </button>
+          </form>
+        </div>
+        {roleUpdateStatus && (
+          <div className={`mt-4 text-sm ${roleUpdateStatus.type === 'success' ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : 'text-red-700 bg-red-50 border border-red-100'} p-3 rounded-lg`}>
+            {roleUpdateStatus.message}
+          </div>
+        )}
       </div>
 
       {/* Global Stats */}
