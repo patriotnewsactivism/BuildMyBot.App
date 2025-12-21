@@ -28,6 +28,11 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats: initia
   const [isLoading, setIsLoading] = useState(true);
   const [realStats, setRealStats] = useState<ResellerStats>(initialStats);
 
+  // Keep local stats in sync with upstream prop updates (e.g., Supabase fetch from parent)
+  useEffect(() => {
+    setRealStats(initialStats);
+  }, [initialStats]);
+
   useEffect(() => {
     const resellerId = user.id;
 
@@ -46,13 +51,17 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats: initia
       setReferrals(referralData);
       setEarnings(earningsData);
       earningsRef.current = earningsData;
-      setRealStats(computeResellerStats(referralData, earningsData));
+      const computedStats = computeResellerStats(referralData, earningsData);
+      const hasDerivedData = referralData.length > 0 || earningsData.length > 0;
+      setRealStats(hasDerivedData ? computedStats : initialStats);
       setIsLoading(false);
     };
 
     const unsubscribe = resellerService.subscribeToReferrals(resellerId, (updatedReferrals) => {
       setReferrals(updatedReferrals);
-      setRealStats(computeResellerStats(updatedReferrals, earningsRef.current));
+      const computedStats = computeResellerStats(updatedReferrals, earningsRef.current);
+      const hasDerivedData = updatedReferrals.length > 0 || earningsRef.current.length > 0;
+      setRealStats(hasDerivedData ? computedStats : initialStats);
     });
 
     loadData();
@@ -60,7 +69,7 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats: initia
     return () => {
       unsubscribe();
     };
-  }, [user.id]);
+  }, [user.id, initialStats]);
   
   const currentTier = RESELLER_TIERS.find(t => realStats.totalClients >= t.min && realStats.totalClients <= t.max) || RESELLER_TIERS[0];
   const nextTier = RESELLER_TIERS.find(t => t.min > realStats.totalClients);
