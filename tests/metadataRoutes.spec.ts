@@ -23,6 +23,6 @@ describe('metadata routes', () => {
     const entries = sitemap();
     expect(entries).toHaveLength(1);
     expect(entries[0].url).toBe('https://example.com/');
-    expect(entries[0].changefreq).toBe('daily');
+    expect(entries[0].changeFrequency).toBe('daily');
   });
 });

@@ -4,7 +4,7 @@ const DEFAULT_SITE_URL = 'https://buildmybot.app';
 
 export type SitemapEntry = {
   path: string;
-  changeFrequency?: MetadataRoute.Sitemap[number]['changefreq'];
+  changeFrequency?: MetadataRoute.Sitemap[number]['changeFrequency'];
   priority?: number;
   lastModified?: string | Date;
 };
