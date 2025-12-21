@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import { Bot, Lead, Conversation, User, PlanType, WebsitePage } from '../types';
+import { Bot, Lead, Conversation, User, PlanType, WebsitePage, UserRole } from '../types';
 import { edgeFunctions } from './edgeFunctions';
 import { slugifyPageSlug } from './websiteService';
 
@@ -417,6 +417,45 @@ export const dbService = {
       .from('profiles')
       .update({ status: 'Active' })
       .eq('id', uid);
+  },
+
+  setUserRoleByEmail: async (email: string, role: UserRole): Promise<User | null> => {
+    const client = supabase;
+    if (!client) return null;
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      throw new Error('Email is required');
+    }
+
+    const { data: existingProfiles, error: fetchError } = await client
+      .from('profiles')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .limit(1);
+
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    const existingProfile = Array.isArray(existingProfiles) ? existingProfiles[0] : null;
+    if (!existingProfile) {
+      return null;
+    }
+
+    const { data, error } = await client
+      .from('profiles')
+      .update({ role })
+      .eq('id', existingProfile.id)
+      .select('*')
+      .limit(1);
+
+    if (error) {
+      throw error;
+    }
+
+    const updatedProfile = Array.isArray(data) ? data[0] : null;
+    return updatedProfile ? objectToCamelCase<User>(updatedProfile as Record<string, unknown>) : null;
   },
 
   // --- WEBSITE PAGES ---
