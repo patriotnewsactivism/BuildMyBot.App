@@ -19,6 +19,7 @@ interface ChatRequestBody {
   messages: ChatMessage[];
   sessionId: string;
   userId?: string;
+  skipLogging?: boolean;
 }
 
 interface MarketingRequestBody {
@@ -175,7 +176,7 @@ serve(async (req) => {
     // --------------------------
 
     const body = rawBody as ChatRequestBody;
-    const { botId, messages, sessionId } = body;
+    const { botId, messages, sessionId, skipLogging } = body;
 
     if (!botId || !messages || !sessionId) {
       return new Response(
@@ -276,49 +277,51 @@ serve(async (req) => {
     const tokensUsed = openaiData.usage?.total_tokens || 0;
 
     // Get or create conversation
-    let conversationId: string;
-    const { data: existingConversation } = await supabase
-      .from("conversations")
-      .select("id")
-      .eq("session_id", sessionId)
-      .eq("bot_id", botId)
-      .single();
-
-    if (existingConversation) {
-      conversationId = existingConversation.id;
-    } else {
-      const { data: newConversation, error: convError } = await supabase
+    let conversationId: string | undefined;
+    if (!skipLogging) {
+      const { data: existingConversation } = await supabase
         .from("conversations")
-        .insert({
-          bot_id: botId,
-          user_id: bot.user_id,
-          session_id: sessionId,
-        })
         .select("id")
+        .eq("session_id", sessionId)
+        .eq("bot_id", botId)
         .single();
 
-      if (convError) {
-        console.error("Error creating conversation:", convError);
+      if (existingConversation) {
+        conversationId = existingConversation.id;
+      } else {
+        const { data: newConversation, error: convError } = await supabase
+          .from("conversations")
+          .insert({
+            bot_id: botId,
+            user_id: bot.user_id,
+            session_id: sessionId,
+          })
+          .select("id")
+          .single();
+
+        if (convError) {
+          console.error("Error creating conversation:", convError);
+        }
+        conversationId = newConversation?.id;
       }
-      conversationId = newConversation?.id;
-    }
 
-    // Log messages to database
-    if (conversationId) {
-      const messagesToInsert = [
-        ...messages.map((m) => ({
-          conversation_id: conversationId,
-          role: m.role,
-          content: m.content,
-        })),
-        {
-          conversation_id: conversationId,
-          role: "assistant",
-          content: assistantMessage,
-        },
-      ];
+      // Log messages to database
+      if (conversationId) {
+        const messagesToInsert = [
+          ...messages.map((m) => ({
+            conversation_id: conversationId,
+            role: m.role,
+            content: m.content,
+          })),
+          {
+            conversation_id: conversationId,
+            role: "assistant",
+            content: assistantMessage,
+          },
+        ];
 
-      await supabase.from("messages").insert(messagesToInsert);
+        await supabase.from("messages").insert(messagesToInsert);
+      }
     }
 
     // Track usage event
@@ -333,7 +336,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         message: assistantMessage,
-        conversationId,
+        conversationId: conversationId || sessionId,
         tokensUsed,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
