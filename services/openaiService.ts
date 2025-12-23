@@ -29,14 +29,14 @@ async function postToAiService<TResponse>(action: AiAction, payload: Record<stri
   return response.json() as Promise<TResponse>;
 }
 
-export const scrapeWebsite = async (url: string): Promise<string> => {
+export const scrapeWebsite = async (url: string, summarize: boolean = true): Promise<string> => {
   // Use Supabase Edge Function for robust scraping with Jina.ai and SSRF protection
-  const result = await edgeFunctions.scrapeUrl(url, true);
+  const result = await edgeFunctions.scrapeUrl(url, summarize);
   return result.content;
 };
 
-export const scrapeWebsiteContent = async (url: string) => {
-  return await scrapeWebsite(url);
+export const scrapeWebsiteContent = async (url: string, summarize: boolean = true) => {
+  return await scrapeWebsite(url, summarize);
 };
 
 export const generateBotResponse = async (
