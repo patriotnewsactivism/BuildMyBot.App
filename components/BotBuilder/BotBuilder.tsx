@@ -5,6 +5,7 @@ import { scrapeWebsiteContent } from '../../services/openaiService';
 import { AVAILABLE_MODELS } from '../../constants';
 import { dbService } from '../../services/dbService';
 import { edgeFunctions } from '../../services/edgeFunctions';
+import { normalizeUrl } from '../../services/helpers';
 import { PreviewMessage, buildAiCompleteMessages, deriveSentiment } from './utils';
 
 interface BotBuilderProps {
@@ -80,6 +81,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   const [kbInput, setKbInput] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [isScraping, setIsScraping] = useState(false);
+  const [scrapeSummarize, setScrapeSummarize] = useState(true);
   const [ingestionRuns, setIngestionRuns] = useState<IngestionRun[]>([]);
   const [uploadingFileName, setUploadingFileName] = useState<string | null>(null);
   const [knowledgeStatus, setKnowledgeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -241,11 +243,11 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     if (!urlInput.trim()) return;
     setIsScraping(true);
 
-    const url = urlInput;
+    const url = normalizeUrl(urlInput);
     setUrlInput('');
 
     try {
-        const extractedData = await scrapeWebsiteContent(url);
+        const extractedData = await scrapeWebsiteContent(url, scrapeSummarize);
         await embedKnowledge(new URL(url).hostname || url, extractedData, 'url', { fileType: 'url', fileUrl: url });
     } catch (error) {
         console.error("Scrape failed", error);
@@ -258,14 +260,42 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     }
   };
 
+  const extractPdfText = async (file: File): Promise<string> => {
+    const data = await file.arrayBuffer();
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf');
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+    const doc = await pdfjs.getDocument({ data }).promise;
+    const pageCount = Math.min(doc.numPages, 30);
+    const pages: string[] = [];
+
+    for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+      const page = await doc.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const text = content.items
+        .map((item) => ('str' in item ? item.str : ''))
+        .filter(Boolean)
+        .join(' ');
+
+      if (text.trim()) {
+        pages.push(text);
+      }
+    }
+
+    return pages.join('\n\n');
+  };
+
   const handleFileUpload = async (file?: File | null) => {
     if (!file) return;
     setUploadingFileName(file.name);
 
     try {
-      const text = await file.text();
-      await embedKnowledge(file.name, text, file.type.includes('pdf') ? 'pdf' : 'text', {
-        fileType: file.type.includes('pdf') ? 'pdf' : 'text',
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      const text = isPdf ? await extractPdfText(file) : await file.text();
+      if (!text.trim()) {
+        throw new Error('No readable text found in this document.');
+      }
+      await embedKnowledge(file.name, text, isPdf ? 'pdf' : 'text', {
+        fileType: isPdf ? 'pdf' : 'text',
         chunkSize: 800
       });
     } catch (error) {
@@ -611,7 +641,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                         <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
                            <Globe size={18} className="text-blue-900" /> Ingest from URL
                         </h3>
-                        <p className="text-xs text-slate-500 mb-3">We will scrape the page, summarize it, and push it to embeddings.</p>
+                        <p className="text-xs text-slate-500 mb-3">We will scrape the page and push it to embeddings.</p>
                         <div className="flex gap-2">
                            <input 
                              type="url" 
@@ -629,6 +659,15 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                              Train Bot
                            </button>
                         </div>
+                        <label className="flex items-center gap-2 text-xs text-slate-500 mt-2">
+                          <input
+                            type="checkbox"
+                            checked={scrapeSummarize}
+                            onChange={(e) => setScrapeSummarize(e.target.checked)}
+                            className="rounded text-blue-900 focus:ring-blue-900"
+                          />
+                          Summarize before embedding (recommended)
+                        </label>
                         <p className="text-[11px] text-slate-400 mt-2">Supports public URLs. Private pages should be uploaded as PDFs instead.</p>
                      </div>
                    </div>

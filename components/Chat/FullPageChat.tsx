@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, Bot, User, AlertCircle, Loader, ShieldCheck } from 'lucide-react';
-import { generateBotResponse } from '../../services/openaiService';
 import { dbService } from '../../services/dbService';
+import { edgeFunctions } from '../../services/edgeFunctions';
 import { Bot as BotType, Conversation } from '../../types';
 import { calculateLeadScore, extractLeadDetection, getScoreBand } from '../../services/leadCapture';
 
