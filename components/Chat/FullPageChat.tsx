@@ -7,6 +7,7 @@ import { calculateLeadScore, extractLeadDetection, getScoreBand } from '../../se
 
 // Generate a unique session ID for this chat session
 const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+const HUMAN_NAMES = ['Sarah', 'Michael', 'Jessica', 'David', 'Emma', 'James', 'Emily', 'Robert'];
 
 interface FullPageChatProps {
   botId: string;
@@ -17,12 +18,14 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [bot, setBot] = useState<BotType | null>(null);
+  const [sessionIdentity, setSessionIdentity] = useState<{ name: string }>({ name: 'Assistant' });
   const [sessionId] = useState(generateSessionId());
   const [error, setError] = useState<string | null>(null);
   const [leadCapture, setLeadCapture] = useState<{ email: string; id?: string; score?: number } | null>(null);
   const [leadError, setLeadError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const handleSendRef = useRef<() => Promise<void> | void>(() => {});
+  const initializedRef = useRef(false);
 
   // Check for embed mode in URL params
   const isEmbed = window.location.search.includes('mode=embed');
@@ -94,14 +97,27 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
   }, [messages, isEmbed, botId]);
 
   useEffect(() => {
+    initializedRef.current = false;
     const fetchBot = async () => {
       if (!botId) return;
       try {
         const foundBot = await dbService.getBotById(botId);
         if (foundBot) {
           setBot(foundBot);
+          const identityName = foundBot.randomizeIdentity
+            ? HUMAN_NAMES[Math.floor(Math.random() * HUMAN_NAMES.length)]
+            : (foundBot.name || 'Assistant');
+          setSessionIdentity({ name: identityName });
+          if (initializedRef.current) return;
+          initializedRef.current = true;
           setTimeout(() => {
-             const welcomeMessage = { role: 'assistant' as const, text: "Hello! How can I help you today?", timestamp: Date.now() };
+             const welcomeMessage = {
+               role: 'assistant' as const,
+               text: foundBot.randomizeIdentity
+                 ? `Hi, I'm ${identityName}. How can I help you today?`
+                 : "Hello! How can I help you today?",
+               timestamp: Date.now()
+             };
              setMessages([welcomeMessage]);
              dbService.appendConversationMessage({
                sessionId,
@@ -196,19 +212,35 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
     }
 
     try {
-      // Convert messages to OpenAI service format
       const history = [...messages, userMsg].map(m => ({
-        role: m.role === 'assistant' ? 'model' as const : 'user' as const,
-        text: m.text
+        role: m.role === 'assistant' ? 'assistant' as const : 'user' as const,
+        content: m.text
       }));
 
-      // Call OpenAI directly
-      const response = await generateBotResponse(
-        bot.systemPrompt || "You are a helpful assistant.",
-        history,
-        userMsg.text,
-        bot.model || 'gpt-4o-mini',
-        bot.knowledgeBase?.join('\n\n') || ''
+      const supplementalMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [];
+
+      if (bot.randomizeIdentity) {
+        supplementalMessages.push({
+          role: 'system',
+          content: `You are ${sessionIdentity.name}, a personable, human-like assistant. Use a friendly, natural tone and ask clarifying questions when needed.`
+        });
+      }
+
+      const knowledgeBase = (bot.knowledgeBase || []).filter(Boolean).join('\n\n').trim();
+      if (knowledgeBase) {
+        const trimmed = knowledgeBase.slice(0, 4000);
+        const suffix = knowledgeBase.length > 4000 ? '\n\n[Truncated]' : '';
+        supplementalMessages.push({
+          role: 'system',
+          content: `Reference Knowledge Base:\n${trimmed}${suffix}`
+        });
+      }
+
+      const response = await edgeFunctions.aiComplete(
+        bot.id,
+        [...supplementalMessages, ...history],
+        sessionId,
+        { skipLogging: true }
       );
 
       // Apply response delay if configured
@@ -216,7 +248,7 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
 
       setTimeout(() => {
         (async () => {
-          const assistantMessage = { role: 'assistant' as const, text: response, timestamp: Date.now() };
+          const assistantMessage = { role: 'assistant' as const, text: response.message, timestamp: Date.now() };
           setMessages(prev => [...prev, assistantMessage]);
           try {
             await dbService.appendConversationMessage({
@@ -237,7 +269,7 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
       setError(e instanceof Error ? e.message : "Failed to get response");
       setIsTyping(false);
     }
-  }, [bot, input, leadCapture, messages, sessionId]);
+  }, [bot, input, leadCapture, messages, sessionId, sessionIdentity.name]);
 
   useEffect(() => {
     handleSendRef.current = handleSend;
@@ -260,7 +292,7 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
                     <Bot size={16} />
                 </div>
                 <div>
-                    <h1 className="font-bold text-slate-800 text-sm">{bot.name}</h1>
+                    <h1 className="font-bold text-slate-800 text-sm">{sessionIdentity.name}</h1>
                     <div className="flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
                         <span className="text-[10px] text-slate-500">Online</span>
@@ -340,7 +372,7 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
                <Bot size={20} />
              </div>
              <div>
-               <h1 className="font-bold text-slate-800">{bot.name}</h1>
+               <h1 className="font-bold text-slate-800">{sessionIdentity.name}</h1>
                <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                   <span className="text-xs text-slate-500">Online Now</span>

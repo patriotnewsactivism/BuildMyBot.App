@@ -103,14 +103,15 @@ export const edgeFunctions = {
   aiComplete: async (
     botId: string,
     messages: ChatMessage[],
-    sessionId: string
+    sessionId: string,
+    options?: { skipLogging?: boolean }
   ): Promise<AiCompleteResponse> => {
     const headers = await getAuthHeaders();
 
     const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-complete`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ botId, messages, sessionId }),
+      body: JSON.stringify({ botId, messages, sessionId, ...options }),
     });
 
     if (!response.ok) {
