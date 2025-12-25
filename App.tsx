@@ -195,7 +195,7 @@ function App() {
 
     const trackReferral = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await supabase!.auth.getSession();
         const authedUserId = data.session?.user?.id;
 
         if (!authedUserId || authedUserId.startsWith('demo-user')) {

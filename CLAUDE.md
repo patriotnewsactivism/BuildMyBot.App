@@ -59,7 +59,7 @@ Currently no test suite configured. When adding tests, use standard React testin
 │   ├── geminiService.ts  # Google Gemini AI integration
 │   ├── openaiService.ts  # OpenAI GPT integration
 │   └── firebaseConfig.ts # Legacy Firebase (being phased out)
-└── supabase/             # Backend schema & functions (empty = in progress)
+└── supabase/             # Backend schema, migrations & functions
 ```
 
 ### Routing
@@ -154,8 +154,8 @@ Key tables:
 - `billing_accounts`, `usage_events`
 - `marketing_content`, `website_pages`, `phone_calls`
 
-### Edge Functions (Planned)
-Located in supabase/functions/ (currently empty):
+### Edge Functions
+Located in supabase/functions/:
 - `ai-complete`: OpenAI proxy with usage tracking
 - `create-lead`: Lead capture with ownership validation
 - `embed-knowledge-base`: Generate and store embeddings
@@ -233,8 +233,7 @@ Standard Vite SPA deployment:
 ## Known Limitations
 
 - No automated test suite yet
-- Supabase schema migration incomplete (schema.sql is empty)
-- Edge Functions not yet deployed
+- Supabase schema migration incomplete (schema.sql is empty, see supabase/migrations/)
 - Firebase dependencies still present (cleanup pending)
 - Some mock data used for analytics (MOCK_ANALYTICS_DATA in constants.ts)
 
