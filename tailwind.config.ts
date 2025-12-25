@@ -6,6 +6,11 @@ const config: Config = {
     './components/**/*.{js,ts,jsx,tsx}',
     './App.tsx',
   ],
+  safelist: [
+    {
+      pattern: /(bg|text)-(sky|red|amber|emerald|violet)-(100|600)/,
+    },
+  ],
   theme: {
     extend: {
       fontFamily: {
