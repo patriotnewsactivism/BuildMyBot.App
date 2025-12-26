@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(vercel:*)",
+      "Bash(npx vite build)",
+      "Bash(npx netlify-cli deploy:*)",
+      "Bash(npx surge:*)",
+      "Bash(python:*)"
+    ]
+  }
+}
