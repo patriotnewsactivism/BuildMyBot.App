@@ -1,73 +1,85 @@
 import { PlanType, AddOn } from './types';
 
 export const PLANS = {
-  [PlanType.FREE]: { 
-    price: 0, 
-    bots: 1, 
-    conversations: 60, 
+  [PlanType.FREE]: {
+    price: 0,
+    bots: 1,
+    conversations: 60,
     name: 'Free Tier',
     features: [
-      '1 bot',
+      'Drag-and-drop website widget',
+      '1 bot with branded colors',
       '60 conversations/month',
-      'Basic analytics',
+      'Basic FAQs & lead capture',
+      'Email transcript export',
       'Community support'
     ]
   },
-  [PlanType.STARTER]: { 
-    price: 29, 
-    bots: 1, 
-    conversations: 750, 
+  [PlanType.STARTER]: {
+    price: 29,
+    bots: 1,
+    conversations: 750,
     name: 'Starter',
     features: [
-      '1 bot',
+      'Website + landing page embeds',
+      'Multi-page training (URLs, PDFs)',
       '750 conversations/month',
       'GPT-4o Mini model',
-      'Basic analytics',
+      'Lead capture via email & SMS alerts',
+      'Office-hours & scheduling rules',
+      'Basic analytics dashboard',
       'Email support'
     ]
   },
-  [PlanType.PROFESSIONAL]: { 
-    price: 99, 
-    bots: 5, 
-    conversations: 5000, 
+  [PlanType.PROFESSIONAL]: {
+    price: 99,
+    bots: 5,
+    conversations: 5000,
     name: 'Professional',
     features: [
-      '5 bots',
+      '5 bots for multiple brands',
       '5,000 conversations/month',
-      'Advanced analytics',
-      'API access',
-      'Custom training data',
-      'Priority support',
-      'Multi-language support'
+      'Multi-language support',
+      'CRM & calendar integrations',
+      'Proactive lead scoring & alerts',
+      'Knowledge base + custom training',
+      'Advanced analytics & conversion tracking',
+      'API access & webhooks',
+      'Priority chat & email support'
     ]
   },
-  [PlanType.EXECUTIVE]: { 
-    price: 199, 
-    bots: 10, 
-    conversations: 15000, 
+  [PlanType.EXECUTIVE]: {
+    price: 199,
+    bots: 10,
+    conversations: 30000,
     name: 'Executive',
     features: [
-      '10 bots',
-      '15,000 conversations/month',
-      'Custom integrations',
-      'Premium analytics',
-      'Priority support',
-      'Team collaboration'
+      '10 bots with shared knowledge bases',
+      '30,000 conversations/month',
+      'Voice & phone agent included',
+      'Workflow automation & triggers',
+      'Premium analytics with attribution',
+      'AB testing & copy experiments',
+      'Team seats & roles',
+      'Priority onboarding concierge'
     ]
   },
-  [PlanType.ENTERPRISE]: { 
-    price: 399, 
+  [PlanType.ENTERPRISE]: {
+    price: 499,
     bots: 9999, // Represents Unlimited
-    conversations: 50000, 
-    name: 'Enterprise',
+    conversations: 100000,
+    name: 'Enterprise / White-label',
     overage: 0.01, // Cost per conversation over limit
     features: [
-      'Unlimited bots',
-      '50,000 convos included',
+      'Unlimited bots & workspaces',
+      '100,000 convos included',
       '$0.01 per overage conversation',
-      'White-labeling',
-      'SLA & Priority Support',
-      'Enterprise analytics',
+      'Full white-label (domains, emails, branding)',
+      'SAML/SSO + SCIM provisioning',
+      'Dedicated Slack/phone support with SLA',
+      'Security reviews, DPA & audit logs',
+      'Custom data residency & backups',
+      'Dedicated success manager',
       'All Executive features'
     ]
   },

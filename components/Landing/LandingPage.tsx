@@ -1624,30 +1624,49 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                       <span className={`${isEnterprise ? 'text-slate-400' : 'text-slate-500'}`}>/mo</span>
                     </div>
                     
-                    <ul className="space-y-4 mb-8 flex-1">
-                      <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
-                        <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/> 
-                        {plan.bots >= 9999 ? 'Unlimited' : plan.bots} Bot(s)
-                      </li>
-                      <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
-                        <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/> 
-                        <span className="font-bold">{plan.conversations.toLocaleString()}</span>&nbsp;Conversations
-                      </li>
-                      <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
-                        <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/> 
-                        {isEnterprise ? 'Enterprise Analytics' : 'Basic Analytics'}
-                      </li>
-                      {isEnterprise && (
-                        <>
-                           <li className="flex items-center gap-3 text-sm text-slate-300">
-                             <CheckCircle size={16} className="text-yellow-400 shrink-0"/> White-label Ready
-                           </li>
-                           <li className="flex items-center gap-3 text-sm text-slate-300">
-                             <CheckCircle size={16} className="text-yellow-400 shrink-0"/> SLA Support
-                           </li>
-                        </>
-                      )}
-                    </ul>
+                    <div className="space-y-6 mb-8 flex-1">
+                      <ul className="space-y-4">
+                        <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
+                          <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/>
+
+                          {plan.bots >= 9999 ? 'Unlimited' : plan.bots} Bot(s)
+                        </li>
+                        <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
+                          <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/>
+
+                          <span className="font-bold">{plan.conversations.toLocaleString()}</span>&nbsp;Conversations
+                        </li>
+                        <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
+                          <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/>
+
+                          {isEnterprise ? 'Enterprise Analytics' : 'Advanced Analytics'}
+                        </li>
+                        {isEnterprise && (
+                          <>
+                             <li className="flex items-center gap-3 text-sm text-slate-300">
+                               <CheckCircle size={16} className="text-yellow-400 shrink-0"/> White-label Ready
+                             </li>
+                             <li className="flex items-center gap-3 text-sm text-slate-300">
+                               <CheckCircle size={16} className="text-yellow-400 shrink-0"/> SLA Support
+                             </li>
+                          </>
+                        )}
+                      </ul>
+
+                      <div>
+                        <p className={`text-xs font-bold uppercase tracking-wide ${isEnterprise ? 'text-slate-200' : 'text-slate-600'}`}>
+                          Everything in this plan
+                        </p>
+                        <ul className="mt-3 space-y-3">
+                          {plan.features.map((feature: string, idx: number) => (
+                            <li key={`${plan.name}-feature-${idx}`} className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-200' : 'text-slate-700'}`}>
+                              <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/>
+                              {feature}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
                     
                     <button onClick={onLogin} className={`w-full py-3 rounded-lg font-bold transition ${
                       isProfessional 
