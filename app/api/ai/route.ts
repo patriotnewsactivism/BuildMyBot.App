@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isSafeHttpUrl, normalizeUrl, sanitizeMessages, tryScrapeText } from '@/services/helpers';
+import { scrapeWithLocalScraper } from '@/services/localScraper';
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
@@ -55,7 +56,8 @@ async function handleScrapeWebsite(url: string): Promise<NextResponse> {
   const normalizedUrl = normalizeUrl(url);
 
   try {
-    const raw = await tryScrapeText(normalizedUrl);
+    const localScrape = await scrapeWithLocalScraper(normalizedUrl);
+    const raw = localScrape?.content ?? await tryScrapeText(normalizedUrl);
     const truncated = raw.substring(0, 4000);
     const summary = await requestOpenAiChat(
       [

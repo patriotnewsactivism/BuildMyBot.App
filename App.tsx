@@ -40,7 +40,13 @@ const INITIAL_RESELLER_STATS: ResellerStats = {
 };
 
 // Define privileged admins here
-const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org'];
+const MASTER_EMAILS = [
+  'admin@buildmybot.app',
+  'master@buildmybot.app',
+  'ceo@buildmybot.app',
+  'mreardon@wtpnews.org',
+  'jadj19@gmail.com',
+];
 const LIMITED_ADMIN_EMAILS = ['ben@texasplanninglaw.com'];
 
 function App() {
