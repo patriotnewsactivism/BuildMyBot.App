@@ -44,9 +44,9 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
   );
 
   return (
-    <div className="h-[calc(100vh-6rem)] flex gap-6 animate-fade-in">
+    <div className="h-full flex flex-col md:flex-row gap-4 md:gap-6 animate-fade-in">
       {/* Sidebar List */}
-      <div className="w-80 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+      <div className="w-full md:w-80 shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden max-h-64 md:max-h-none">
         <div className="p-4 border-b border-slate-100 bg-slate-50">
           <h3 className="font-semibold text-slate-800 mb-3">Conversations</h3>
           <div className="relative">

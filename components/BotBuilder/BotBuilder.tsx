@@ -350,9 +350,9 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
 <script src="https://${displayDomain}/embed.js" async></script>`;
 
   return (
-    <div className="h-[calc(100vh-6rem)] flex gap-6 animate-fade-in">
+    <div className="h-full flex flex-col lg:flex-row gap-4 lg:gap-6 animate-fade-in">
       {/* Sidebar List */}
-      <div className="w-64 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden hidden md:flex">
+      <div className="w-full lg:w-64 shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden hidden lg:flex">
          <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
            <h3 className="font-semibold text-slate-800">My Bots</h3>
            <button 
