@@ -212,6 +212,30 @@ export interface ResellerPayment {
 
 export type MarketingContentType = 'email' | 'ad' | 'blog' | 'social';
 
+// AI Model types for multi-provider support
+export type AIProvider = 'openai' | 'anthropic' | 'google';
+export type AIModelTier = 'standard' | 'premium';
+export type AIModelSpeed = 'fast' | 'medium' | 'slow';
+
+export interface AIModel {
+  id: string;
+  name: string;
+  provider: AIProvider;
+  tier: AIModelTier;
+  contextWindow: number;
+  inputCostPer1k: number;
+  outputCostPer1k: number;
+  speed: AIModelSpeed;
+  capabilities: string[];
+  description?: string;
+}
+
+export interface StorageUsage {
+  usedMB: number;
+  limitMB: number;
+  percentage: number;
+}
+
 export interface MarketingContent {
   id: string;
   userId: string;

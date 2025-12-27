@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { isSafeHttpUrl, normalizeUrl, sanitizeMessages, tryScrapeText } from '@/services/helpers';
 import { scrapeWithLocalScraper } from '@/services/localScraper';
+import { getModelById } from '@/constants';
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+type AIProvider = 'openai' | 'anthropic' | 'google';
 
 type AiRequestBody = {
   action?:
@@ -14,6 +16,18 @@ type AiRequestBody = {
 };
 
 const OPENAI_COMPLETIONS_URL = 'https://api.openai.com/v1/chat/completions';
+const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
+const GOOGLE_GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+// Determine provider from model ID
+function getProviderFromModel(modelId: string): AIProvider {
+  const model = getModelById(modelId);
+  if (model) return model.provider;
+  // Fallback detection based on model name patterns
+  if (modelId.startsWith('claude')) return 'anthropic';
+  if (modelId.startsWith('gemini')) return 'google';
+  return 'openai';
+}
 
 async function requestOpenAiChat(
   messages: ChatMessage[],
@@ -46,6 +60,116 @@ async function requestOpenAiChat(
 
   const data = await response.json();
   return data.choices?.[0]?.message?.content || '';
+}
+
+async function requestAnthropicChat(
+  messages: ChatMessage[],
+  options?: { model?: string; temperature?: number }
+): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error('Anthropic API key is not configured on the server.');
+  }
+
+  // Anthropic requires separating system message from user/assistant messages
+  const systemMessage = messages.find(m => m.role === 'system');
+  const conversationMessages = messages
+    .filter(m => m.role !== 'system')
+    .map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }));
+
+  const response = await fetch(ANTHROPIC_MESSAGES_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: options?.model ?? 'claude-3-5-sonnet-20241022',
+      max_tokens: 4096,
+      system: systemMessage?.content || '',
+      messages: conversationMessages,
+      temperature: options?.temperature ?? 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const description = errorData.error?.message || response.statusText;
+    throw new Error(`Anthropic request failed: ${description}`);
+  }
+
+  const data = await response.json();
+  // Anthropic returns content as an array of content blocks
+  const textContent = data.content?.find((c: { type: string }) => c.type === 'text');
+  return textContent?.text || '';
+}
+
+async function requestGoogleChat(
+  messages: ChatMessage[],
+  options?: { model?: string; temperature?: number }
+): Promise<string> {
+  const apiKey = process.env.GOOGLE_AI_API_KEY;
+  if (!apiKey) {
+    throw new Error('Google AI API key is not configured on the server.');
+  }
+
+  const modelId = options?.model ?? 'gemini-1.5-flash';
+
+  // Convert messages to Gemini format
+  const systemMessage = messages.find(m => m.role === 'system');
+  const conversationMessages = messages
+    .filter(m => m.role !== 'system')
+    .map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+
+  const response = await fetch(`${GOOGLE_GEMINI_URL}/${modelId}:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: conversationMessages,
+      systemInstruction: systemMessage ? { parts: [{ text: systemMessage.content }] } : undefined,
+      generationConfig: {
+        temperature: options?.temperature ?? 0.7,
+        maxOutputTokens: 4096,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const description = errorData.error?.message || response.statusText;
+    throw new Error(`Google AI request failed: ${description}`);
+  }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+// Unified chat function that routes to the appropriate provider
+async function requestChat(
+  messages: ChatMessage[],
+  options?: { model?: string; temperature?: number; responseFormat?: { type: 'json_object' } }
+): Promise<string> {
+  const modelId = options?.model ?? 'gpt-4o-mini';
+  const provider = getProviderFromModel(modelId);
+
+  switch (provider) {
+    case 'anthropic':
+      return requestAnthropicChat(messages, options);
+    case 'google':
+      return requestGoogleChat(messages, options);
+    case 'openai':
+    default:
+      return requestOpenAiChat(messages, options);
+  }
 }
 
 async function handleScrapeWebsite(url: string): Promise<NextResponse> {
@@ -86,7 +210,8 @@ async function handleGenerateBotResponse(payload: Record<string, unknown>): Prom
     return NextResponse.json({ error: 'Messages are required.' }, { status: 400 });
   }
 
-  const content = await requestOpenAiChat(messages, { model });
+  // Use unified requestChat which routes to the appropriate provider
+  const content = await requestChat(messages, { model });
   return NextResponse.json({ content });
 }
 

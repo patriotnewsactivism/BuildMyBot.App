@@ -1,15 +1,17 @@
-import { PlanType, AddOn, ServiceTier } from './types';
+import { PlanType, AddOn, AIModel, ServiceTier } from './types';
 
 export const PLANS = {
   [PlanType.FREE]: {
     price: 0,
     bots: 1,
     conversations: 60,
+    storageLimitMB: 50,
     name: 'Free Tier',
     features: [
       'Drag-and-drop website widget',
       '1 bot with branded colors',
       '60 conversations/month',
+      '50MB knowledge base storage',
       'Basic FAQs & lead capture',
       'Email transcript export',
       'Community support'
@@ -19,11 +21,13 @@ export const PLANS = {
     price: 29,
     bots: 1,
     conversations: 750,
+    storageLimitMB: 500,
     name: 'Starter',
     features: [
       'Website + landing page embeds',
       'Multi-page training (URLs, PDFs)',
       '750 conversations/month',
+      '500MB knowledge base storage',
       'GPT-4o Mini model',
       'Lead capture via email & SMS alerts',
       'Office-hours & scheduling rules',
@@ -35,10 +39,12 @@ export const PLANS = {
     price: 99,
     bots: 5,
     conversations: 5000,
+    storageLimitMB: 2048,
     name: 'Professional',
     features: [
       '5 bots for multiple brands',
       '5,000 conversations/month',
+      '2GB knowledge base storage',
       'Multi-language support',
       'CRM & calendar integrations',
       'Proactive lead scoring & alerts',
@@ -52,10 +58,12 @@ export const PLANS = {
     price: 199,
     bots: 10,
     conversations: 30000,
+    storageLimitMB: 10240,
     name: 'Executive',
     features: [
       '10 bots with shared knowledge bases',
       '30,000 conversations/month',
+      '10GB knowledge base storage',
       'Voice & phone agent included',
       'Workflow automation & triggers',
       'Premium analytics with attribution',
@@ -68,11 +76,13 @@ export const PLANS = {
     price: 499,
     bots: 9999, // Represents Unlimited
     conversations: 100000,
+    storageLimitMB: 102400, // 100GB
     name: 'Enterprise / White-label',
     overage: 0.01, // Cost per conversation over limit
     features: [
       'Unlimited bots & workspaces',
       '100,000 convos included',
+      '100GB knowledge base storage',
       '$0.01 per overage conversation',
       'Full white-label (domains, emails, branding)',
       'SAML/SSO + SCIM provisioning',
@@ -92,10 +102,126 @@ export const RESELLER_TIERS = [
   { min: 250, max: 999999, commission: 0.50, label: 'Platinum' },
 ];
 
+// Legacy simple model list (for backwards compatibility)
 export const AVAILABLE_MODELS = [
   { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast, cost-effective. Best for real-time chat.' },
   { id: 'gpt-4o', name: 'GPT-4o', description: 'High reasoning. Best for complex tasks and coding.' },
 ];
+
+// Extended AI models with full provider support
+export const AI_MODELS: AIModel[] = [
+  // OpenAI Models
+  {
+    id: 'gpt-4o',
+    name: 'GPT-4o',
+    provider: 'openai',
+    tier: 'premium',
+    contextWindow: 128000,
+    inputCostPer1k: 0.0025,
+    outputCostPer1k: 0.01,
+    speed: 'medium',
+    capabilities: ['reasoning', 'coding', 'vision', 'function-calling'],
+    description: 'Most capable OpenAI model. Best for complex reasoning and coding tasks.',
+  },
+  {
+    id: 'gpt-4o-mini',
+    name: 'GPT-4o Mini',
+    provider: 'openai',
+    tier: 'standard',
+    contextWindow: 128000,
+    inputCostPer1k: 0.00015,
+    outputCostPer1k: 0.0006,
+    speed: 'fast',
+    capabilities: ['reasoning', 'coding', 'vision', 'function-calling'],
+    description: 'Fast and cost-effective. Great for real-time chat and simple tasks.',
+  },
+  {
+    id: 'gpt-3.5-turbo',
+    name: 'GPT-3.5 Turbo',
+    provider: 'openai',
+    tier: 'standard',
+    contextWindow: 16385,
+    inputCostPer1k: 0.0005,
+    outputCostPer1k: 0.0015,
+    speed: 'fast',
+    capabilities: ['reasoning', 'coding', 'function-calling'],
+    description: 'Legacy model. Fast but less capable than GPT-4o Mini.',
+  },
+
+  // Anthropic Models
+  {
+    id: 'claude-3-5-sonnet-20241022',
+    name: 'Claude 3.5 Sonnet',
+    provider: 'anthropic',
+    tier: 'premium',
+    contextWindow: 200000,
+    inputCostPer1k: 0.003,
+    outputCostPer1k: 0.015,
+    speed: 'medium',
+    capabilities: ['reasoning', 'coding', 'vision', 'analysis'],
+    description: 'Best balance of speed and intelligence. Excellent for coding and analysis.',
+  },
+  {
+    id: 'claude-3-opus-20240229',
+    name: 'Claude 3 Opus',
+    provider: 'anthropic',
+    tier: 'premium',
+    contextWindow: 200000,
+    inputCostPer1k: 0.015,
+    outputCostPer1k: 0.075,
+    speed: 'slow',
+    capabilities: ['reasoning', 'coding', 'vision', 'analysis', 'research'],
+    description: 'Most powerful Claude model. Best for complex research and nuanced tasks.',
+  },
+  {
+    id: 'claude-3-5-haiku-20241022',
+    name: 'Claude 3.5 Haiku',
+    provider: 'anthropic',
+    tier: 'standard',
+    contextWindow: 200000,
+    inputCostPer1k: 0.0008,
+    outputCostPer1k: 0.004,
+    speed: 'fast',
+    capabilities: ['reasoning', 'coding', 'vision'],
+    description: 'Fastest Claude model. Great for real-time chat at low cost.',
+  },
+
+  // Google Models
+  {
+    id: 'gemini-1.5-pro',
+    name: 'Gemini 1.5 Pro',
+    provider: 'google',
+    tier: 'premium',
+    contextWindow: 1000000,
+    inputCostPer1k: 0.00125,
+    outputCostPer1k: 0.005,
+    speed: 'medium',
+    capabilities: ['reasoning', 'coding', 'vision', 'long-context'],
+    description: 'Massive context window. Best for analyzing large documents.',
+  },
+  {
+    id: 'gemini-1.5-flash',
+    name: 'Gemini 1.5 Flash',
+    provider: 'google',
+    tier: 'standard',
+    contextWindow: 1000000,
+    inputCostPer1k: 0.000075,
+    outputCostPer1k: 0.0003,
+    speed: 'fast',
+    capabilities: ['reasoning', 'coding', 'vision', 'long-context'],
+    description: 'Fast and affordable with huge context. Great for high-volume chat.',
+  },
+];
+
+// Helper to get model by ID
+export const getModelById = (modelId: string): AIModel | undefined => {
+  return AI_MODELS.find(m => m.id === modelId);
+};
+
+// Helper to get models by provider
+export const getModelsByProvider = (provider: 'openai' | 'anthropic' | 'google'): AIModel[] => {
+  return AI_MODELS.filter(m => m.provider === provider);
+};
 
 export const MOCK_ANALYTICS_DATA = [
   { date: 'Mon', conversations: 45, leads: 2 },
