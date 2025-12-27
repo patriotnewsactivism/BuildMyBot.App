@@ -75,13 +75,13 @@ export const PLANS = {
   [PlanType.ENTERPRISE]: {
     price: 499,
     bots: 9999, // Represents Unlimited
-    conversations: 100000,
+    conversations: 50000,
     storageLimitMB: 102400, // 100GB
     name: 'Enterprise / White-label',
     overage: 0.01, // Cost per conversation over limit
     features: [
       'Unlimited bots & workspaces',
-      '100,000 convos included',
+      '50,000 convos included',
       '100GB knowledge base storage',
       '$0.01 per overage conversation',
       'Full white-label (domains, emails, branding)',
