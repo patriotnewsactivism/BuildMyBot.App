@@ -1,4 +1,4 @@
-import { PlanType, AddOn } from './types';
+import { PlanType, AddOn, ServiceTier } from './types';
 
 export const PLANS = {
   [PlanType.FREE]: {
@@ -300,4 +300,106 @@ export const ADDONS: AddOn[] = [
     resellerCommission: ADDON_RESELLER_COMMISSION,
     isActive: true,
   },
+];
+
+// BuildMyBot 4Me Done-For-You Service Tiers
+export const SERVICE_TIERS: ServiceTier[] = [
+  {
+    id: 'quick_start',
+    name: 'Quick Start',
+    price: 299,
+    deliveryDays: 3,
+    description: 'Perfect for small businesses that need a simple chatbot up and running fast.',
+    features: [
+      'Single AI chatbot setup',
+      'Basic knowledge base (up to 10 pages)',
+      'Website embed code',
+      'Standard bot persona',
+      'Email support',
+    ],
+  },
+  {
+    id: 'professional',
+    name: 'Professional',
+    price: 799,
+    deliveryDays: 7,
+    description: 'Comprehensive setup for businesses that need a fully-trained, customized chatbot.',
+    popular: true,
+    features: [
+      'Custom AI chatbot with advanced training',
+      'Full knowledge base setup (up to 50 pages)',
+      'Lead capture form integration',
+      'CRM webhook setup',
+      'Custom branding & styling',
+      '2 rounds of revisions',
+      'Priority email support',
+      '30-minute onboarding call',
+    ],
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: 1999,
+    deliveryDays: 14,
+    description: 'White-glove service for organizations needing multiple bots, integrations, and ongoing support.',
+    features: [
+      'Up to 5 AI chatbots',
+      'Unlimited knowledge base pages',
+      'Multi-channel deployment (web, SMS, phone)',
+      'API & Zapier integrations',
+      'Custom workflows & automations',
+      'Advanced analytics dashboard setup',
+      'Dedicated account manager',
+      '60-minute strategy call',
+      '30 days of priority support',
+      'Quarterly performance review',
+    ],
+  },
+];
+
+// Bot purpose options for service request form
+export const BOT_PURPOSE_OPTIONS = [
+  'Customer Support',
+  'Lead Generation',
+  'Appointment Booking',
+  'FAQ Automation',
+  'Sales Assistance',
+  'Technical Support',
+  'HR & Recruiting',
+  'Real Estate',
+  'Healthcare',
+  'Legal Intake',
+  'Other',
+];
+
+// Business type options for service request form
+export const BUSINESS_TYPE_OPTIONS = [
+  'E-commerce / Retail',
+  'Professional Services',
+  'Healthcare / Medical',
+  'Real Estate',
+  'Legal',
+  'Financial Services',
+  'Education',
+  'Technology / SaaS',
+  'Hospitality',
+  'Non-profit',
+  'Government',
+  'Other',
+];
+
+// Desired features for service request form
+export const FEATURE_OPTIONS = [
+  'Lead capture & qualification',
+  'Appointment scheduling',
+  'FAQ automation',
+  'Live chat handoff',
+  'CRM integration',
+  'Email notifications',
+  'SMS alerts',
+  'Phone agent',
+  'Multi-language support',
+  'Custom branding',
+  'Analytics & reporting',
+  'API access',
 ];
