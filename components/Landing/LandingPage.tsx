@@ -692,7 +692,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
              Limited Time: Free Setup + 30-Day Trial
            </div>
 
-           <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight mb-6 leading-tight">
+           <h1 className="text-[44px] md:text-[68px] font-extrabold text-slate-900 tracking-tight mb-6 leading-tight">
              Stop Losing Leads to <span className="line-through text-red-500 opacity-60">Slow Response</span><br/>
              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-900 via-blue-600 to-emerald-500">Close 3x More Deals on Autopilot</span>
            </h1>
