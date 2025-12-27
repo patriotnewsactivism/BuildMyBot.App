@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Layout/Sidebar';
+import { LayoutProvider } from './components/Layout/LayoutContext';
+import { MainLayout } from './components/Layout/MainLayout';
 import { BotBuilder } from './components/BotBuilder/BotBuilder';
 import { ResellerDashboard } from './components/Reseller/ResellerDashboard';
 import { MarketingTools } from './components/Marketing/MarketingTools';
@@ -40,7 +42,13 @@ const INITIAL_RESELLER_STATS: ResellerStats = {
 };
 
 // Define privileged admins here
-const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org'];
+const MASTER_EMAILS = [
+  'admin@buildmybot.app',
+  'master@buildmybot.app',
+  'ceo@buildmybot.app',
+  'mreardon@wtpnews.org',
+  'jadj19@gmail.com',
+];
 const LIMITED_ADMIN_EMAILS = ['ben@texasplanninglaw.com'];
 
 function App() {
@@ -60,7 +68,6 @@ function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [notification, setNotification] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     initSentry();
@@ -410,37 +417,17 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900">
-      <Sidebar 
-        currentView={currentView} 
-        setView={setCurrentView} 
-        role={user.role} 
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        user={user}
-        usage={totalConversations}
-      />
-      
-      <main className="flex-1 overflow-hidden relative flex flex-col h-full">
-        {/* Mobile Header */}
-        <div className="md:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0">
-           <div className="flex items-center gap-2 font-bold text-slate-800">
-              <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center border border-blue-800 shadow-lg shadow-blue-900/50 text-white">
-                <BotIcon size={20} />
-              </div>
-              BuildMyBot
-           </div>
-           <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600">
-              <Menu size={24} />
-           </button>
-        </div>
+    <LayoutProvider>
+      <div className="flex h-screen bg-slate-50 font-sans text-slate-900">
+        <Sidebar
+          currentView={currentView}
+          setView={setCurrentView}
+          role={user.role}
+          user={user}
+          usage={totalConversations}
+        />
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          {notification && (
-              <div className="fixed top-6 right-6 z-50 bg-slate-900 text-white px-6 py-3 rounded-lg shadow-xl animate-bounce-slow flex items-center gap-3">
-                 <Bell size={18} className="text-blue-400" /> {notification}
-              </div>
-          )}
+        <MainLayout notification={notification}>
 
           {currentView === 'dashboard' && (
             <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-10">
@@ -456,7 +443,7 @@ function App() {
                </div>
                
                {/* Stats Cards */}
-               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+               <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><MessageSquare size={18}/></div>
@@ -550,10 +537,10 @@ function App() {
           {currentView === 'admin' && <AdminDashboard readOnly={user.role === UserRole.LIMITED_ADMIN} />}
           
           {currentView === 'settings' && <Settings user={user} onUpdateUser={(u) => { setUser(u); dbService.saveUserProfile(u); }} />}
-          
-        </div>
-      </main>
-    </div>
+
+        </MainLayout>
+      </div>
+    </LayoutProvider>
   );
 }
 
