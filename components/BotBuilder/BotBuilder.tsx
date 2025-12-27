@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign, CheckCircle, AlertCircle } from 'lucide-react';
-import { Bot as BotType, Conversation } from '../../types';
+import { Bot as BotType, Conversation, PlanType, StorageUsage } from '../../types';
 import { scrapeWebsiteContent } from '../../services/openaiService';
-import { AVAILABLE_MODELS } from '../../constants';
+import { AVAILABLE_MODELS, PLANS } from '../../constants';
 import { dbService } from '../../services/dbService';
 import { edgeFunctions } from '../../services/edgeFunctions';
 import { PreviewMessage, buildAiCompleteMessages, deriveSentiment } from './utils';
+import { ModelSelector } from './ModelSelector';
+import { StorageIndicator } from './StorageIndicator';
 
 interface BotBuilderProps {
   bots: BotType[];
@@ -13,6 +15,9 @@ interface BotBuilderProps {
   customDomain?: string;
   onLeadDetected?: (email: string) => void;
   onConversationLogged?: (conversation: Conversation) => void;
+  userPlan?: PlanType;
+  storageUsage?: StorageUsage;
+  onUpgrade?: () => void;
 }
 
 const HUMAN_NAMES = ['Sarah', 'Michael', 'Jessica', 'David', 'Emma', 'James', 'Emily', 'Robert'];
@@ -47,7 +52,16 @@ type IngestionRun = {
   createdAt: number;
 };
 
-export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDomain, onLeadDetected, onConversationLogged }) => {
+export const BotBuilder: React.FC<BotBuilderProps> = ({
+  bots,
+  onSave,
+  customDomain,
+  onLeadDetected,
+  onConversationLogged,
+  userPlan = PlanType.FREE,
+  storageUsage,
+  onUpgrade
+}) => {
   const [selectedBotId, setSelectedBotId] = useState<string>(bots[0]?.id || 'new');
   // Initialize with the selected bot or a default new one
   const [activeBot, setActiveBot] = useState<BotType>(bots[0] || {
@@ -497,23 +511,20 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                               <p className="text-xs text-slate-500 mt-1">These instructions define how the bot behaves.</p>
                            </div>
                            
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="space-y-6">
                               <div>
                                  <label className="block text-sm font-medium text-slate-700 mb-2">AI Model</label>
-                                 <select 
-                                    value={activeBot.model}
-                                    onChange={(e) => setActiveBot({...activeBot, model: e.target.value})}
-                                    className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900"
-                                 >
-                                    {AVAILABLE_MODELS.map(m => (
-                                        <option key={m.id} value={m.id}>{m.name}</option>
-                                    ))}
-                                 </select>
+                                 <ModelSelector
+                                   selectedModelId={activeBot.model}
+                                   onSelectModel={(modelId) => setActiveBot({...activeBot, model: modelId})}
+                                   showCostEstimate={true}
+                                   estimatedMonthlyMessages={PLANS[userPlan]?.conversations || 60}
+                                 />
                               </div>
                               <div>
                                  <label className="block text-sm font-medium text-slate-700 mb-2">Creativity (Temperature)</label>
-                                 <input 
-                                   type="range" 
+                                 <input
+                                   type="range"
                                    min="0" max="1" step="0.1"
                                    value={activeBot.temperature}
                                    onChange={(e) => setActiveBot({...activeBot, temperature: parseFloat(e.target.value)})}
@@ -568,6 +579,15 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
 
             {activeTab === 'knowledge' && (
                 <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+                   {/* Storage Usage Indicator */}
+                   {storageUsage && (
+                     <StorageIndicator
+                       usage={storageUsage}
+                       plan={userPlan}
+                       onUpgrade={onUpgrade}
+                     />
+                   )}
+
                    {knowledgeStatus && (
                      <div className={`p-4 rounded-lg flex items-center gap-3 ${knowledgeStatus.type === 'success' ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
                        {knowledgeStatus.type === 'success' ? <CheckCircle className="text-emerald-600" size={18} /> : <AlertCircle className="text-red-600" size={18} />}
