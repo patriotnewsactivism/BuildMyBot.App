@@ -15,6 +15,8 @@ import { ChatLogs } from './components/Chat/ChatLogs';
 import { Billing } from './components/Billing/Billing';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { Settings } from './components/Settings/Settings';
+import { BuildMyBot4MePage } from './components/Services/BuildMyBot4MePage';
+import { DoneForYou } from './components/Services/DoneForYou';
 import { LandingPage } from './components/Landing/LandingPage';
 import { PartnerProgramPage } from './components/Landing/PartnerProgramPage';
 import { PartnerSignup } from './components/Auth/PartnerSignup';
@@ -527,7 +529,21 @@ function App() {
           {currentView === 'website' && <WebsiteBuilder />}
           
           {currentView === 'marketplace' && <Marketplace onInstall={handleInstallTemplate} />}
-          
+
+          {currentView === 'expert-setup' && (
+            <DoneForYou
+              user={user}
+              onNewRequest={() => setCurrentView('expert-setup-new')}
+            />
+          )}
+
+          {currentView === 'expert-setup-new' && (
+            <BuildMyBot4MePage
+              user={user}
+              onStartRequest={() => setCurrentView('expert-setup')}
+            />
+          )}
+
           {currentView === 'phone' && <PhoneAgent user={user} onUpdate={(u) => { setUser(u); dbService.saveUserProfile(u); }} />}
           
           {currentView === 'chat-logs' && <ChatLogs conversations={chatLogs} />}
