@@ -15,6 +15,7 @@ import { ChatLogs } from './components/Chat/ChatLogs';
 import { Billing } from './components/Billing/Billing';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { Settings } from './components/Settings/Settings';
+import { ApiDocumentation } from './components/Developers/ApiDocumentation';
 import { LandingPage } from './components/Landing/LandingPage';
 import { PartnerProgramPage } from './components/Landing/PartnerProgramPage';
 import { PartnerSignup } from './components/Auth/PartnerSignup';
@@ -527,7 +528,9 @@ function App() {
           {currentView === 'website' && <WebsiteBuilder />}
           
           {currentView === 'marketplace' && <Marketplace onInstall={handleInstallTemplate} />}
-          
+
+          {currentView === 'developers' && <ApiDocumentation user={user} />}
+
           {currentView === 'phone' && <PhoneAgent user={user} onUpdate={(u) => { setUser(u); dbService.saveUserProfile(u); }} />}
           
           {currentView === 'chat-logs' && <ChatLogs conversations={chatLogs} />}
