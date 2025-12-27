@@ -15,6 +15,7 @@ import { ChatLogs } from './components/Chat/ChatLogs';
 import { Billing } from './components/Billing/Billing';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { Settings } from './components/Settings/Settings';
+import { ApiDocumentation } from './components/Developers/ApiDocumentation';
 import { BuildMyBot4MePage } from './components/Services/BuildMyBot4MePage';
 import { DoneForYou } from './components/Services/DoneForYou';
 import { LandingPage } from './components/Landing/LandingPage';
@@ -529,6 +530,8 @@ function App() {
           {currentView === 'website' && <WebsiteBuilder />}
           
           {currentView === 'marketplace' && <Marketplace onInstall={handleInstallTemplate} />}
+
+          {currentView === 'developers' && <ApiDocumentation user={user} />}
 
           {currentView === 'expert-setup' && (
             <DoneForYou

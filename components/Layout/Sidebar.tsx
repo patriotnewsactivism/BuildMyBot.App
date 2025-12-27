@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, MessageSquare, Users, TrendingUp, Settings, Briefcase, Bot, Megaphone, Globe, Shield, ShoppingBag, Phone, X, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Users, TrendingUp, Settings, Briefcase, Bot, Megaphone, Globe, Shield, ShoppingBag, Phone, X, ChevronLeft, ChevronRight, Code, Sparkles } from 'lucide-react';
 import { UserRole, User } from '../../types';
 import { PLANS } from '../../constants';
 import { useLayout, SIDEBAR_WIDTH_EXPANDED, SIDEBAR_WIDTH_COLLAPSED } from './LayoutContext';
@@ -27,6 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, role, us
     { id: 'marketing', label: 'AI Marketing', icon: Megaphone },
     { id: 'website', label: 'AI Sites', icon: Globe },
     { id: 'marketplace', label: 'Marketplace', icon: ShoppingBag },
+    { id: 'developers', label: 'API Docs', icon: Code },
     { id: 'expert-setup', label: 'Expert Setup', icon: Sparkles },
     { id: 'billing', label: 'Billing & Plan', icon: Shield },
     { id: 'settings', label: 'Settings', icon: Settings },

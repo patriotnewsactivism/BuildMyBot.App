@@ -223,6 +223,15 @@ export const getModelsByProvider = (provider: 'openai' | 'anthropic' | 'google')
   return AI_MODELS.filter(m => m.provider === provider);
 };
 
+// API Rate Limits per plan
+export const RATE_LIMITS = {
+  [PlanType.FREE]: { requestsPerMinute: 10, requestsPerDay: 100 },
+  [PlanType.STARTER]: { requestsPerMinute: 30, requestsPerDay: 1000 },
+  [PlanType.PROFESSIONAL]: { requestsPerMinute: 60, requestsPerDay: 10000 },
+  [PlanType.EXECUTIVE]: { requestsPerMinute: 120, requestsPerDay: 50000 },
+  [PlanType.ENTERPRISE]: { requestsPerMinute: 300, requestsPerDay: -1 }, // -1 = unlimited
+};
+
 export const MOCK_ANALYTICS_DATA = [
   { date: 'Mon', conversations: 45, leads: 2 },
   { date: 'Tue', conversations: 52, leads: 5 },
