@@ -78,11 +78,17 @@ export const dbService = {
         userId: user.id
     });
 
+    console.log('SaveBot - User ID:', user.id);
+    console.log('SaveBot - Payload being sent:', payload);
+
     const { data, error } = await client
       .from('bots')
       .upsert(payload)
       .select()
       .single();
+
+    console.log('SaveBot - Response data:', data);
+    console.log('SaveBot - Response error:', error);
 
     if (error) {
         console.error("Error saving bot to Supabase:", error);
