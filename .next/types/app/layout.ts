@@ -1,4 +1,4 @@
-// File: C:\BuildMyBot.App\app\layout.tsx
+// File: /home/user/BuildMyBot.App/app/layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
