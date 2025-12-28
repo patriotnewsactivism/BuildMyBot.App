@@ -3,7 +3,6 @@ import { supabase } from './supabaseClient';
 import { Bot, Lead, Conversation, User, PlanType, WebsitePage } from '../types';
 import { edgeFunctions } from './edgeFunctions';
 import { slugifyPageSlug } from './websiteService';
-import { edgeFunctions } from './edgeFunctions';
 
 // Helper functions to convert between camelCase (TypeScript) and snake_case (PostgreSQL)
 const toSnakeCase = (str: string): string =>

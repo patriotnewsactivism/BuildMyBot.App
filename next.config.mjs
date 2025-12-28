@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   webpack: (config) => {
-    config.resolve.alias['@supabase/supabase-js'] = '@supabase/supabase-js/dist/module/index.js';
+    config.resolve.alias['@supabase/supabase-js'] = '@supabase/supabase-js/dist/index.mjs';
     return config;
   },
   headers: async () => [
