@@ -39,6 +39,9 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
 
     try {
       // Get auth session
+      if (!supabase) {
+        throw new Error('Supabase client not initialized');
+      }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Not authenticated');
