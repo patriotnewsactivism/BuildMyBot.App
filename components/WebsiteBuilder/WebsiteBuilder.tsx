@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Layout, Rocket, Monitor, Smartphone, CheckCircle, RefreshCcw, Save, UploadCloud, Download, Globe } from 'lucide-react';
 import { generateWebsiteStructure } from '../../services/openaiService';
 import { dbService } from '../../services/dbService';
-import { buildStaticHtml, createFirebaseStaticExport, slugifyPageSlug, uploadPageToStorage } from '../../services/websiteService';
+import { buildStaticHtml, createStaticHtmlExport, slugifyPageSlug, uploadPageToStorage } from '../../services/websiteService';
 import { PageContent, WebsitePage } from '../../types';
 
 const defaultPage: WebsitePage = {
@@ -182,7 +182,7 @@ export const WebsiteBuilder: React.FC = () => {
     }
   };
 
-  const handleFirebaseExport = async () => {
+  const handleStaticExport = async () => {
     if (typeof document === 'undefined') {
       setStatus('Static export can only run in the browser.');
       return;
@@ -192,13 +192,13 @@ export const WebsiteBuilder: React.FC = () => {
     if (!saved) return;
 
     const html = buildStaticHtml(saved);
-    const exportFile = createFirebaseStaticExport(saved, html);
+    const exportFile = createStaticHtmlExport(saved, html);
     const anchor = document.createElement('a');
     anchor.href = exportFile.url;
     anchor.download = exportFile.fileName;
     anchor.click();
 
-    setStatus('Static export prepared for Firebase Hosting.');
+    setStatus('Static HTML file downloaded successfully.');
   };
 
   const featureText = (pageDraft.content?.features || []).join('\n');
@@ -317,10 +317,10 @@ export const WebsiteBuilder: React.FC = () => {
                </button>
              </div>
              <button
-               onClick={handleFirebaseExport}
+               onClick={handleStaticExport}
                className="w-full bg-blue-50 text-blue-900 py-2 rounded-lg text-sm font-semibold hover:bg-blue-100 border border-blue-100 flex items-center justify-center gap-2"
              >
-               <Download size={16} /> Export static HTML for Firebase Hosting
+               <Download size={16} /> Download static HTML file
              </button>
              {storageUrl && (
                <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2 break-words">

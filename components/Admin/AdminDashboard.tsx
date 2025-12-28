@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, DollarSign, Server, Activity, AlertTriangle, CheckCircle, Search, Briefcase, Globe, Loader } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { dbService } from '../../services/dbService';
+import { supabase } from '../../services/supabaseClient';
 import { User, UserRole } from '../../types';
 import { PLANS, RESELLER_TIERS } from '../../constants';
 
@@ -32,9 +33,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
             // Segregate Partners
             const partnerList = allUsers.filter(u => u.role === UserRole.RESELLER);
 
-            // Count all bots across all users
-            // Note: This is a simple count. For production, consider caching or aggregation
-            const totalBots = 0; // TODO: Query actual bot count from bots table
+            // Count all bots across all users using the database helper function
+            const { data: botsCount, error: botsError } = await supabase.rpc('get_total_bots_count');
+            if (botsError) console.error('Error fetching bots count:', botsError);
+            const totalBots = botsCount || 0;
 
             setUsers(allUsers);
             setPartners(partnerList);

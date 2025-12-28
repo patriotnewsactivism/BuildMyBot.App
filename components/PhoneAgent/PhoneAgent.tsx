@@ -99,14 +99,12 @@ export const PhoneAgent: React.FC<PhoneAgentProps> = ({ user, onUpdate }) => {
   }, []);
 
   const webhookUrl = useMemo(() => {
-    const env = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> }).env : undefined;
-    const baseUrl = env?.VITE_SUPABASE_URL || env?.NEXT_PUBLIC_SUPABASE_URL || '';
+    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     return baseUrl ? `${baseUrl}/functions/v1/twilio-call-webhook` : 'https://<your-project>.supabase.co/functions/v1/twilio-call-webhook';
   }, []);
 
   const voiceHandlerUrl = useMemo(() => {
-    const env = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> }).env : undefined;
-    const baseUrl = env?.VITE_SUPABASE_URL || env?.NEXT_PUBLIC_SUPABASE_URL || '';
+    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     return baseUrl ? `${baseUrl}/functions/v1/twilio-voice-handler` : 'https://<your-project>.supabase.co/functions/v1/twilio-voice-handler';
   }, []);
 

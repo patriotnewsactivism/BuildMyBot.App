@@ -82,18 +82,18 @@ export const uploadPageToStorage = async (page: WebsitePage, html: string): Prom
   const path = `${userId}/${slug}.html`;
 
   const uploadResult = await supabase.storage
-    .from('website-exports')
+    .from('website-pages')
     .upload(path, html, { contentType: 'text/html', upsert: true });
 
   if (uploadResult.error) {
     throw new Error(uploadResult.error.message);
   }
 
-  const { data } = supabase.storage.from('website-exports').getPublicUrl(path);
+  const { data } = supabase.storage.from('website-pages').getPublicUrl(path);
   return data.publicUrl;
 };
 
-export const createFirebaseStaticExport = (page: WebsitePage, html: string) => {
+export const createStaticHtmlExport = (page: WebsitePage, html: string) => {
   const blob = new Blob([html], { type: 'text/html' });
   const slug = page.slug || slugifyPageSlug(page.title);
   const fileName = `${slug}.html`;

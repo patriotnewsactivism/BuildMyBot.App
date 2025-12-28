@@ -1,20 +1,8 @@
 import * as Sentry from '@sentry/react';
 
-// Support both Vite (import.meta.env) and Next.js/Node (process.env) environment variable patterns
-const getEnvVar = (key: string) => {
-  const metaEnv = typeof import.meta !== 'undefined'
-    ? (import.meta as unknown as { env?: Record<string, string | undefined> }).env
-    : undefined;
-
-  if (metaEnv && key in metaEnv) {
-    return metaEnv[key];
-  }
-
-  return (typeof process !== 'undefined' ? process.env[key] : undefined) ?? undefined;
-};
-
-const sentryDsn = getEnvVar('VITE_SENTRY_DSN') || getEnvVar('NEXT_PUBLIC_SENTRY_DSN');
-const environment = getEnvVar('VITE_ENVIRONMENT') || getEnvVar('NEXT_PUBLIC_ENVIRONMENT') || 'development';
+// Next.js environment variables (NEXT_PUBLIC_ prefix required for client-side access)
+const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+const environment = process.env.NEXT_PUBLIC_ENVIRONMENT || 'development';
 
 /**
  * Initialize Sentry for error tracking and performance monitoring

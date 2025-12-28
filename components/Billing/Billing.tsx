@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, Shield, Zap, Star, Crown, Loader, CheckCircle, AlertCircle } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType, User } from '../../types';
-import { dbService } from '../../services/dbService';
+import { supabase } from '../../services/supabaseClient';
 
 interface BillingProps {
   user?: User;
@@ -13,29 +13,75 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [upgradeStatus, setUpgradeStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
+  // Check for success/cancel redirect from Stripe
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      setUpgradeStatus({
+        type: 'success',
+        message: 'Payment successful! Your plan has been upgraded.'
+      });
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (urlParams.get('canceled') === 'true') {
+      setUpgradeStatus({
+        type: 'error',
+        message: 'Payment canceled. Your plan was not changed.'
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const handleUpgrade = async (planId: string) => {
     if (!user) return;
     setProcessingPlan(planId);
     setUpgradeStatus(null);
 
-    // Simulate Stripe Checkout API Call (in production, this would redirect to Stripe)
-    setTimeout(async () => {
-        try {
-            await dbService.updateUserPlan(user.id, planId as PlanType);
-            setUpgradeStatus({
-              type: 'success',
-              message: `Successfully upgraded to ${PLANS[planId as PlanType].name} plan!`
-            });
-        } catch (e) {
-            console.error(e);
-            setUpgradeStatus({
-              type: 'error',
-              message: 'Upgrade failed. Please try again or contact support.'
-            });
-        } finally {
-            setProcessingPlan(null);
+    try {
+      // Get auth session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      // Call Stripe Checkout Edge Function
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/stripe-checkout`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            plan: planId,
+            successUrl: `${window.location.origin}/billing?success=true`,
+            cancelUrl: `${window.location.origin}/billing?canceled=true`
+          })
         }
-    }, 2000);
+      );
+
+      const { url, error } = await response.json();
+
+      if (error) {
+        throw new Error(error);
+      }
+
+      if (!url) {
+        throw new Error('No checkout URL returned');
+      }
+
+      // Redirect to Stripe Checkout
+      window.location.href = url;
+
+    } catch (e) {
+      console.error('Upgrade error:', e);
+      setUpgradeStatus({
+        type: 'error',
+        message: e instanceof Error ? e.message : 'Upgrade failed. Please try again or contact support.'
+      });
+      setProcessingPlan(null);
+    }
   };
 
   return (

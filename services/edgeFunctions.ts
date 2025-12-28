@@ -3,8 +3,8 @@
 
 import { supabase } from './supabaseClient';
 
-// Support both Next.js and Vite environment variable patterns
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+// Next.js environment variable
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';

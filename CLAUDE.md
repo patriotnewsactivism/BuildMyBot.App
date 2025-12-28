@@ -10,13 +10,19 @@ BuildMyBot is a white-label AI chatbot platform built with React + Next.js + Typ
 
 ```bash
 npm install           # Install dependencies
-npm run dev           # Start Next.js dev server
+npm run dev           # Start Next.js dev server (localhost:3000)
 npm run build         # Production build
 npm run lint          # ESLint check
 npm run test          # Run Vitest unit tests
 npm run test:e2e      # Run Playwright e2e tests
 npm run test:e2e:ui   # Playwright with UI
 npm run check-links   # Check for broken links
+
+# Run a single unit test file
+npx vitest run path/to/test.ts
+
+# Run a single E2E test
+npx playwright test e2e/specific.spec.ts
 ```
 
 ### Deployment
@@ -47,12 +53,12 @@ npm run check-links       # Check for broken links
 
 Test structure:
 - `e2e/` - Playwright end-to-end tests (golden-path.spec.ts, widget.spec.ts)
-  - Tests run against localhost:8080 (auto-started via webServer config)
+  - Tests run against localhost:3000 (auto-started via webServer config)
   - Multi-browser testing: Chrome, Firefox, Safari, Mobile Chrome, Mobile Safari
   - Screenshots/videos captured on failure for debugging
 - `services/__tests__/` - Unit tests for service layer
 - `tests/` - Additional test utilities
-- `vitest.setup.ts` - Vitest configuration with jsdom environment
+- `vitest.setup.ts` - Test setup (extends jest-dom matchers)
 - `playwright.config.ts` - E2E test configuration with retry/parallelization settings
 
 ## Architecture
@@ -60,8 +66,11 @@ Test structure:
 ### File Structure
 ```
 /
-├── App.tsx                 # Main application entry, routing, auth state
-├── index.tsx              # React DOM mount point
+├── app/                    # Next.js App Router
+│   ├── page.tsx           # Entry point (dynamically loads App.tsx)
+│   ├── layout.tsx         # Root layout
+│   └── api/               # API routes
+├── App.tsx                 # Main SPA component, routing, auth state
 ├── types.ts               # Global TypeScript interfaces (User, Bot, Lead, etc.)
 ├── constants.ts           # PLANS, MOCK_ANALYTICS_DATA
 ├── components/            # Feature modules (organized by domain)
@@ -192,38 +201,29 @@ Located in supabase/functions/:
 
 ## Environment Variables
 
-Required in `.env` (see `.env.example` for full template):
+Required in `.env.local` (see `.env.example` for full template):
 ```bash
-# Supabase (active backend)
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-
-# Vercel/Next.js deployments
+# Supabase (Required)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
-# Monitoring & Analytics
-VITE_SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
-VITE_SENTRY_ORG=your-org
-VITE_SENTRY_PROJECT=buildmybot-app
-VITE_SENTRY_AUTH_TOKEN=your-auth-token
-VITE_ENVIRONMENT=production
-
-VITE_POSTHOG_API_KEY=phc_your_api_key
-VITE_POSTHOG_HOST=https://app.posthog.com
+# Monitoring & Analytics (Optional)
+NEXT_PUBLIC_SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
+NEXT_PUBLIC_ENVIRONMENT=development
+NEXT_PUBLIC_POSTHOG_API_KEY=phc_your_api_key
+NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 
 # Stripe (publishable key only - safe for frontend)
-VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
 
-# SECURITY: NEVER put these in frontend .env
-# Set via Supabase Edge Function secrets instead:
-# - OPENAI_API_KEY (for AI services)
-# - STRIPE_SECRET_KEY (for billing)
-# - STRIPE_WEBHOOK_SECRET (for webhook verification)
-# - CARTESIA_API_KEY (for voice AI - sub-200ms latency TTS)
-# - TWILIO_ACCOUNT_SID (for phone calls)
-# - TWILIO_AUTH_TOKEN (for webhook signature validation)
-# - TWILIO_PHONE_NUMBER (optional - for outbound calls)
+# SECURITY: Set secrets via Supabase Edge Function secrets:
+# supabase secrets set OPENAI_API_KEY=sk-...
+# supabase secrets set STRIPE_SECRET_KEY=sk_live_...
+# supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...
+# supabase secrets set CARTESIA_API_KEY=sk_car_...
+# supabase secrets set TWILIO_ACCOUNT_SID=AC...
+# supabase secrets set TWILIO_AUTH_TOKEN=...
+# supabase secrets set TWILIO_PHONE_NUMBER=+1...
 ```
 
 ## Security Notes
@@ -231,7 +231,7 @@ VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...
 - Master admin emails hardcoded in App.tsx (MASTER_EMAILS array)
 - RLS policies enforce owner_id checks
 - Sensitive operations go through Edge Functions
-- API keys never exposed to frontend except VITE_SUPABASE_ANON_KEY
+- API keys never exposed to frontend (only NEXT_PUBLIC_SUPABASE_ANON_KEY is safe)
 
 ## Deployment
 
@@ -248,30 +248,28 @@ cloudbuild.yaml defines:
 3. Deploy to Cloud Run
 
 ### Vercel/Netlify
-Standard Vite SPA deployment:
+Standard Next.js deployment:
 - Build command: `npm run build`
-- Output directory: `dist`
+- Output directory: `.next` (standalone mode)
 - Environment variables required (see .env.example)
 
 ## Monitoring & Observability
 
 ### Sentry (Error Tracking & Performance)
-- Configured via `@sentry/react` and `@sentry/vite-plugin`
+- Configured via `@sentry/react`
 - Automatic error boundary integration
 - Performance monitoring with automatic instrumentation
-- Source maps uploaded during build (disabled in dev mode)
-- Configuration in vite.config.ts
+- Configuration in `services/sentryInit.ts`
 
 ### PostHog (Product Analytics)
 - User behavior tracking and feature usage analytics
 - Session recording capabilities
 - Feature flag support
-- Event tracking for user actions
+- Configuration in `services/posthogInit.ts`
 
 ### Development vs Production
-- Sentry plugin disabled in development mode
-- Use VITE_ENVIRONMENT to control environment-specific behavior
-- Monitoring tools initialized in production only
+- Use NEXT_PUBLIC_ENVIRONMENT to control environment-specific behavior
+- Monitoring tools disabled in development mode
 
 ## Known Limitations
 

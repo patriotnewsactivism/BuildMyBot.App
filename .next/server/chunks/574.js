@@ -1,1 +1,0 @@
-"use strict";exports.id=574,exports.ids=[574],exports.modules={1574:(e,t,r)=>{r.r(t),r.d(t,{default:()=>s});let s=(0,r(8570).createProxy)(String.raw`/home/user/BuildMyBot.App/App.tsx#default`)}};
