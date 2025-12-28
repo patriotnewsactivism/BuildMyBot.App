@@ -64,7 +64,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
   const [selectedBotId, setSelectedBotId] = useState<string>(bots[0]?.id || 'new');
   // Initialize with the selected bot or a default new one
   const [activeBot, setActiveBot] = useState<BotType>(bots[0] || {
-    id: `b${Date.now()}`,
+    id: 'new',
     name: 'New Assistant',
     type: 'Customer Support',
     systemPrompt: 'You are a helpful customer support assistant.',
@@ -139,16 +139,22 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
       setPreviewConversationId(null);
   };
 
-  const handleSaveBot = () => {
-      // Ensure we have a valid ID if it's new
+  const handleSaveBot = async () => {
+      // For new bots, remove the 'new' ID and let the database generate a UUID
       const botToSave = { ...activeBot };
       if (botToSave.id === 'new') {
-          botToSave.id = `b${Date.now()}`;
+          delete (botToSave as any).id;
       }
-      onSave(botToSave);
-      // Update local view
-      setActiveBot(botToSave);
-      setSelectedBotId(botToSave.id);
+
+      // Save the bot and get the returned bot with the proper database ID
+      const savedBot = await dbService.saveBot(botToSave);
+
+      // Update local state with the saved bot (which has the database-generated UUID)
+      if (savedBot) {
+          setActiveBot(savedBot);
+          setSelectedBotId(savedBot.id);
+          onSave(savedBot);
+      }
   };
 
   const handleApplyPersona = (personaId: string) => {
@@ -368,7 +374,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
       <div className="w-full lg:w-64 shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden hidden lg:flex">
          <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
            <h3 className="font-semibold text-slate-800">My Bots</h3>
-           <button 
+           <button
              onClick={() => {
                 const newBot = {
                     id: 'new',
@@ -383,10 +389,15 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
                     themeColor: '#1e3a8a',
                     maxMessages: 20,
                     randomizeIdentity: true,
+                    avatar: '',
                     responseDelay: 1500
                 } as BotType;
                 setActiveBot(newBot);
                 setSelectedBotId('new');
+                // Clear preview history when creating new bot
+                setPreviewHistory([]);
+                setPreviewError(null);
+                setTokensUsed(null);
              }}
              className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition"
            >
