@@ -1,4 +1,4 @@
-// File: C:\BuildMyBot.App\app\api\ai\route.ts
+// File: /home/user/BuildMyBot.App/app/api/ai/route.ts
 import * as entry from '../../../../../app/api/ai/route.js'
 import type { NextRequest } from 'next/server.js'
 
