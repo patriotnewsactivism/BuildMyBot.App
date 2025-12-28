@@ -136,12 +136,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
           {mode === 'signup' && (
              <div>
                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Company Name</label>
-               <input 
+               <input
                  type="text"
                  required
                  value={companyName}
                  onChange={(e) => setCompanyName(e.target.value)}
-                 className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-blue-900 focus:border-blue-900"
+                 className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-blue-900 focus:border-blue-900 text-slate-900"
                  placeholder="Acme Inc."
                />
              </div>
