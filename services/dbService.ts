@@ -43,9 +43,12 @@ export const dbService = {
     // Initial fetch
     const fetchBots = async () => {
       const { data: { user } } = await client.auth.getUser();
+      console.log('SubscribeToBots - Fetching bots for user:', user?.id);
       const query = client.from('bots').select('*');
       const { data, error } = await (user ? query.eq('user_id', user.id) : query);
+      console.log('SubscribeToBots - Fetched bots:', data, 'Error:', error);
       if (!error && data && !cancelled) {
+        console.log('SubscribeToBots - Calling onUpdate with', data.length, 'bots');
         onUpdate(arrayToCamelCase<Bot>(data as Record<string, unknown>[]));
       }
     };
@@ -53,7 +56,10 @@ export const dbService = {
 
     // Subscribe to changes
     const channel = client.channel('public:bots')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bots' }, fetchBots)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bots' }, (payload) => {
+        console.log('SubscribeToBots - Change detected:', payload);
+        fetchBots();
+      })
       .subscribe();
 
     return () => {

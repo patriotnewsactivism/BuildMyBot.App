@@ -61,6 +61,10 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
   storageUsage,
   onUpgrade
 }) => {
+  console.log('=== BOT BUILDER COMPONENT RENDERED ===');
+  console.log('Props - bots:', bots);
+  console.log('Props - onSave:', onSave);
+
   const [selectedBotId, setSelectedBotId] = useState<string>(bots[0]?.id || 'new');
   // Initialize with the selected bot or a default new one
   const [activeBot, setActiveBot] = useState<BotType>(bots[0] || {
@@ -140,10 +144,13 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
   };
 
   const handleSaveBot = async () => {
+      console.log('=== HANDLE SAVE BOT CALLED ===');
       try {
           // For new bots, remove the 'new' ID and let the database generate a UUID
           const botToSave = { ...activeBot };
+          console.log('Bot before processing:', activeBot);
           if (botToSave.id === 'new') {
+              console.log('Deleting new ID');
               delete (botToSave as any).id;
           }
 
@@ -455,8 +462,13 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
                </div>
             </div>
             <div className="flex gap-2">
-               <button 
-                 onClick={handleSaveBot}
+               <button
+                 onClick={(e) => {
+                   console.log('=== SAVE BUTTON CLICKED ===');
+                   alert('Save button clicked!');
+                   e.preventDefault();
+                   handleSaveBot();
+                 }}
                  className="flex items-center gap-2 px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-950 font-medium transition shadow-sm"
                >
                  <Save size={18} /> Save Changes

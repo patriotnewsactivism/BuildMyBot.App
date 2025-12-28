@@ -25,20 +25,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
   useEffect(() => {
     const fetchData = async () => {
         try {
+            console.log('AdminDashboard - Fetching all users...');
             const allUsers = await dbService.getAllUsers();
+            console.log('AdminDashboard - Got users:', allUsers.length);
 
             // Calculate MRR
             const mrr = allUsers.reduce((acc, u) => acc + (PLANS[u.plan]?.price || 0), 0);
+            console.log('AdminDashboard - Calculated MRR:', mrr);
 
             // Segregate Partners
             const partnerList = allUsers.filter(u => u.role === UserRole.RESELLER);
+            console.log('AdminDashboard - Partners:', partnerList.length);
 
             // Count all bots across all users using the database helper function
             let totalBots = 0;
             if (supabase) {
+                console.log('AdminDashboard - Fetching bots count...');
                 const { data: botsCount, error: botsError } = await supabase.rpc('get_total_bots_count');
                 if (botsError) console.error('Error fetching bots count:', botsError);
                 totalBots = botsCount || 0;
+                console.log('AdminDashboard - Total bots:', totalBots);
             }
 
             setUsers(allUsers);

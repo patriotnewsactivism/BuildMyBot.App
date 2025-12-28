@@ -657,7 +657,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-900 via-blue-600 to-emerald-500">Close 3x More Deals on Autopilot</span>
            </h1>
 
-           <h2 className="text-xl md:text-2xl font-semibold text-slate-600 tracking-wide mb-4 max-w-4xl mx-auto">
+           <h2 className="text-xl md:text-2xl font-bold text-slate-800 tracking-wide mb-4 max-w-4xl mx-auto">
              The AI employee that never sleeps, never takes breaks, and converts website visitors into paying customers 24/7/365.
            </h2>
 
