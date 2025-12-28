@@ -7,6 +7,9 @@
 # Claude Code
 .claude/
 
+# Next.js build output
+.next/
+
 # Logs
 logs
 *.log
