@@ -365,9 +365,14 @@ function App() {
     });
   };
 
-  const handleSaveBot = (bot: BotType) => {
-     dbService.saveBot(bot);
-     setNotification("Bot saved successfully!");
+  const handleSaveBot = async (bot: BotType) => {
+     try {
+       await dbService.saveBot(bot);
+       setNotification("Bot saved successfully!");
+     } catch (error) {
+       console.error("Error saving bot:", error);
+       setNotification("Failed to save bot. Please try again.");
+     }
   };
 
   const openAuth = (mode: 'login' | 'signup') => {
