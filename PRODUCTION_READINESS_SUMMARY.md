@@ -97,9 +97,39 @@ const totalBots = botsCount || 0;
 
 ---
 
-### **Phase 3: Firebase Cleanup** 🧹 TECHNICAL DEBT
+### **Phase 3: Database Migration Fixes** 🔧 DEPLOYMENT BLOCKING
 
-#### 6. Supabase Storage Migration
+#### 6. pgvector Dimension Limit Fix
+**File:** `supabase/migrations/20250109000000_initial_schema.sql:81, 242`
+
+**Problem:** HNSW index cannot handle vectors >2000 dimensions, schema used 3072 for OpenAI embeddings
+**Impact:** Database migrations failed with "column cannot have more than 2000 dimensions for hnsw index"
+
+**Solution:**
+- Reduced vector dimensions from 3072 → 1536 (text-embedding-3-small)
+- Updated comment to document dimension choice
+- HNSW index now works correctly
+```sql
+-- Before: embedding vector(3072)
+-- After: embedding vector(1536)
+CREATE INDEX ON knowledge_base USING hnsw (embedding vector_cosine_ops);
+```
+
+#### 7. Audit Logs Enum Fix
+**File:** `supabase/migrations/20251216_create_audit_logs.sql:53`
+
+**Problem:** RLS policy referenced 'MASTER_ADMIN' which doesn't exist in user_role enum
+**Impact:** Migration failed with "invalid input value for enum user_role"
+
+**Solution:** Removed 'MASTER_ADMIN' reference, using only 'ADMIN'
+```sql
+-- Before: AND profiles.role IN ('ADMIN', 'MASTER_ADMIN')
+-- After: AND profiles.role = 'ADMIN'
+```
+
+### **Phase 4: Firebase Cleanup** 🧹 TECHNICAL DEBT
+
+#### 8. Supabase Storage Migration
 **File:** `supabase/migrations/20250228000001_website_storage.sql` (NEW)
 
 **Created:**
@@ -164,12 +194,12 @@ const totalBots = botsCount || 0;
 | Metric | Count |
 |--------|-------|
 | **Files Created** | 7 |
-| **Files Modified** | 4 |
+| **Files Modified** | 6 |
 | **Lines Added** | ~800 |
-| **Critical Bugs Fixed** | 3 |
+| **Critical Bugs Fixed** | 5 |
 | **Features Fully Wired** | 29 |
 | **E2E Tests Created** | 17 |
-| **Estimated Dev Time** | 3-5 days |
+| **Database Migrations Applied** | ✅ All passing |
 
 ---
 
@@ -276,11 +306,13 @@ npm run build           # Verify build
 6. `e2e/knowledge-base.spec.ts`
 7. `TESTING_CHECKLIST.md`
 
-### Modified Files (4)
+### Modified Files (6)
 1. `components/Admin/AdminDashboard.tsx`
 2. `components/Billing/Billing.tsx`
 3. `services/websiteService.ts`
 4. `components/WebsiteBuilder/WebsiteBuilder.tsx`
+5. `supabase/migrations/20250109000000_initial_schema.sql` - Fixed pgvector dimension limits
+6. `supabase/migrations/20251216_create_audit_logs.sql` - Fixed invalid enum reference
 
 ---
 

@@ -70,6 +70,7 @@ CREATE TABLE bots (
 );
 
 -- Knowledge Base (with pgvector for RAG)
+-- Note: Using 1536 dimensions (text-embedding-3-small) to support pgvector indexes
 CREATE TABLE knowledge_base (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     bot_id UUID NOT NULL REFERENCES bots(id) ON DELETE CASCADE,
@@ -78,7 +79,7 @@ CREATE TABLE knowledge_base (
     file_url TEXT,
     file_type TEXT DEFAULT 'text',
     content TEXT NOT NULL,
-    embedding vector(3072),
+    embedding vector(1536),
     chunk_index INTEGER DEFAULT 0,
     metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -238,7 +239,7 @@ CREATE TABLE referrals (
 -- INDEXES
 -- ============================================
 
--- Vector search index (HNSW for fast similarity)
+-- Vector search index (HNSW for fast similarity, optimized for 1536 dimensions)
 CREATE INDEX ON knowledge_base USING hnsw (embedding vector_cosine_ops);
 
 -- Full-text search index

@@ -31,7 +31,3 @@ USING (
 CREATE POLICY "Anyone can view published pages"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'website-pages');
-
--- Comment documentation
-COMMENT ON POLICY "Users can upload own pages" ON storage.objects IS 'Users can only upload files to their own user_id folder';
-COMMENT ON POLICY "Anyone can view published pages" ON storage.objects IS 'Public read access for published website pages';
