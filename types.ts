@@ -209,6 +209,30 @@ export interface ResellerPayment {
 
 export type MarketingContentType = 'email' | 'ad' | 'blog' | 'social';
 
+// AI Model types for multi-provider support
+export type AIProvider = 'openai' | 'anthropic' | 'google';
+export type AIModelTier = 'standard' | 'premium';
+export type AIModelSpeed = 'fast' | 'medium' | 'slow';
+
+export interface AIModel {
+  id: string;
+  name: string;
+  provider: AIProvider;
+  tier: AIModelTier;
+  contextWindow: number;
+  inputCostPer1k: number;
+  outputCostPer1k: number;
+  speed: AIModelSpeed;
+  capabilities: string[];
+  description?: string;
+}
+
+export interface StorageUsage {
+  usedMB: number;
+  limitMB: number;
+  percentage: number;
+}
+
 export interface MarketingContent {
   id: string;
   userId: string;
@@ -233,4 +257,46 @@ export interface MarketplaceTemplate {
   previewUrl?: string;
   image?: string;
   author?: string;
+  installs?: number;
+}
+
+// BuildMyBot 4Me Done-For-You Service Types
+export type ServiceTierId = 'quick_start' | 'professional' | 'enterprise';
+export type ServiceRequestStatus = 'pending' | 'in_progress' | 'review' | 'completed' | 'cancelled';
+
+export interface ServiceTier {
+  id: ServiceTierId;
+  name: string;
+  price: number;
+  deliveryDays: number;
+  features: string[];
+  description: string;
+  popular?: boolean;
+}
+
+export interface ServiceRequest {
+  id: string;
+  userId: string;
+  tier: ServiceTierId;
+  status: ServiceRequestStatus;
+  businessType: string;
+  botPurpose: string[];
+  desiredFeatures: string[];
+  budgetRange?: string;
+  timeline?: string;
+  additionalNotes?: string;
+  assignedTo?: string;
+  createdAt: string;
+  updatedAt?: string;
+  completedAt?: string;
+  deliverables?: ServiceDeliverable[];
+}
+
+export interface ServiceDeliverable {
+  id: string;
+  name: string;
+  type: 'bot' | 'knowledge_base' | 'integration' | 'training' | 'documentation';
+  status: 'pending' | 'in_progress' | 'completed';
+  url?: string;
+  notes?: string;
 }

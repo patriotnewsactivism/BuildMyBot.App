@@ -131,7 +131,7 @@ test.describe('Widget Integration', () => {
   test('widget should gracefully handle missing bot ID', async ({ page }) => {
     const consoleMessages: string[] = [];
     page.on('console', (msg) => consoleMessages.push(msg.text()));
-    
+
     // Create a test page with invalid bot ID
     await page.setContent(`
       <!DOCTYPE html>

@@ -4,13 +4,14 @@ import { arrayToCamelCase, objectToCamelCase } from './transformers';
 
 const attachProfiles = async (referrals: ReferralRecord[]): Promise<ReferralRecord[]> => {
   const ids = referrals.map((referral) => referral.referredUserId);
+  const client = supabase;
 
-  if (!supabase || ids.length === 0) {
+  if (!client || ids.length === 0) {
     return referrals;
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('profiles')
       .select('id, name, email, company_name, plan')
       .in('id', ids);
@@ -40,9 +41,10 @@ const attachProfiles = async (referrals: ReferralRecord[]): Promise<ReferralReco
 
 export const resellerService = {
   async fetchReferrals(resellerId: string): Promise<ReferralRecord[]> {
-    if (!supabase) return [];
+    const client = supabase;
+    if (!client) return [];
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('referrals')
       .select('id, reseller_id, referred_user_id, code, status, created_at')
       .eq('reseller_id', resellerId)
@@ -58,7 +60,8 @@ export const resellerService = {
   },
 
   subscribeToReferrals(resellerId: string, onUpdate: (referrals: ReferralRecord[]) => void) {
-    if (!supabase) return () => {};
+    const client = supabase;
+    if (!client) return () => {};
 
     const refresh = async () => {
       const latest = await resellerService.fetchReferrals(resellerId);
@@ -67,7 +70,7 @@ export const resellerService = {
 
     refresh();
 
-    const channel = supabase
+    const channel = client
       .channel(`referrals-${resellerId}`)
       .on(
         'postgres_changes',
@@ -77,16 +80,15 @@ export const resellerService = {
       .subscribe();
 
     return () => {
-      if (supabase) {
-        supabase.removeChannel(channel);
-      }
+      client.removeChannel(channel);
     };
   },
 
   async fetchEarnings(resellerId: string): Promise<ResellerEarning[]> {
-    if (!supabase) return [];
+    const client = supabase;
+    if (!client) return [];
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('reseller_earnings')
       .select('id, reseller_id, customer_id, amount, commission_rate, status, period_start, period_end, paid_at')
       .eq('reseller_id', resellerId)

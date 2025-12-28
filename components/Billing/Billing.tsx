@@ -72,6 +72,9 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
            const isCurrent = key === currentPlan;
            const isEnterprise = key === PlanType.ENTERPRISE;
            const isFree = key === PlanType.FREE;
+           const priceDisplay = Number.isFinite(plan.price)
+             ? plan.price.toLocaleString()
+             : plan.price;
            
            return (
              <div 
@@ -97,7 +100,7 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
                 <div className="mb-4">
                    <h3 className={`text-lg font-bold ${isEnterprise ? 'text-slate-900' : 'text-slate-800'}`}>{plan.name}</h3>
                    <div className="flex items-baseline mt-2">
-                     <span className="text-3xl font-extrabold text-slate-900">${plan.price}</span>
+                     <span className="text-3xl font-extrabold text-slate-900">${priceDisplay}</span>
                      <span className="text-slate-500 text-sm ml-1">/mo</span>
                    </div>
                    <p className="text-xs text-slate-400 mt-2 h-4">

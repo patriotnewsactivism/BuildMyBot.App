@@ -1,5 +1,9 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Layout/Sidebar';
+import { LayoutProvider } from './components/Layout/LayoutContext';
+import { MainLayout } from './components/Layout/MainLayout';
 import { BotBuilder } from './components/BotBuilder/BotBuilder';
 import { ResellerDashboard } from './components/Reseller/ResellerDashboard';
 import { MarketingTools } from './components/Marketing/MarketingTools';
@@ -11,6 +15,9 @@ import { ChatLogs } from './components/Chat/ChatLogs';
 import { Billing } from './components/Billing/Billing';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { Settings } from './components/Settings/Settings';
+import { ApiDocumentation } from './components/Developers/ApiDocumentation';
+import { BuildMyBot4MePage } from './components/Services/BuildMyBot4MePage';
+import { DoneForYou } from './components/Services/DoneForYou';
 import { LandingPage } from './components/Landing/LandingPage';
 import { PartnerProgramPage } from './components/Landing/PartnerProgramPage';
 import { PartnerSignup } from './components/Auth/PartnerSignup';
@@ -24,6 +31,8 @@ import { supabase } from './services/supabaseClient';
 import { dbService } from './services/dbService';
 import { calculateLeadScore } from './services/leadCapture';
 import { edgeFunctions } from './services/edgeFunctions';
+import { initSentry } from './services/sentryInit';
+import { initPostHog } from './services/posthogInit';
 
 const INITIAL_CHAT_LOGS: Conversation[] = []; 
 const INITIAL_RESELLER_STATS: ResellerStats = {
@@ -36,7 +45,13 @@ const INITIAL_RESELLER_STATS: ResellerStats = {
 };
 
 // Define privileged admins here
-const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org'];
+const MASTER_EMAILS = [
+  'admin@buildmybot.app',
+  'master@buildmybot.app',
+  'ceo@buildmybot.app',
+  'mreardon@wtpnews.org',
+  'jadj19@gmail.com',
+];
 const LIMITED_ADMIN_EMAILS = ['ben@texasplanninglaw.com'];
 
 function App() {
@@ -55,7 +70,11 @@ function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [notification, setNotification] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    initSentry();
+    initPostHog();
+  }, []);
 
   // --- Capture Referral Code ---
   useEffect(() => {
@@ -68,7 +87,7 @@ function App() {
   }, []);
 
   // Manual Routing Check for Full Page Chat (must be after all hooks)
-  const currentPath = window.location.pathname;
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
   const isChatRoute = currentPath.startsWith('/chat/');
   const isPublicLandingRoute = currentPath === '/landing' || currentPath === '/public';
 
@@ -173,12 +192,13 @@ function App() {
   useEffect(() => {
     const referralCode = typeof window !== 'undefined' ? localStorage.getItem('bmb_ref_code') : null;
     const alreadyTracked = typeof window !== 'undefined' ? localStorage.getItem('bmb_ref_tracked') : null;
+    const supabaseClient = supabase;
 
-    if (!referralCode || alreadyTracked === referralCode || !user || !supabase) return;
+    if (!referralCode || alreadyTracked === referralCode || !user || !supabaseClient) return;
 
     const trackReferral = async () => {
       try {
-        const { data } = await supabase!.auth.getSession();
+        const { data } = await supabaseClient.auth.getSession();
         const authedUserId = data.session?.user?.id;
 
         if (!authedUserId || authedUserId.startsWith('demo-user')) {
@@ -395,45 +415,17 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900">
-      <Sidebar 
-        currentView={currentView} 
-        setView={setCurrentView} 
-        role={user.role} 
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        user={user}
-        usage={totalConversations}
-      />
-      
-      <main className="flex-1 overflow-hidden relative flex flex-col h-full">
-        {/* Mobile Header */}
-        <div className="md:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0">
-           <div className="flex items-center gap-2 font-bold text-slate-800">
-              <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center border border-blue-800 shadow-lg shadow-blue-900/50 text-white">
-                <BotIcon size={20} />
-              </div>
-              BuildMyBot
-           </div>
-           <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600">
-              <Menu size={24} />
-           </button>
-        </div>
+    <LayoutProvider>
+      <div className="flex h-screen bg-slate-50 font-sans text-slate-900">
+        <Sidebar
+          currentView={currentView}
+          setView={setCurrentView}
+          role={user.role}
+          user={user}
+          usage={totalConversations}
+        />
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          {notification && (
-              <div className="fixed top-6 right-6 z-50 bg-slate-900 text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3">
-                 <Bell size={18} className="text-blue-400" />
-                 <span>{notification}</span>
-                 <button
-                   onClick={() => setNotification(null)}
-                   className="ml-2 text-slate-400 hover:text-white transition-colors"
-                   aria-label="Dismiss notification"
-                 >
-                   ×
-                 </button>
-              </div>
-          )}
+        <MainLayout notification={notification}>
 
           {currentView === 'dashboard' && (
             <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-10">
@@ -449,7 +441,7 @@ function App() {
                </div>
                
                {/* Stats Cards */}
-               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+               <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><MessageSquare size={18}/></div>
@@ -552,7 +544,23 @@ function App() {
           {currentView === 'website' && <WebsiteBuilder />}
           
           {currentView === 'marketplace' && <Marketplace onInstall={handleInstallTemplate} />}
-          
+
+          {currentView === 'developers' && <ApiDocumentation user={user} />}
+
+          {currentView === 'expert-setup' && (
+            <DoneForYou
+              user={user}
+              onNewRequest={() => setCurrentView('expert-setup-new')}
+            />
+          )}
+
+          {currentView === 'expert-setup-new' && (
+            <BuildMyBot4MePage
+              user={user}
+              onStartRequest={() => setCurrentView('expert-setup')}
+            />
+          )}
+
           {currentView === 'phone' && <PhoneAgent user={user} onUpdate={(u) => { setUser(u); dbService.saveUserProfile(u); }} />}
           
           {currentView === 'chat-logs' && <ChatLogs conversations={chatLogs} />}
@@ -562,10 +570,10 @@ function App() {
           {currentView === 'admin' && <AdminDashboard readOnly={user.role === UserRole.LIMITED_ADMIN} />}
           
           {currentView === 'settings' && <Settings user={user} onUpdateUser={(u) => { setUser(u); dbService.saveUserProfile(u); }} />}
-          
-        </div>
-      </main>
-    </div>
+
+        </MainLayout>
+      </div>
+    </LayoutProvider>
   );
 }
 

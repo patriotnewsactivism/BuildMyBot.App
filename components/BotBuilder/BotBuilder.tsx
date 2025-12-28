@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign, CheckCircle, AlertCircle } from 'lucide-react';
-import { Bot as BotType, Conversation } from '../../types';
+import { Bot as BotType, Conversation, PlanType, StorageUsage } from '../../types';
 import { scrapeWebsiteContent } from '../../services/openaiService';
-import { AVAILABLE_MODELS } from '../../constants';
+import { AVAILABLE_MODELS, PLANS } from '../../constants';
 import { dbService } from '../../services/dbService';
 import { edgeFunctions } from '../../services/edgeFunctions';
 import { PreviewMessage, buildAiCompleteMessages, deriveSentiment } from './utils';
+import { ModelSelector } from './ModelSelector';
+import { StorageIndicator } from './StorageIndicator';
 
 interface BotBuilderProps {
   bots: BotType[];
@@ -13,24 +15,26 @@ interface BotBuilderProps {
   customDomain?: string;
   onLeadDetected?: (email: string) => void;
   onConversationLogged?: (conversation: Conversation) => void;
+  userPlan?: PlanType;
+  storageUsage?: StorageUsage;
+  onUpgrade?: () => void;
 }
 
 const HUMAN_NAMES = ['Sarah', 'Michael', 'Jessica', 'David', 'Emma', 'James', 'Emily', 'Robert'];
 const AVATAR_COLORS = ['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed', '#db2777'];
 
 const PERSONAS = [
-  { id: 'support', name: 'Customer Support Agent', prompt: 'You are a helpful customer support agent for {company}. Be polite, patient, and concise. Your goal is to resolve issues quickly. If you do not know the answer, ask for their contact info.' },
-  { id: 'sales', name: 'Sales Representative', prompt: 'You are a top-performing sales representative for {company}. Your goal is to qualify leads and close deals. Be persuasive but not pushy. Focus on value and benefits. Always try to get a meeting booked.' },
-  { id: 'receptionist', name: 'AI Receptionist', prompt: 'You are the front desk receptionist for {company}. Be warm and welcoming. Help schedule appointments and route calls. Keep responses short and professional.' },
-  { id: 'city_gov', name: 'City Services Agent', prompt: 'You are the official AI agent for {company} (City Government). Assist citizens with utility bill payments, trash pickup schedules, and permit applications. Be authoritative, helpful, and community-focused. If a citizen reports an emergency, tell them to dial 911 immediately.' },
-  { id: 'batesville', name: 'Batesville City Assistant', prompt: 'You are the official AI liaison for the City of Batesville, Mississippi. Your primary duties are to assist residents with utility bill payments (water, gas, electricity), answer questions about city ordinances, and help schedule inspections. \n\nContext:\n- City Hall is located at 103 College St.\n- Utility payments can be made in person or via the online portal.\n- Trash pickup is weekly.\n\nBe professional, warm, and neighborly. Always direct utility payment queries to the secure payment portal.' },
-  { id: 'hr', name: 'HR Assistant', prompt: 'You are a Human Resources assistant. Answer employee questions about benefits, holidays, and company policy. Maintain strict confidentiality and professionalism.' },
-  { id: 'tech', name: 'Technical Support', prompt: 'You are a Tier 1 Technical Support agent. Walk users through troubleshooting steps logically. Ask clarifying questions to diagnose the issue.' },
-  { id: 'scheduler', name: 'Appointment Scheduler', prompt: 'You are a dedicated scheduling assistant for {company}. Your primary goal is to book appointments. Be efficient and accommodating. Always offer specific time slots and confirm details.' },
+  { id: 'support', name: 'Customer Support Agent', prompt: 'You are a helpful customer support agent for {company}. Be polite, patient, and concise. Your goal is to resolve issues quickly. If you do not know the answer, ask for their contact info so a team member can follow up.' },
+  { id: 'sales', name: 'Sales Representative', prompt: 'You are a top-performing sales representative for {company}. Your goal is to qualify leads and close deals. Be persuasive but not pushy. Focus on value and benefits. Always try to get a meeting booked or collect their email for follow-up.' },
+  { id: 'faq', name: 'FAQ Assistant', prompt: 'You are a knowledgeable FAQ assistant for {company}. Answer common questions clearly and concisely using the knowledge base provided. If a question is outside your knowledge, politely ask for their email so someone can get back to them.' },
+  { id: 'scheduler', name: 'Appointment Booking Agent', prompt: 'You are a dedicated appointment booking assistant for {company}. Your primary goal is to schedule appointments efficiently. Ask about their preferred date, time, and purpose. Confirm all details before finalizing. Be accommodating and professional.' },
+  { id: 'leadgen', name: 'Lead Qualification Bot', prompt: 'You are a lead qualification specialist for {company}. Your goal is to qualify potential customers by asking about their needs, budget, timeline, and decision-making process. Score their interest level and collect contact information for follow-up by the sales team.' },
+  { id: 'receptionist', name: 'AI Receptionist', prompt: 'You are the front desk receptionist for {company}. Be warm and welcoming. Help schedule appointments and route inquiries to the right department. Keep responses short and professional.' },
+  { id: 'hr', name: 'HR Assistant', prompt: 'You are a Human Resources assistant for {company}. Answer employee questions about benefits, holidays, and company policy. Maintain strict confidentiality and professionalism.' },
+  { id: 'tech', name: 'Technical Support', prompt: 'You are a Tier 1 Technical Support agent for {company}. Walk users through troubleshooting steps logically. Ask clarifying questions to diagnose the issue. Escalate complex issues by collecting contact information.' },
   { id: 'product', name: 'Product Specialist', prompt: 'You are an expert product specialist for {company}. Assist customers in finding the perfect product. Ask about their needs, compare options, and explain benefits clearly.' },
-  { id: 'realestate', name: 'Real Estate Agent', prompt: 'You are a knowledgeable real estate agent for {company}. Qualify buyers by asking about budget, location, and preferences. Schedule property viewings.' },
-  { id: 'legal', name: 'Legal Intake', prompt: 'You are a legal intake specialist for {company}. Collect potential client details and case information with empathy and discretion. Do not provide legal advice.' },
-  { id: 'coach', name: 'Lifestyle Coach', prompt: 'You are a lifestyle and wellness coach representing {company}. Motivate users, track progress, and provide encouraging feedback. Maintain a positive, energetic tone.' },
+  { id: 'realestate', name: 'Real Estate Agent', prompt: 'You are a knowledgeable real estate agent for {company}. Qualify buyers by asking about budget, location, and preferences. Schedule property viewings and collect contact details.' },
+  { id: 'legal', name: 'Legal Intake', prompt: 'You are a legal intake specialist for {company}. Collect potential client details and case information with empathy and discretion. Do not provide legal advice - focus on gathering information for attorney review.' },
   { id: 'recruiter', name: 'Recruitment Assistant', prompt: 'You are a recruitment assistant for {company}. Screen candidates by asking about their experience, availability, and skills. Be professional, encouraging, and efficient. If they seem qualified, ask for their email to schedule an interview.' },
   { id: 'travel', name: 'Travel Concierge', prompt: 'You are a knowledgeable travel concierge for {company}. Help users plan their perfect trip by asking about their budget, preferred climate, and interests. Suggest destinations and activities. Be enthusiastic and descriptive.' },
   { id: 'financial', name: 'Financial Guide', prompt: 'You are a financial guide for {company}. Help users understand our banking products, credit cards, and loan options. Explain complex terms simply. Be trustworthy and precise. Do not give personal investment advice.' }
@@ -47,7 +51,16 @@ type IngestionRun = {
   createdAt: number;
 };
 
-export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDomain, onLeadDetected, onConversationLogged }) => {
+export const BotBuilder: React.FC<BotBuilderProps> = ({
+  bots,
+  onSave,
+  customDomain,
+  onLeadDetected,
+  onConversationLogged,
+  userPlan = PlanType.FREE,
+  storageUsage,
+  onUpgrade
+}) => {
   const [selectedBotId, setSelectedBotId] = useState<string>(bots[0]?.id || 'new');
   // Initialize with the selected bot or a default new one
   const [activeBot, setActiveBot] = useState<BotType>(bots[0] || {
@@ -288,7 +301,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     onConversationLogged({
       id: conversationId,
       botId: activeBot.id,
-      sessionId: conversationId, // Use conversation ID as session ID
+      sessionId: conversationId,
       messages: normalizedMessages,
       sentiment: deriveSentiment(messages),
       timestamp: Date.now()
@@ -350,9 +363,9 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
 <script src="https://${displayDomain}/embed.js" async></script>`;
 
   return (
-    <div className="h-[calc(100vh-6rem)] flex gap-6 animate-fade-in">
+    <div className="h-full flex flex-col lg:flex-row gap-4 lg:gap-6 animate-fade-in">
       {/* Sidebar List */}
-      <div className="w-64 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden hidden md:flex">
+      <div className="w-full lg:w-64 shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden hidden lg:flex">
          <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
            <h3 className="font-semibold text-slate-800">My Bots</h3>
            <button 
@@ -497,23 +510,20 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                               <p className="text-xs text-slate-500 mt-1">These instructions define how the bot behaves.</p>
                            </div>
                            
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="space-y-6">
                               <div>
                                  <label className="block text-sm font-medium text-slate-700 mb-2">AI Model</label>
-                                 <select 
-                                    value={activeBot.model}
-                                    onChange={(e) => setActiveBot({...activeBot, model: e.target.value})}
-                                    className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900"
-                                 >
-                                    {AVAILABLE_MODELS.map(m => (
-                                        <option key={m.id} value={m.id}>{m.name}</option>
-                                    ))}
-                                 </select>
+                                 <ModelSelector
+                                   selectedModelId={activeBot.model}
+                                   onSelectModel={(modelId) => setActiveBot({...activeBot, model: modelId})}
+                                   showCostEstimate={true}
+                                   estimatedMonthlyMessages={PLANS[userPlan]?.conversations || 60}
+                                 />
                               </div>
                               <div>
                                  <label className="block text-sm font-medium text-slate-700 mb-2">Creativity (Temperature)</label>
-                                 <input 
-                                   type="range" 
+                                 <input
+                                   type="range"
                                    min="0" max="1" step="0.1"
                                    value={activeBot.temperature}
                                    onChange={(e) => setActiveBot({...activeBot, temperature: parseFloat(e.target.value)})}
@@ -568,6 +578,15 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
 
             {activeTab === 'knowledge' && (
                 <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+                   {/* Storage Usage Indicator */}
+                   {storageUsage && (
+                     <StorageIndicator
+                       usage={storageUsage}
+                       plan={userPlan}
+                       onUpgrade={onUpgrade}
+                     />
+                   )}
+
                    {knowledgeStatus && (
                      <div className={`p-4 rounded-lg flex items-center gap-3 ${knowledgeStatus.type === 'success' ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
                        {knowledgeStatus.type === 'success' ? <CheckCircle className="text-emerald-600" size={18} /> : <AlertCircle className="text-red-600" size={18} />}

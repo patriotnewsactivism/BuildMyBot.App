@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeResellerStats } from '../utils/reseller';
-import { ReferralRecord, ResellerEarning, PlanType } from '../types';
+import { PlanType, ReferralRecord, ResellerEarning } from '../types';
 
 const referrals: ReferralRecord[] = [
   {

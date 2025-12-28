@@ -4,25 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BuildMyBot is a white-label AI chatbot platform built with React + Vite + TypeScript. The application is currently in transition from Firebase to Supabase as the backend (see PLAN.md for migration details).
+BuildMyBot is a white-label AI chatbot platform built with React + Next.js + TypeScript. The application uses Supabase for backend services (database, auth, edge functions).
 
-## Common Development Commands
+## Development Commands
 
-### Development
 ```bash
-npm install          # Install dependencies
-npm run dev          # Start dev server on port 8080
-npm run build        # TypeScript compile + production build
-npm run preview      # Preview production build
+npm install           # Install dependencies
+npm run dev           # Start Next.js dev server
+npm run build         # Production build
+npm run lint          # ESLint check
+npm run test          # Run Vitest unit tests
+npm run test:e2e      # Run Playwright e2e tests
+npm run test:e2e:ui   # Playwright with UI
+npm run check-links   # Check for broken links
 ```
 
-### Build & Deploy
+### Deployment
 ```bash
-# Docker deployment
+# Docker
 docker build -t buildmybot .
 docker run -p 8080:80 buildmybot
 
-# Google Cloud Build (via cloudbuild.yaml)
+# Google Cloud Build
 gcloud builds submit --config cloudbuild.yaml
 ```
 
@@ -88,14 +91,15 @@ Test structure:
 └── tests/                # Test utilities and helpers
 ```
 
+
 ### Routing
-Simple manual routing in App.tsx:
-- `/chat/{botId}` → FullPageChat component (full-screen embedded chat)
-- All other routes use view-based switching via currentView state
+- Next.js App Router in `app/` directory
+- API routes in `app/api/`
+- Legacy: `/chat/{botId}` routes handled via view-based switching in App.tsx
 
 ### State Management
 - Local React state in App.tsx (user, bots, leads, chatLogs)
-- Real-time subscriptions via dbService (Supabase postgres_changes)
+- Real-time subscriptions via `services/dbService.ts` (Supabase postgres_changes)
 - Auth state managed by Supabase auth listener
 
 ### Data Layer (services/dbService.ts)
@@ -103,48 +107,40 @@ All database operations use real-time subscription pattern:
 - `subscribeToBots(onUpdate)` / `saveBot(bot)`
 - `subscribeToLeads(onUpdate)` / `saveLead(lead)`
 - `getUserProfile(uid)` / `saveUserProfile(user)`
-- `subscribeToReferrals(code, onUpdate)` (for reseller tracking)
 - Admin functions: `getAllUsers()`, `updateUserStatus(uid, status)`
 
 ### Authentication
-Supabase Auth with special "God Mode" logic in App.tsx:86-97:
+Supabase Auth with "God Mode" logic in App.tsx:
 - Master admin emails (MASTER_EMAILS array) get ADMIN role + ENTERPRISE plan
-- Standard users load from profiles table via getUserProfile()
-- Referral codes captured from `?ref=CODE` query param and stored in localStorage
+- Standard users load from profiles table
+- Referral codes captured from `?ref=CODE` query param
 
 ### AI Services
-- **Gemini** (services/geminiService.ts): For AI chat completions
-- **OpenAI** (services/openaiService.ts): For GPT-4o/GPT-4o Mini completions
-- Both services handle streaming responses and conversation logging
+- `services/geminiService.ts`: Google Gemini AI integration
+- `services/openaiService.ts`: OpenAI GPT-4o/GPT-4o Mini
+- Both handle streaming responses and conversation logging
 
 ### User Roles & Plans
 ```typescript
 enum UserRole { OWNER, ADMIN, RESELLER }
 enum PlanType { FREE, STARTER, PROFESSIONAL, EXECUTIVE, ENTERPRISE }
 ```
-- ADMIN role grants access to AdminDashboard (user management, suspension)
-- RESELLER role enables ResellerDashboard (client tracking, commissions)
-- Plans control feature access and usage quotas (defined in constants.ts)
+Plans and feature limits defined in `constants.ts`.
 
-## Key Features & Components
+## Key Components
 
-### Bot Builder (components/BotBuilder/)
-- Visual editor for bot configuration (name, persona, system prompt, model, temperature)
-- Knowledge base file upload (PDF, URL, text)
-- RAG training interface
-- Preview chat for testing
+| Directory | Purpose |
+|-----------|---------|
+| `components/BotBuilder/` | Bot creation, knowledge base upload, RAG training |
+| `components/CRM/` | Lead pipeline with 0-100 scoring, Kanban/List views |
+| `components/Reseller/` | White-label portal, commission tracking |
+| `components/PhoneAgent/` | AI receptionist, Twilio integration |
+| `components/Marketing/` | Content generation, website builder |
+| `components/Admin/` | User management dashboard |
 
-### Lead CRM (components/CRM/)
-- Hot lead detection with 0-100 scoring
-- Kanban and List views for pipeline management
-- SMS/Email notification triggers
-- CSV export functionality
+## Database (Supabase)
 
-### Reseller Portal (components/Reseller/)
-- White-label ready (customDomain field in User type)
-- Commission tracking (Bronze/Silver/Gold/Platinum tiers)
-- Referral code generation and tracking
-- Real-time client management dashboard
+Key tables: `profiles`, `bots`, `leads`, `conversations`, `knowledge_base`, `website_pages`
 
 ### Phone Agent (components/PhoneAgent/)
 - 24/7 AI receptionist with real-time voice conversations
@@ -230,33 +226,12 @@ VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...
 # - TWILIO_PHONE_NUMBER (optional - for outbound calls)
 ```
 
-## Development Workflow
-
-1. **Adding a new feature**: Follow the component-based structure. Place domain logic in appropriate components/ subdirectory.
-
-2. **Database operations**: Always use dbService abstraction. Real-time subscriptions ensure UI stays in sync.
-
-3. **Adding AI functionality**: Use geminiService or openaiService. Both support streaming and conversation logging.
-
-4. **Role-based features**: Check user.role in component render logic. ADMIN gets full access, RESELLER gets partner features.
-
-5. **Billing enforcement**: Check user.plan against PLANS constants. Display upgrade prompts for locked features.
-
-6. **Styling**: Tailwind CSS throughout. Theme color customization via bot.themeColor field.
-
-## TypeScript Patterns
-
-- All types defined in types.ts (User, Bot, Lead, Conversation, etc.)
-- Optional userId during creation, required in database (added by dbService.save* methods)
-- Enums for UserRole and PlanType ensure type safety
-- Interface extensions for specialized configs (PhoneAgentConfig, ResellerStats)
-
 ## Security Notes
 
-- Master admin emails hardcoded in App.tsx:35 (MASTER_EMAILS array)
-- RLS policies enforce owner_id checks (see PLAN.md section 3)
-- Sensitive operations MUST go through Edge Functions (not direct Supabase calls)
-- API keys never exposed to frontend except VITE_SUPABASE_ANON_KEY (safe for client use)
+- Master admin emails hardcoded in App.tsx (MASTER_EMAILS array)
+- RLS policies enforce owner_id checks
+- Sensitive operations go through Edge Functions
+- API keys never exposed to frontend except VITE_SUPABASE_ANON_KEY
 
 ## Deployment
 

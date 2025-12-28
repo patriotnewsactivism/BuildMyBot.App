@@ -252,9 +252,9 @@ export const WebsiteBuilder: React.FC = () => {
   const previewContent = pageDraft.content || defaultPage.content;
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex gap-6 animate-fade-in">
+    <div className="h-full flex flex-col lg:flex-row gap-4 lg:gap-6 animate-fade-in">
       {/* Editor Sidebar */}
-      <div className="w-80 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-y-auto">
+      <div className="w-full lg:w-80 shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-y-auto max-h-[50vh] lg:max-h-none">
          <div className="p-6 border-b border-slate-100 space-y-1">
            <div className="flex items-center gap-2">
              <Layout className="text-blue-900" size={20} />
