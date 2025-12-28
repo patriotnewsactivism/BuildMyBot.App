@@ -34,9 +34,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
             const partnerList = allUsers.filter(u => u.role === UserRole.RESELLER);
 
             // Count all bots across all users using the database helper function
-            const { data: botsCount, error: botsError } = await supabase.rpc('get_total_bots_count');
-            if (botsError) console.error('Error fetching bots count:', botsError);
-            const totalBots = botsCount || 0;
+            let totalBots = 0;
+            if (supabase) {
+                const { data: botsCount, error: botsError } = await supabase.rpc('get_total_bots_count');
+                if (botsError) console.error('Error fetching bots count:', botsError);
+                totalBots = botsCount || 0;
+            }
 
             setUsers(allUsers);
             setPartners(partnerList);
