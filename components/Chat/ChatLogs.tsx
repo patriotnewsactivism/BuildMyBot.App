@@ -23,9 +23,9 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
 
   const getSentimentIcon = (sentiment: string) => {
     switch (sentiment) {
-      case 'Positive': return <Smile className="text-emerald-500" size={16} />;
-      case 'Negative': return <Frown className="text-red-500" size={16} />;
-      default: return <Meh className="text-yellow-500" size={16} />;
+      case 'Positive': return <Smile className="text-emerald-600" size={16} />;
+      case 'Negative': return <Frown className="text-red-600" size={16} />;
+      default: return <Meh className="text-slate-700" size={16} />;
     }
   };
 

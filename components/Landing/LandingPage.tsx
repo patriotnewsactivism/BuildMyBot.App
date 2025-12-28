@@ -47,11 +47,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   // FAQ State
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  // Animated counter state
-  const [countersVisible, setCountersVisible] = useState(false);
-  const [animatedStats, setAnimatedStats] = useState({ leads: 0, businesses: 0, messages: 0, saved: 0 });
-  const countersRef = useRef<HTMLDivElement>(null);
-
   // ROI Calculator State
   const [roiLeadsPerMonth, setRoiLeadsPerMonth] = useState(100);
   const [roiAvgDealValue, setRoiAvgDealValue] = useState(1000);
@@ -91,42 +86,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       clearInterval(interval);
     };
   }, []);
-
-  // Animated counters intersection observer
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !countersVisible) {
-          setCountersVisible(true);
-          // Animate to target numbers
-          const targets = { leads: 2847593, businesses: 12847, messages: 48000000, saved: 847 };
-          const duration = 2000;
-          const steps = 60;
-          const stepTime = duration / steps;
-          let step = 0;
-
-          const timer = setInterval(() => {
-            step++;
-            const progress = step / steps;
-            const easeOut = 1 - Math.pow(1 - progress, 3);
-
-            setAnimatedStats({
-              leads: Math.floor(targets.leads * easeOut),
-              businesses: Math.floor(targets.businesses * easeOut),
-              messages: Math.floor(targets.messages * easeOut),
-              saved: Math.floor(targets.saved * easeOut)
-            });
-
-            if (step >= steps) clearInterval(timer);
-          }, stepTime);
-        }
-      },
-      { threshold: 0.3 }
-    );
-
-    if (countersRef.current) observer.observe(countersRef.current);
-    return () => observer.disconnect();
-  }, [countersVisible]);
 
   useEffect(() => {
     if (chatScrollRef.current) {
@@ -251,8 +210,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       const result = await generateWebsiteStructure(siteName, siteDesc);
       setSiteResult(JSON.parse(result));
     } catch (e) {
-       // Only fail if API is missing, no mock fallback
-       alert("Failed to generate site. Please check API Key.");
+       // Show error to user via state instead of alert
+       setTrainingUrl(''); // Clear the URL
+       setScrapedData('Training failed. Please check your API configuration and try again.');
     } finally {
       setIsSiteBuilding(false);
     }
@@ -818,50 +778,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         </div>
       </section>
 
-      {/* Animated Stats Section */}
-      <section ref={countersRef} className="py-20 px-6 bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDM0djZoNnYtNmgtNnptNiA2aDZ2LTZoLTZ2NnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-50"></div>
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div className="space-y-2">
-              <div className="text-4xl md:text-5xl font-extrabold text-white">
-                {animatedStats.leads.toLocaleString()}+
-              </div>
-              <div className="text-blue-200 font-medium">Leads Captured</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl md:text-5xl font-extrabold text-white">
-                {animatedStats.businesses.toLocaleString()}+
-              </div>
-              <div className="text-blue-200 font-medium">Happy Businesses</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl md:text-5xl font-extrabold text-white">
-                {(animatedStats.messages / 1000000).toFixed(0)}M+
-              </div>
-              <div className="text-blue-200 font-medium">Messages Handled</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl md:text-5xl font-extrabold text-emerald-400">
-                ${animatedStats.saved}K+
-              </div>
-              <div className="text-blue-200 font-medium">Avg. Monthly Savings</div>
-            </div>
-          </div>
-
-          {/* Trust Badges */}
-          <div className="mt-12 pt-8 border-t border-white/10">
-            <p className="text-center text-blue-200/60 text-sm mb-6 uppercase tracking-wider">Trusted by teams at</p>
-            <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500">
-              <div className="text-white font-bold text-xl">YCombinator</div>
-              <div className="text-white font-bold text-xl">TechStars</div>
-              <div className="text-white font-bold text-xl">500 Global</div>
-              <div className="text-white font-bold text-xl">Stripe</div>
-              <div className="text-white font-bold text-xl">Shopify</div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Testimonials Section */}
       <section className="py-24 px-6 bg-white">
@@ -907,7 +823,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
           {/* CTA after testimonials */}
           <div className="text-center mt-12">
             <button onClick={onLogin} className="px-8 py-4 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-950 transition shadow-xl shadow-blue-900/30 inline-flex items-center gap-2">
-              Join {animatedStats.businesses.toLocaleString()}+ Happy Businesses <ArrowRight size={18} />
+              Get Started Today <ArrowRight size={18} />
             </button>
           </div>
         </div>

@@ -27,7 +27,30 @@ gcloud builds submit --config cloudbuild.yaml
 ```
 
 ### Testing
-Currently no test suite configured. When adding tests, use standard React testing patterns.
+```bash
+# Unit tests (Vitest)
+npm run test              # Run unit tests once
+npm run dev              # Dev mode with test watching
+
+# E2E tests (Playwright)
+npm run test:e2e          # Run E2E tests headless
+npm run test:e2e:ui       # Run with Playwright UI
+npm run test:e2e:headed   # Run with browser visible
+npm run test:e2e:report   # View test report
+
+# Other
+npm run check-links       # Check for broken links
+```
+
+Test structure:
+- `e2e/` - Playwright end-to-end tests (golden-path.spec.ts, widget.spec.ts)
+  - Tests run against localhost:8080 (auto-started via webServer config)
+  - Multi-browser testing: Chrome, Firefox, Safari, Mobile Chrome, Mobile Safari
+  - Screenshots/videos captured on failure for debugging
+- `services/__tests__/` - Unit tests for service layer
+- `tests/` - Additional test utilities
+- `vitest.setup.ts` - Vitest configuration with jsdom environment
+- `playwright.config.ts` - E2E test configuration with retry/parallelization settings
 
 ## Architecture
 
@@ -58,8 +81,11 @@ Currently no test suite configured. When adding tests, use standard React testin
 │   ├── dbService.ts      # Database abstraction (real-time subscriptions)
 │   ├── geminiService.ts  # Google Gemini AI integration
 │   ├── openaiService.ts  # OpenAI GPT integration
-│   └── firebaseConfig.ts # Legacy Firebase (being phased out)
-└── supabase/             # Backend schema, migrations & functions
+│   ├── firebaseConfig.ts # Legacy Firebase (being phased out)
+│   └── __tests__/        # Service layer unit tests
+├── supabase/             # Backend schema, migrations & functions
+├── e2e/                  # Playwright end-to-end tests
+└── tests/                # Test utilities and helpers
 ```
 
 ### Routing
@@ -121,10 +147,12 @@ enum PlanType { FREE, STARTER, PROFESSIONAL, EXECUTIVE, ENTERPRISE }
 - Real-time client management dashboard
 
 ### Phone Agent (components/PhoneAgent/)
-- 24/7 AI receptionist
-- Twilio integration for call handling
-- Transcript logging to phone_calls table
-- Human-like voice synthesis configuration
+- 24/7 AI receptionist with real-time voice conversations
+- **Twilio + Cartesia Sonic integration** for ultra-low latency (<200ms)
+- WebSocket streaming for bidirectional audio
+- Automatic transcript logging to phone_calls table
+- Multiple voice options (alloy, echo, fable, onyx, nova, shimmer)
+- See VOICE_AGENT_SETUP.md for complete setup instructions
 
 ### Marketing Studio (components/Marketing/)
 - Viral content generator (Twitter/X threads, LinkedIn posts)
@@ -162,24 +190,44 @@ Located in supabase/functions/:
 - `billing-overage-check`: Enforce plan limits
 - `marketplace-install-template`: Template installation
 - `reseller-track-referral`: Referral attribution
+- `twilio-voice-handler`: TwiML handler for incoming calls (connects to Cartesia)
+- `twilio-voice-stream`: WebSocket handler for real-time voice streaming
+- `twilio-call-webhook`: Status callback handler for call logging and transcripts
 
 ## Environment Variables
 
-Required in `.env`:
+Required in `.env` (see `.env.example` for full template):
 ```bash
-# OpenAI
-VITE_OPENAI_API_KEY=sk-...
-
-# Supabase (active)
+# Supabase (active backend)
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 
-# Vercel deployments may require NEXT_PUBLIC_ prefix
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+# Vercel/Next.js deployments
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
-# Firebase (legacy - being phased out)
-VITE_FIREBASE_API_KEY=...
+# Monitoring & Analytics
+VITE_SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
+VITE_SENTRY_ORG=your-org
+VITE_SENTRY_PROJECT=buildmybot-app
+VITE_SENTRY_AUTH_TOKEN=your-auth-token
+VITE_ENVIRONMENT=production
+
+VITE_POSTHOG_API_KEY=phc_your_api_key
+VITE_POSTHOG_HOST=https://app.posthog.com
+
+# Stripe (publishable key only - safe for frontend)
+VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...
+
+# SECURITY: NEVER put these in frontend .env
+# Set via Supabase Edge Function secrets instead:
+# - OPENAI_API_KEY (for AI services)
+# - STRIPE_SECRET_KEY (for billing)
+# - STRIPE_WEBHOOK_SECRET (for webhook verification)
+# - CARTESIA_API_KEY (for voice AI - sub-200ms latency TTS)
+# - TWILIO_ACCOUNT_SID (for phone calls)
+# - TWILIO_AUTH_TOKEN (for webhook signature validation)
+# - TWILIO_PHONE_NUMBER (optional - for outbound calls)
 ```
 
 ## Development Workflow
@@ -230,12 +278,30 @@ Standard Vite SPA deployment:
 - Output directory: `dist`
 - Environment variables required (see .env.example)
 
+## Monitoring & Observability
+
+### Sentry (Error Tracking & Performance)
+- Configured via `@sentry/react` and `@sentry/vite-plugin`
+- Automatic error boundary integration
+- Performance monitoring with automatic instrumentation
+- Source maps uploaded during build (disabled in dev mode)
+- Configuration in vite.config.ts
+
+### PostHog (Product Analytics)
+- User behavior tracking and feature usage analytics
+- Session recording capabilities
+- Feature flag support
+- Event tracking for user actions
+
+### Development vs Production
+- Sentry plugin disabled in development mode
+- Use VITE_ENVIRONMENT to control environment-specific behavior
+- Monitoring tools initialized in production only
+
 ## Known Limitations
 
-- No automated test suite yet
 - Supabase schema migration incomplete (schema.sql is empty, see supabase/migrations/)
 - Firebase dependencies still present (cleanup pending)
-- Some mock data used for analytics (MOCK_ANALYTICS_DATA in constants.ts)
 
 ## Next Development Priorities
 

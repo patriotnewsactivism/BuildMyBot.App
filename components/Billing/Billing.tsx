@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Shield, Zap, Star, Crown, Loader } from 'lucide-react';
+import { Check, Shield, Zap, Star, Crown, Loader, CheckCircle, AlertCircle } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType, User } from '../../types';
 import { dbService } from '../../services/dbService';
@@ -11,20 +11,27 @@ interface BillingProps {
 export const Billing: React.FC<BillingProps> = ({ user }) => {
   const currentPlan = user?.plan || PlanType.FREE;
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
+  const [upgradeStatus, setUpgradeStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   const handleUpgrade = async (planId: string) => {
     if (!user) return;
     setProcessingPlan(planId);
-    
-    // Simulate Stripe Checkout API Call
+    setUpgradeStatus(null);
+
+    // Simulate Stripe Checkout API Call (in production, this would redirect to Stripe)
     setTimeout(async () => {
         try {
             await dbService.updateUserPlan(user.id, planId as PlanType);
-            // In real app, this would redirect to Stripe URL
-            alert(`Upgrade successful! Welcome to the ${planId} plan.`);
+            setUpgradeStatus({
+              type: 'success',
+              message: `Successfully upgraded to ${PLANS[planId as PlanType].name} plan!`
+            });
         } catch (e) {
             console.error(e);
-            alert("Upgrade failed. Please try again.");
+            setUpgradeStatus({
+              type: 'error',
+              message: 'Upgrade failed. Please try again or contact support.'
+            });
         } finally {
             setProcessingPlan(null);
         }
@@ -37,6 +44,28 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
         <h2 className="text-3xl font-bold text-slate-800">Upgrade your Plan</h2>
         <p className="text-slate-500 mt-2">Scale your business with our power-packed tiers. Cancel anytime.</p>
       </div>
+
+      {/* Upgrade Status Banner */}
+      {upgradeStatus && (
+        <div className={`max-w-2xl mx-auto p-4 rounded-lg flex items-center gap-3 ${
+          upgradeStatus.type === 'success'
+            ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+            : 'bg-red-50 border border-red-200 text-red-800'
+        }`}>
+          {upgradeStatus.type === 'success' ? (
+            <CheckCircle size={20} className="text-emerald-600" />
+          ) : (
+            <AlertCircle size={20} className="text-red-600" />
+          )}
+          <span className="font-medium">{upgradeStatus.message}</span>
+          <button
+            onClick={() => setUpgradeStatus(null)}
+            className="ml-auto text-lg font-bold hover:opacity-70"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
          {Object.entries(PLANS).map(([key, plan]: [string, any]) => {
@@ -81,7 +110,7 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
                   <div className="pt-2 space-y-3 border-t border-slate-50 mt-2">
                     {plan.features.map((feature: string, idx: number) => (
                       <div key={idx} className="flex items-start gap-2 text-sm text-slate-600">
-                        <Check size={16} className={`shrink-0 mt-0.5 ${isEnterprise ? 'text-yellow-500 fill-yellow-500' : 'text-emerald-500'}`} /> 
+                        <Check size={16} className={`shrink-0 mt-0.5 ${isEnterprise ? 'text-emerald-600 fill-emerald-600' : 'text-emerald-600'}`} /> 
                         <span className="leading-tight">{feature}</span>
                       </div>
                     ))}

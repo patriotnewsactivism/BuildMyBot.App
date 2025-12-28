@@ -288,6 +288,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
     onConversationLogged({
       id: conversationId,
       botId: activeBot.id,
+      sessionId: conversationId, // Use conversation ID as session ID
       messages: normalizedMessages,
       sentiment: deriveSentiment(messages),
       timestamp: Date.now()
@@ -581,9 +582,9 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                    )}
 
                    {activeBot.id === 'new' && (
-                     <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 flex items-center gap-3">
-                       <AlertCircle className="text-amber-600" size={18} />
-                       <span className="text-amber-700 text-sm">Save your bot first to enable AI-powered knowledge embeddings.</span>
+                     <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 flex items-center gap-3">
+                       <AlertCircle className="text-blue-700" size={18} />
+                       <span className="text-blue-800 text-sm">Save your bot first to enable AI-powered knowledge embeddings.</span>
                      </div>
                    )}
 

@@ -37,18 +37,18 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
 
   const scoreBadge = (score: number) => {
     const band = getScoreBand(score);
-    if (band === 'Hot') return 'bg-orange-50 text-orange-700 border-orange-200';
-    if (band === 'Warm') return 'bg-amber-50 text-amber-700 border-amber-200';
-    return 'bg-slate-100 text-slate-600 border-slate-200';
+    if (band === 'Hot') return 'bg-red-50 text-red-800 border-red-200';
+    if (band === 'Warm') return 'bg-blue-50 text-blue-800 border-blue-200';
+    return 'bg-slate-100 text-slate-800 border-slate-200';
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'New': return 'bg-blue-100 text-blue-900 border-blue-200';
-      case 'Contacted': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'Qualified': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'Closed': return 'bg-slate-200 text-slate-600 border-slate-300';
-      default: return 'bg-slate-100 text-slate-700';
+      case 'Contacted': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      case 'Qualified': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'Closed': return 'bg-slate-200 text-slate-800 border-slate-300';
+      default: return 'bg-slate-100 text-slate-800';
     }
   };
 
@@ -86,13 +86,16 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
     setEmailSent(false);
   };
 
-  const handleSendEmail = () => {
-    // Mock send
+  const handleSendEmail = async () => {
+    // Mark as contacted without sending email (email integration pending)
     setEmailSent(true);
     setTimeout(() => {
         setEmailModalOpen(false);
-        if (selectedLead) handleStatusChange(selectedLead.id, 'Contacted');
-    }, 1500);
+        if (selectedLead) {
+          handleStatusChange(selectedLead.id, 'Contacted');
+          // TODO: Integrate with email service (SendGrid, AWS SES, etc.)
+        }
+    }, 800);
   };
 
   const handleExportCSV = () => {
@@ -132,7 +135,7 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
     >
       <div className={`flex justify-between items-center mb-4 pb-2 border-b-2 ${
          status === 'New' ? 'border-blue-500' : 
-         status === 'Contacted' ? 'border-yellow-500' : 
+         status === 'Contacted' ? 'border-indigo-500' : 
          status === 'Qualified' ? 'border-emerald-500' : 'border-slate-400'
       }`}>
         <h3 className="font-bold text-slate-700">{status}</h3>
@@ -151,11 +154,11 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
           >
             <div className="flex justify-between items-start mb-2">
                <div className="flex items-center gap-2">
-                 {lead.score > 75 && <Flame size={14} className="text-orange-500 fill-orange-500" />}
-                 <span className="font-bold text-slate-800 text-sm">{lead.name}</span>
+                 {lead.score > 75 && <Flame size={14} className="text-red-600 fill-red-600" />}
+                 <span className="font-bold text-slate-900 text-sm">{lead.name}</span>
                </div>
                <div className="flex items-center gap-1">
-                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${lead.score > 75 ? 'bg-orange-50 text-orange-600' : 'bg-slate-100 text-slate-500'}`}>
+                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${lead.score > 75 ? 'bg-red-50 text-red-800' : 'bg-slate-100 text-slate-800'}`}>
                    {lead.score}
                  </span>
                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${scoreBadge(lead.score)}`}>
@@ -293,7 +296,7 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
             <span className="text-[11px] text-slate-500">{filteredLeads.length} leads</span>
           </div>
           <div className="space-y-2">
-            {[{label: 'Hot', count: hotLeads.length, color: 'bg-orange-500'}, {label: 'Warm', count: warmLeads.length, color: 'bg-amber-500'}, {label: 'Cold', count: coldLeads.length, color: 'bg-slate-400'}].map(item => {
+            {[{label: 'Hot', count: hotLeads.length, color: 'bg-red-600'}, {label: 'Warm', count: warmLeads.length, color: 'bg-blue-600'}, {label: 'Cold', count: coldLeads.length, color: 'bg-slate-600'}].map(item => {
               const percent = filteredLeads.length ? Math.round((item.count / filteredLeads.length) * 100) : 0;
               return (
                 <div key={item.label}>
@@ -403,8 +406,8 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
                     </td>
                     <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          {lead.score > 75 && <Flame size={16} className="text-orange-500 fill-orange-500" />}
-                          <span className={`font-bold ${lead.score > 75 ? 'text-orange-600' : 'text-slate-600'}`}>
+                          {lead.score > 75 && <Flame size={16} className="text-red-600 fill-red-600" />}
+                          <span className={`font-bold ${lead.score > 75 ? 'text-red-700' : 'text-slate-800'}`}>
                             {lead.score}
                           </span>
                           <span className={`text-[11px] px-2 py-0.5 rounded-full border ${scoreBadge(lead.score)}`}>

@@ -58,6 +58,32 @@
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
       ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+      /* Global heading styles - smaller and bolder */
+      h1, .text-4xl, .text-5xl, .text-6xl {
+        font-weight: 800 !important;
+        color: #0f172a !important;
+      }
+      h2, .text-3xl {
+        font-weight: 800 !important;
+        color: #0f172a !important;
+      }
+      h3, .text-2xl {
+        font-weight: 800 !important;
+        color: #1e293b !important;
+      }
+      h4, .text-xl {
+        font-weight: 700 !important;
+        color: #1e293b !important;
+      }
+
+      /* Override Tailwind heading sizes to be 4 points smaller */
+      .text-6xl { font-size: 3rem !important; } /* was 3.75rem */
+      .text-5xl { font-size: 2.25rem !important; } /* was 3rem */
+      .text-4xl { font-size: 1.875rem !important; } /* was 2.25rem */
+      .text-3xl { font-size: 1.5rem !important; } /* was 1.875rem */
+      .text-2xl { font-size: 1.25rem !important; } /* was 1.5rem */
+      .text-xl { font-size: 1rem !important; } /* was 1.25rem */
     </style>
   <script type="importmap">
 {

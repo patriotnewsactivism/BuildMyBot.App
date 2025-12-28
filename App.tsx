@@ -17,7 +17,7 @@ import { PartnerSignup } from './components/Auth/PartnerSignup';
 import { FullPageChat } from './components/Chat/FullPageChat';
 import { AuthModal } from './components/Auth/AuthModal';
 import { User, UserRole, PlanType, Bot as BotType, ResellerStats, Lead, Conversation, MarketplaceTemplate } from './types';
-import { PLANS, MOCK_ANALYTICS_DATA } from './constants';
+import { PLANS } from './constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { MessageSquare, Users, TrendingUp, DollarSign, Bell, Bot as BotIcon, ArrowRight, Menu, CheckCircle, Flame, Loader } from 'lucide-react';
 import { supabase } from './services/supabaseClient';
@@ -41,7 +41,6 @@ const LIMITED_ADMIN_EMAILS = ['ben@texasplanninglaw.com'];
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isBooting, setIsBooting] = useState(true); // Premium loading state
   const [currentView, setCurrentView] = useState('dashboard');
   const [showPartnerPage, setShowPartnerPage] = useState(false);
   const [showPartnerSignup, setShowPartnerSignup] = useState(false);
@@ -66,22 +65,6 @@ function App() {
       localStorage.setItem('bmb_ref_code', refCode);
       console.log('Referral captured:', refCode);
     }
-
-    // Fake boot sequence for premium feel
-    const timer = window.setTimeout(() => setIsBooting(false), 1200);
-
-    // Safety net: if something blocks the initial timer (e.g. throttled timers/background tabs),
-    // ensure we still render the landing page instead of getting stuck on the preloader.
-    const safetyTimer = window.setTimeout(() => setIsBooting(false), 4000);
-
-    const handleLoad = () => setIsBooting(false);
-    window.addEventListener('load', handleLoad);
-
-    return () => {
-      window.removeEventListener('load', handleLoad);
-      window.clearTimeout(timer);
-      window.clearTimeout(safetyTimer);
-    };
   }, []);
 
   // Manual Routing Check for Full Page Chat (must be after all hooks)
@@ -216,8 +199,43 @@ function App() {
   // Calculated Stats
   const totalConversations = bots.reduce((acc, bot) => acc + bot.conversationsCount, 0);
   const totalLeads = leads.length;
-  const estSavings = totalConversations * 5; 
+  const estSavings = totalConversations * 5;
   const avgResponseTime = "0.8s";
+
+  // Generate real analytics data from actual conversations
+  const generateAnalyticsData = () => {
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i));
+      return date;
+    });
+
+    return last7Days.map(date => {
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+      const dayStart = new Date(date.setHours(0, 0, 0, 0));
+      const dayEnd = new Date(date.setHours(23, 59, 59, 999));
+
+      // Count conversations for this day
+      const dayConversations = chatLogs.filter(log => {
+        const logDate = new Date(log.timestamp);
+        return logDate >= dayStart && logDate <= dayEnd;
+      }).length;
+
+      // Count leads for this day
+      const dayLeads = leads.filter(lead => {
+        const leadDate = new Date(lead.createdAt);
+        return leadDate >= dayStart && leadDate <= dayEnd;
+      }).length;
+
+      return {
+        date: dayName,
+        conversations: dayConversations,
+        leads: dayLeads
+      };
+    });
+  };
+
+  const analyticsData = generateAnalyticsData();
 
   const handleAdminLogin = () => {
       // Manual trigger for demo purposes if needed (from footer)
@@ -291,7 +309,6 @@ function App() {
     }
     
     setNotification(`Installed "${template.name}" successfully!`);
-    setTimeout(() => setNotification(null), 3000);
     setCurrentView('bots');
   };
 
@@ -311,7 +328,6 @@ function App() {
         sourceUrl: window.location.href
       });
       setNotification("New Hot Lead Detected from Chat! 🔥");
-      setTimeout(() => setNotification(null), 4000);
     } catch (error) {
       console.error('Failed to record lead', error);
     }
@@ -332,7 +348,6 @@ function App() {
   const handleSaveBot = (bot: BotType) => {
      dbService.saveBot(bot);
      setNotification("Bot saved successfully!");
-     setTimeout(() => setNotification(null), 2000);
   };
 
   const openAuth = (mode: 'login' | 'signup') => {
@@ -374,27 +389,7 @@ function App() {
     return renderPublicExperience();
   }
 
-  if (isBooting) {
-      return (
-        <div className="h-screen w-full bg-slate-900 flex items-center justify-center">
-            <div className="flex flex-col items-center animate-fade-in">
-                <div className="w-20 h-20 bg-blue-900 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-900/50 mb-6 animate-bounce-slow">
-                    <BotIcon size={48} className="text-white" />
-                </div>
-                <h1 className="text-white font-bold text-2xl tracking-widest uppercase mb-2">BuildMyBot</h1>
-                <p className="text-blue-400 text-xs font-mono tracking-wide mb-6">INITIALIZING SYSTEM...</p>
-                <div className="flex gap-1.5">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.1s'}}></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                </div>
-            </div>
-        </div>
-      );
-  }
-
   // If not logged in, show Public Landing Page or Partner Page
-  // This logic guarantees the landing page is the default view
   if (!isLoggedIn || !user) {
     return renderPublicExperience();
   }
@@ -427,8 +422,16 @@ function App() {
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           {notification && (
-              <div className="fixed top-6 right-6 z-50 bg-slate-900 text-white px-6 py-3 rounded-lg shadow-xl animate-bounce-slow flex items-center gap-3">
-                 <Bell size={18} className="text-blue-400" /> {notification}
+              <div className="fixed top-6 right-6 z-50 bg-slate-900 text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3">
+                 <Bell size={18} className="text-blue-400" />
+                 <span>{notification}</span>
+                 <button
+                   onClick={() => setNotification(null)}
+                   className="ml-2 text-slate-400 hover:text-white transition-colors"
+                   aria-label="Dismiss notification"
+                 >
+                   ×
+                 </button>
               </div>
           )}
 
@@ -438,7 +441,7 @@ function App() {
                <div className="flex justify-between items-center">
                   <div>
                     <h2 className="text-2xl font-bold text-slate-800">Dashboard</h2>
-                    <p className="text-slate-500">Welcome back, {user.name.split(' ')[0]}.</p>
+                    <p className="text-slate-700">Welcome back, {user.name.split(' ')[0]}.</p>
                   </div>
                   <button onClick={() => setCurrentView('bots')} className="bg-blue-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-blue-950 transition">
                     + Create New Bot
@@ -450,39 +453,39 @@ function App() {
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><MessageSquare size={18}/></div>
-                        <span className="text-sm font-medium text-slate-500">Total Chats</span>
+                        <span className="text-sm font-medium text-slate-700">Total Chats</span>
                       </div>
                       <p className="text-2xl font-bold text-slate-800">{totalConversations}</p>
                    </div>
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><Users size={18}/></div>
-                        <span className="text-sm font-medium text-slate-500">Leads Captured</span>
+                        <span className="text-sm font-medium text-slate-700">Leads Captured</span>
                       </div>
                       <p className="text-2xl font-bold text-slate-800">{totalLeads}</p>
                    </div>
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="p-2 bg-green-50 text-green-600 rounded-lg"><DollarSign size={18}/></div>
-                        <span className="text-sm font-medium text-slate-500">Est. Savings</span>
+                        <span className="text-sm font-medium text-slate-700">Est. Savings</span>
                       </div>
                       <p className="text-2xl font-bold text-slate-800">${estSavings}</p>
                    </div>
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-orange-50 text-orange-600 rounded-lg"><TrendingUp size={18}/></div>
-                        <span className="text-sm font-medium text-slate-500">Avg. Response</span>
+                        <div className="p-2 bg-blue-50 text-blue-700 rounded-lg"><TrendingUp size={18}/></div>
+                        <span className="text-sm font-medium text-slate-700">Avg. Response</span>
                       </div>
-                      <p className="text-2xl font-bold text-slate-800">{avgResponseTime}</p>
+                      <p className="text-2xl font-bold text-slate-900">{avgResponseTime}</p>
                    </div>
                </div>
                
                {/* Charts */}
                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80">
-                     <h3 className="font-bold text-slate-800 mb-4">Conversation Volume</h3>
+                     <h3 className="font-bold text-slate-800 mb-4">Conversation Volume (Last 7 Days)</h3>
                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={MOCK_ANALYTICS_DATA}>
+                        <AreaChart data={analyticsData}>
                           <defs>
                             <linearGradient id="colorConvos" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#1e3a8a" stopOpacity={0.1}/>
@@ -501,11 +504,30 @@ function App() {
                       <h3 className="font-bold text-slate-800 mb-4">Lead Sources</h3>
                       <div className="flex-1 flex items-center justify-center">
                          <div className="text-center space-y-2">
-                            <div className="text-4xl font-bold text-blue-900">82%</div>
-                            <p className="text-sm text-slate-500">from Sales Bot</p>
-                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
-                               <div className="bg-blue-900 h-full w-[82%]"></div>
-                            </div>
+                            {totalLeads > 0 ? (
+                              <>
+                                {(() => {
+                                  const leadsByBot = leads.reduce((acc, lead) => {
+                                    acc[lead.botId] = (acc[lead.botId] || 0) + 1;
+                                    return acc;
+                                  }, {} as Record<string, number>);
+                                  const topBotId = Object.entries(leadsByBot).sort((a, b) => b[1] - a[1])[0]?.[0];
+                                  const topBot = bots.find(b => b.id === topBotId);
+                                  const percentage = topBotId ? Math.round((leadsByBot[topBotId] / totalLeads) * 100) : 0;
+                                  return (
+                                    <>
+                                      <div className="text-4xl font-bold text-blue-900">{percentage}%</div>
+                                      <p className="text-sm text-slate-700">from {topBot?.name || 'Bot'}</p>
+                                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
+                                         <div className="bg-blue-900 h-full" style={{width: `${percentage}%`}}></div>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
+                              </>
+                            ) : (
+                              <p className="text-sm text-slate-700">No leads captured yet</p>
+                            )}
                          </div>
                       </div>
                   </div>

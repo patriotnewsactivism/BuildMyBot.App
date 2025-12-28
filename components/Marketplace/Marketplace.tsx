@@ -329,7 +329,7 @@ export const Marketplace: React.FC<MarketplaceProps> = ({ onInstall }) => {
                      <ShoppingBag size={24} />
                    </div>
                    {template.rating && (
-                     <div className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-2 py-1 rounded-full text-xs font-bold">
+                     <div className="flex items-center gap-1 bg-emerald-50 text-emerald-800 px-2 py-1 rounded-full text-xs font-bold">
                        <Star size={12} fill="currentColor" /> {template.rating}
                      </div>
                    )}
