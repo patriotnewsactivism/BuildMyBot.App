@@ -38,6 +38,11 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
     setUpgradeStatus(null);
 
     try {
+      // Check if supabase client is initialized
+      if (!supabase) {
+        throw new Error('Supabase client not initialized');
+      }
+
       // Get auth session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
