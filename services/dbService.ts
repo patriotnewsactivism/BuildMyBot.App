@@ -69,7 +69,7 @@ export const dbService = {
     const { data: { user } } = await client.auth.getUser();
     if (!user) {
         console.error("Cannot save bot: User not logged in");
-        return bot;
+        throw new Error("Cannot save bot: User not logged in");
     }
 
     // Prepare payload with user_id and convert to snake_case

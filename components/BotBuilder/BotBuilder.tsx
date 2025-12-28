@@ -140,20 +140,29 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
   };
 
   const handleSaveBot = async () => {
-      // For new bots, remove the 'new' ID and let the database generate a UUID
-      const botToSave = { ...activeBot };
-      if (botToSave.id === 'new') {
-          delete (botToSave as any).id;
-      }
+      try {
+          // For new bots, remove the 'new' ID and let the database generate a UUID
+          const botToSave = { ...activeBot };
+          if (botToSave.id === 'new') {
+              delete (botToSave as any).id;
+          }
 
-      // Save the bot and get the returned bot with the proper database ID
-      const savedBot = await dbService.saveBot(botToSave);
+          console.log('Saving bot:', botToSave);
 
-      // Update local state with the saved bot (which has the database-generated UUID)
-      if (savedBot) {
-          setActiveBot(savedBot);
-          setSelectedBotId(savedBot.id);
-          onSave(savedBot);
+          // Save the bot and get the returned bot with the proper database ID
+          const savedBot = await dbService.saveBot(botToSave);
+
+          console.log('Bot saved successfully:', savedBot);
+
+          // Update local state with the saved bot (which has the database-generated UUID)
+          if (savedBot) {
+              setActiveBot(savedBot);
+              setSelectedBotId(savedBot.id);
+              onSave(savedBot);
+          }
+      } catch (error) {
+          console.error('Error in handleSaveBot:', error);
+          alert('Failed to save bot: ' + (error as any).message);
       }
   };
 
