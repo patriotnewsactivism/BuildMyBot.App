@@ -366,13 +366,28 @@ function App() {
   };
 
   const handleSaveBot = async (bot: BotType) => {
-     try {
-       await dbService.saveBot(bot);
-       setNotification("Bot saved successfully!");
-     } catch (error) {
-       console.error("Error saving bot:", error);
-       setNotification("Error saving bot. Please try again.");
-     }
+    try {
+      const savedBot = await dbService.saveBot(bot);
+
+      setBots((prevBots) => {
+        const existingIndex = prevBots.findIndex((b) => b.id === savedBot.id);
+
+        if (existingIndex !== -1) {
+          const updatedBots = [...prevBots];
+          updatedBots[existingIndex] = savedBot;
+          return updatedBots;
+        }
+
+        return [...prevBots, savedBot];
+      });
+
+      setNotification("Bot saved successfully!");
+      return savedBot;
+    } catch (error) {
+      console.error("Error saving bot:", error);
+      setNotification("Error saving bot. Please try again.");
+      throw error;
+    }
   };
 
   const openAuth = (mode: 'login' | 'signup') => {
