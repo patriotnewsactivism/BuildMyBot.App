@@ -647,12 +647,12 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
         <div className="max-w-7xl mx-auto text-center relative z-10">
            {/* Urgency Badge */}
-           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-bold uppercase tracking-wide mb-6 shadow-lg animate-pulse cursor-pointer" onClick={() => openModal('features')}>
+           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-red-600 to-orange-600 text-white text-xs font-bold uppercase tracking-wide mb-6 shadow-lg animate-pulse cursor-pointer" onClick={() => openModal('features')}>
              <Timer size={14} />
              Limited Time: Free Setup + 30-Day Trial
            </div>
 
-           <h1 className="text-[44px] md:text-[68px] font-extrabold text-slate-900 tracking-tight mb-6 leading-tight">
+           <h1 className="text-[38px] md:text-[56px] font-extrabold text-slate-900 tracking-tight mb-6 leading-tight">
              Stop Losing Leads to <span className="line-through text-red-500 opacity-60">Slow Response</span><br/>
              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-900 via-blue-600 to-emerald-500">Close 3x More Deals on Autopilot</span>
            </h1>

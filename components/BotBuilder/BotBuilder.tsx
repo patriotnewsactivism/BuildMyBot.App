@@ -51,6 +51,27 @@ type IngestionRun = {
   createdAt: number;
 };
 
+type SaveState = {
+  status: 'idle' | 'saving' | 'success' | 'error';
+  message?: string;
+  previousBot?: BotType;
+};
+
+type ErrorLog = {
+  id: string;
+  timestamp: number;
+  operation: 'save' | 'embed' | 'scrape' | 'test';
+  error: string;
+  failedData?: any;
+};
+
+type UploadQueueItem = {
+  id: string;
+  file: File;
+  status: 'pending' | 'processing' | 'complete' | 'error';
+  progress: number;
+};
+
 export const BotBuilder: React.FC<BotBuilderProps> = ({
   bots,
   onSave,
@@ -61,7 +82,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
   storageUsage,
   onUpgrade
 }) => {
-  console.log('=== BOT BUILDER COMPONENT RENDERED ===');
+  console.log('=== BOT BUILDER COMPONENT RENDERED - TIMESTAMP:', new Date().toISOString(), '===');
   console.log('Props - bots:', bots);
   console.log('Props - onSave:', onSave);
 
@@ -100,7 +121,15 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
   const [ingestionRuns, setIngestionRuns] = useState<IngestionRun[]>([]);
   const [uploadingFileName, setUploadingFileName] = useState<string | null>(null);
   const [knowledgeStatus, setKnowledgeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  
+
+  // New state for enhanced features
+  const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [errorLog, setErrorLog] = useState<ErrorLog[]>([]);
+  const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout>();
+
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Embed Config State
@@ -134,6 +163,92 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
     }
   }, [previewHistory, isPreviewing]);
 
+  // Auto-save detection
+  useEffect(() => {
+    // Detect changes
+    const originalBot = bots.find(b => b.id === activeBot.id);
+    const botChanged = JSON.stringify(activeBot) !== JSON.stringify(originalBot);
+    setHasUnsavedChanges(botChanged && activeBot.id !== 'new');
+
+    // Auto-save after 10 seconds of inactivity
+    if (botChanged && activeBot.id !== 'new') {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = setTimeout(() => {
+        console.log('Auto-save triggered');
+        handleSaveBot(true); // silent auto-save
+      }, 10000);
+    }
+
+    return () => clearTimeout(autoSaveTimerRef.current);
+  }, [activeBot, bots]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (hasUnsavedChanges || activeBot.id === 'new') {
+          handleSaveBot(false);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hasUnsavedChanges, activeBot]);
+
+  // Helper: Log errors for retry functionality
+  const logError = (operation: ErrorLog['operation'], error: string, data?: any) => {
+    const entry: ErrorLog = {
+      id: `err_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: Date.now(),
+      operation,
+      error,
+      failedData: data,
+    };
+
+    setErrorLog(prev => [entry, ...prev].slice(0, 10)); // Keep last 10 errors
+
+    // Persist to localStorage for crash recovery
+    try {
+      localStorage.setItem(`error_log_${activeBot.id}`, JSON.stringify(entry));
+    } catch (e) {
+      console.error('Failed to save error log to localStorage:', e);
+    }
+  };
+
+  // Helper: Retry from error log
+  const retryFromErrorLog = async (errorId: string) => {
+    const error = errorLog.find(e => e.id === errorId);
+    if (!error) return;
+
+    switch (error.operation) {
+      case 'save':
+        await handleSaveBot();
+        break;
+      case 'embed':
+        if (error.failedData) {
+          await embedKnowledge(
+            error.failedData.label,
+            error.failedData.content,
+            error.failedData.type,
+            error.failedData.options
+          );
+        }
+        break;
+      case 'scrape':
+        if (error.failedData?.url) {
+          setUrlInput(error.failedData.url);
+          await handleScrapeUrl();
+        }
+        break;
+      // Add other operations as needed
+    }
+
+    // Remove from error log on successful retry
+    setErrorLog(prev => prev.filter(e => e.id !== errorId));
+  };
+
   const handleBotSelect = (bot: BotType) => {
       setSelectedBotId(bot.id);
       setActiveBot(bot);
@@ -141,18 +256,36 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
       setPreviewError(null);
       setTokensUsed(null);
       setPreviewConversationId(null);
+      setHasUnsavedChanges(false);
+      setLastSaved(null);
   };
 
-  const handleSaveBot = async () => {
-      console.log('=== HANDLE SAVE BOT CALLED ===');
+  const handleSaveBot = async (isAutoSave = false) => {
+      console.log('=== HANDLE SAVE BOT CALLED ===', isAutoSave ? '(AUTO-SAVE)' : '(MANUAL)');
+
+      // Prevent double-saves
+      if (saveState.status === 'saving') {
+          console.log('Save already in progress, skipping...');
+          return;
+      }
+
+      // Validation
+      if (!activeBot.name?.trim()) {
+          if (!isAutoSave) alert('Bot name is required');
+          return;
+      }
+
+      if (!activeBot.systemPrompt?.trim()) {
+          if (!isAutoSave) alert('System prompt is required');
+          return;
+      }
+
+      // Optimistic update
+      setSaveState({ status: 'saving', previousBot: { ...activeBot } });
+
       try {
-          // For new bots, remove the 'new' ID and let the database generate a UUID
           const botToSave = { ...activeBot };
           console.log('Bot before processing:', activeBot);
-          if (botToSave.id === 'new') {
-              console.log('Deleting new ID');
-              delete (botToSave as any).id;
-          }
 
           console.log('Saving bot:', botToSave);
 
@@ -161,15 +294,45 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
 
           console.log('Bot saved successfully:', savedBot);
 
-          // Update local state with the saved bot (which has the database-generated UUID)
-          if (savedBot) {
-              setActiveBot(savedBot);
-              setSelectedBotId(savedBot.id);
-              onSave(savedBot);
+          // CRITICAL: Verify we got a valid response
+          if (!savedBot || !savedBot.id || savedBot.id === 'new') {
+              throw new Error('Failed to save bot - invalid response from database');
           }
+
+          // Success state with auto-dismiss
+          setSaveState({
+            status: 'success',
+            message: isAutoSave ? 'Auto-saved successfully' : 'Bot saved successfully'
+          });
+          setTimeout(() => setSaveState({ status: 'idle' }), 3000);
+
+          // Update local state with the saved bot (which has the database-generated UUID)
+          setActiveBot(savedBot);
+          setSelectedBotId(savedBot.id);
+          setLastSaved(new Date());
+          setHasUnsavedChanges(false);
+          onSave(savedBot);
       } catch (error) {
           console.error('Error in handleSaveBot:', error);
-          alert('Failed to save bot: ' + (error as any).message);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+          // Rollback on failure
+          if (saveState.previousBot) {
+              setActiveBot(saveState.previousBot);
+          }
+
+          setSaveState({
+              status: 'error',
+              message: errorMessage,
+          });
+
+          // Log error for retry
+          logError('save', errorMessage, { bot: activeBot });
+
+          // Show alert for manual saves
+          if (!isAutoSave) {
+              alert('Failed to save bot: ' + errorMessage);
+          }
       }
   };
 
@@ -465,7 +628,6 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
                <button
                  onClick={(e) => {
                    console.log('=== SAVE BUTTON CLICKED ===');
-                   alert('Save button clicked!');
                    e.preventDefault();
                    handleSaveBot();
                  }}

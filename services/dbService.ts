@@ -70,7 +70,7 @@ export const dbService = {
 
   saveBot: async (bot: Bot) => {
     const client = supabase;
-    if (!client) return bot;
+    if (!client) throw new Error("Supabase client not initialized");
 
     const { data: { user } } = await client.auth.getUser();
     if (!user) {
@@ -78,28 +78,59 @@ export const dbService = {
         throw new Error("Cannot save bot: User not logged in");
     }
 
-    // Prepare payload with user_id and convert to snake_case
-    const payload = objectToSnakeCase({
-        ...bot,
-        userId: user.id
-    });
+    const isNewBot = !bot.id || bot.id === 'new';
 
+    // Convert bot to snake_case FIRST
+    const botSnakeCase = objectToSnakeCase(bot);
+
+    // Then add/override user_id (don't rely on conversion)
+    const payload = {
+        ...botSnakeCase,
+        user_id: user.id
+    };
+
+    // CRITICAL: For new bots, remove 'id' so database generates UUID
+    if (isNewBot) {
+        delete payload.id;
+    }
+
+    console.log('SaveBot - Operation:', isNewBot ? 'INSERT' : 'UPDATE');
     console.log('SaveBot - User ID:', user.id);
     console.log('SaveBot - Payload being sent:', payload);
 
     const { data, error } = await client
       .from('bots')
-      .upsert(payload)
+      .upsert(payload, {
+        onConflict: 'id',
+        ignoreDuplicates: false
+      })
       .select()
       .single();
 
     console.log('SaveBot - Response data:', data);
     console.log('SaveBot - Response error:', error);
 
-    if (error) {
-        console.error("Error saving bot to Supabase:", error);
-        throw error;
+    if (error || !data) {
+        console.error("Error saving bot to Supabase:", {
+            error,
+            code: error?.code,
+            message: error?.message,
+            details: error?.details,
+            hint: error?.hint,
+            userId: user.id,
+            botId: bot.id
+        });
+
+        // Provide more detailed error messages
+        if (error?.code === 'PGRST116') {
+            throw new Error("Bot not found or you don't have permission to update it");
+        }
+        if (error?.code === '42501') {
+            throw new Error("Permission denied. Please ensure you're logged in.");
+        }
+        throw error || new Error("Failed to save bot - no data returned");
     }
+
     return objectToCamelCase<Bot>(data as Record<string, unknown>);
   },
 
