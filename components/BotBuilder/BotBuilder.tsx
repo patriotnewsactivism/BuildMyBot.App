@@ -273,6 +273,16 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
       setLastSaved(null);
   };
 
+  // Timeout wrapper to prevent hanging operations
+  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, operationName: string): Promise<T> => {
+      return Promise.race([
+          promise,
+          new Promise<T>((_, reject) =>
+              setTimeout(() => reject(new Error(`${operationName} timed out after ${timeoutMs}ms`)), timeoutMs)
+          )
+      ]);
+  };
+
   const handleSaveBot = async (isAutoSave = false) => {
       console.log('=== HANDLE SAVE BOT CALLED ===', isAutoSave ? '(AUTO-SAVE)' : '(MANUAL)');
 
@@ -298,17 +308,23 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
 
       try {
           const botToSave = { ...activeBot };
+          console.log('=== SAVE OPERATION START ===');
           console.log('Bot before processing:', activeBot);
-
-          console.log('Saving bot:', botToSave);
+          console.log('Bot to save:', botToSave);
 
           // CRITICAL FIX: Ensure user profile exists before saving bot
           // This prevents foreign key constraint violations
+          console.log('[1/3] Getting authenticated user...');
           const { data: { user } } = await (supabase as any).auth.getUser();
+          console.log('[1/3] User retrieved:', user?.id, user?.email);
+
           if (user) {
+              console.log('[2/3] Checking if user profile exists...');
               const existingProfile = await dbService.getUserProfile(user.id);
+              console.log('[2/3] Profile check result:', existingProfile ? 'EXISTS' : 'MISSING');
+
               if (!existingProfile) {
-                  console.log('Profile missing, creating one before saving bot...');
+                  console.log('[2/3] Creating missing profile...');
                   await dbService.saveUserProfile({
                       id: user.id,
                       email: user.email || '',
@@ -317,11 +333,18 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
                       plan: PlanType.FREE,
                       companyName: 'My Company'
                   });
+                  console.log('[2/3] Profile created successfully');
               }
           }
 
           // Save the bot and get the returned bot with the proper database ID
-          const savedBot = await dbService.saveBot(botToSave);
+          console.log('[3/3] Calling dbService.saveBot with 15s timeout...');
+          const savedBot = await withTimeout(
+              dbService.saveBot(botToSave),
+              15000,
+              'Bot save operation'
+          );
+          console.log('[3/3] dbService.saveBot completed:', savedBot);
 
           console.log('Bot saved successfully:', savedBot);
 

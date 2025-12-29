@@ -69,34 +69,49 @@ export const dbService = {
   },
 
   saveBot: async (bot: Bot) => {
+    console.log('[dbService.saveBot] START - Received bot:', { id: bot.id, name: bot.name });
+
     const client = supabase;
-    if (!client) throw new Error("Supabase client not initialized");
+    if (!client) {
+        console.error('[dbService.saveBot] FAILED - Supabase client not initialized');
+        throw new Error("Supabase client not initialized");
+    }
 
     // Validate authentication
+    console.log('[dbService.saveBot] Step 1: Validating authentication...');
     const { data: { user }, error: authError } = await client.auth.getUser();
     if (authError) {
-        console.error("Authentication error:", authError);
+        console.error("[dbService.saveBot] FAILED - Authentication error:", authError);
         throw new Error("Authentication failed: " + (authError.message || "Please log in again"));
     }
     if (!user) {
-        console.error("Cannot save bot: User not logged in");
+        console.error("[dbService.saveBot] FAILED - User not logged in");
         throw new Error("Cannot save bot: User not logged in");
     }
+    console.log('[dbService.saveBot] Step 1: Auth OK -', user.email);
 
     // Validate required fields
+    console.log('[dbService.saveBot] Step 2: Validating required fields...');
     if (!bot.name || !bot.name.trim()) {
+        console.error('[dbService.saveBot] FAILED - Bot name missing');
         throw new Error("Bot name is required");
     }
     if (!bot.systemPrompt || !bot.systemPrompt.trim()) {
+        console.error('[dbService.saveBot] FAILED - System prompt missing');
         throw new Error("System prompt is required");
     }
+    console.log('[dbService.saveBot] Step 2: Validation OK');
 
     // Validate temperature range
+    console.log('[dbService.saveBot] Step 3: Validating temperature...');
     if (bot.temperature !== undefined && (bot.temperature < 0 || bot.temperature > 2)) {
+        console.error('[dbService.saveBot] FAILED - Invalid temperature:', bot.temperature);
         throw new Error("Temperature must be between 0 and 2");
     }
+    console.log('[dbService.saveBot] Step 3: Temperature OK -', bot.temperature);
 
     const isNewBot = !bot.id || bot.id === 'new';
+    console.log('[dbService.saveBot] Step 4: Operation type -', isNewBot ? 'INSERT' : 'UPDATE');
 
     // Convert bot to snake_case FIRST
     const botSnakeCase = objectToSnakeCase(bot);
@@ -112,11 +127,10 @@ export const dbService = {
         delete payload.id;
     }
 
-    console.log('SaveBot - Operation:', isNewBot ? 'INSERT' : 'UPDATE');
-    console.log('SaveBot - User ID:', user.id);
-    console.log('SaveBot - User Email:', user.email);
-    console.log('SaveBot - Payload being sent:', payload);
+    console.log('[dbService.saveBot] Step 5: Preparing payload...');
+    console.log('SaveBot - Payload:', payload);
 
+    console.log('[dbService.saveBot] Step 6: Calling Supabase upsert...');
     const { data, error } = await client
       .from('bots')
       .upsert(payload, {
@@ -126,6 +140,7 @@ export const dbService = {
       .select()
       .single();
 
+    console.log('[dbService.saveBot] Step 7: Upsert completed');
     console.log('SaveBot - Response data:', data);
     console.log('SaveBot - Response error:', error);
 
