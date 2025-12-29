@@ -5,6 +5,7 @@ import { scrapeWebsiteContent } from '../../services/openaiService';
 import { AVAILABLE_MODELS, PLANS } from '../../constants';
 import { dbService } from '../../services/dbService';
 import { edgeFunctions } from '../../services/edgeFunctions';
+import { supabase } from '../../services/supabaseClient';
 import { PreviewMessage, buildAiCompleteMessages, deriveSentiment } from './utils';
 import { ModelSelector } from './ModelSelector';
 import { StorageIndicator } from './StorageIndicator';
@@ -300,6 +301,24 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
           console.log('Bot before processing:', activeBot);
 
           console.log('Saving bot:', botToSave);
+
+          // CRITICAL FIX: Ensure user profile exists before saving bot
+          // This prevents foreign key constraint violations
+          const { data: { user } } = await (supabase as any).auth.getUser();
+          if (user) {
+              const existingProfile = await dbService.getUserProfile(user.id);
+              if (!existingProfile) {
+                  console.log('Profile missing, creating one before saving bot...');
+                  await dbService.saveUserProfile({
+                      id: user.id,
+                      email: user.email || '',
+                      name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+                      role: 'OWNER' as any,
+                      plan: PlanType.FREE,
+                      companyName: 'My Company'
+                  });
+              }
+          }
 
           // Save the bot and get the returned bot with the proper database ID
           const savedBot = await dbService.saveBot(botToSave);
