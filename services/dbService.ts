@@ -11,9 +11,9 @@ const toSnakeCase = (str: string): string =>
 const toCamelCase = (str: string): string =>
   str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 
-const objectToSnakeCase = (obj: object): Record<string, unknown> => {
+const objectToSnakeCase = <T extends Record<string, any>>(obj: T): Record<string, unknown> => {
   const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+  for (const [key, value] of Object.entries(obj)) {
     result[toSnakeCase(key)] = value;
   }
   return result;

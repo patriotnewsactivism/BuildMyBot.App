@@ -67,6 +67,12 @@ serve(async (req) => {
           break
         }
 
+        // Null checks for required fields
+        if (!session.subscription || !session.customer) {
+          console.error('Missing subscription or customer in checkout session')
+          break
+        }
+
         // Get subscription details
         const subscription = await stripe.subscriptions.retrieve(
           session.subscription as string
@@ -109,6 +115,12 @@ serve(async (req) => {
 
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription
+
+        // Null check for customer
+        if (!subscription.customer) {
+          console.error('Missing customer in subscription update')
+          break
+        }
 
         // Find user by customer ID
         const { data: profile, error: profileFetchError } = await supabase
@@ -155,6 +167,12 @@ serve(async (req) => {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription
 
+        // Null check for customer
+        if (!subscription.customer) {
+          console.error('Missing customer in subscription deletion')
+          break
+        }
+
         // Find user by customer ID
         const { data: profile, error: profileFetchError } = await supabase
           .from('profiles')
@@ -198,6 +216,12 @@ serve(async (req) => {
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
 
+        // Null check for customer
+        if (!invoice.customer) {
+          console.error('Missing customer in invoice payment_failed')
+          break
+        }
+
         // Find user by customer ID
         const { data: profile, error: profileFetchError } = await supabase
           .from('profiles')
@@ -229,6 +253,12 @@ serve(async (req) => {
 
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice
+
+        // Null check for customer
+        if (!invoice.customer) {
+          console.error('Missing customer in invoice payment_succeeded')
+          break
+        }
 
         // Find user by customer ID
         const { data: profile, error: profileFetchError } = await supabase
