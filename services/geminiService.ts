@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 // Initialize Gemini Client
 // The API Key is injected automatically by the environment.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
 
 export const generateBotResponse = async (
   systemPrompt: string,
@@ -29,7 +29,7 @@ export const generateBotResponse = async (
 
     const response = await ai.models.generateContent({
       model: modelName.includes('gemini') ? modelName : 'gemini-2.5-flash', // Fallback if legacy ID passed
-      contents: prompt,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         systemInstruction: fullSystemInstruction,
         temperature: 0.7,
@@ -66,7 +66,7 @@ export const scrapeWebsiteContent = async (url: string): Promise<string> => {
     // 2. Summarize using Gemini 2.5 Flash
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Analyze this website content and extract structured data:\n1. Business Name & Description\n2. Key Services\n3. Contact Info\n4. Pricing/Hours\n\nCONTENT:\n${truncatedText}`,
+        contents: [{ role: 'user', parts: [{ text: `Analyze this website content and extract structured data:\n1. Business Name & Description\n2. Key Services\n3. Contact Info\n4. Pricing/Hours\n\nCONTENT:\n${truncatedText}` }] }],
         config: {
             systemInstruction: 'You are a precise Data Extractor. Extract business facts from raw HTML/Text.',
         }
@@ -84,7 +84,7 @@ export const generateMarketingContent = async (type: string, topic: string, tone
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `Write a ${type} about ${topic}. Return ONLY the content, no filler.`,
+            contents: [{ role: 'user', parts: [{ text: `Write a ${type} about ${topic}. Return ONLY the content, no filler.` }] }],
             config: {
                 systemInstruction: `You are an expert Copywriter. Tone: ${tone}.`,
                 temperature: 0.8
@@ -101,7 +101,7 @@ export const generateWebsiteStructure = async (businessName: string, description
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `Generate landing page structure for "${businessName}". Description: ${description}`,
+            contents: [{ role: 'user', parts: [{ text: `Generate landing page structure for "${businessName}". Description: ${description}` }] }],
             config: {
                 systemInstruction: 'You are a Website Builder AI. Output JSON only.',
                 responseMimeType: 'application/json',
@@ -110,7 +110,7 @@ export const generateWebsiteStructure = async (businessName: string, description
                     properties: {
                         headline: { type: Type.STRING },
                         subheadline: { type: Type.STRING },
-                        features: { 
+                        features: {
                             type: Type.ARRAY,
                             items: { type: Type.STRING }
                         },

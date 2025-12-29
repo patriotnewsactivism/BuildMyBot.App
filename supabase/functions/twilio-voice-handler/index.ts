@@ -1,10 +1,43 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { timingSafeEqual } from "https://deno.land/std@0.168.0/crypto/timing_safe_equal.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Content-Type": "text/xml",
+};
+
+// Validate Twilio request signature to prevent spoofing
+const validateTwilioSignature = async (req: Request, payload: Record<string, string>) => {
+  const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+  if (!authToken) {
+    // Fail closed - reject all requests if auth token not configured
+    throw new Error("TWILIO_AUTH_TOKEN not configured");
+  }
+
+  const signatureHeader = req.headers.get("x-twilio-signature");
+  if (!signatureHeader) return false;
+
+  const url = new URL(req.url);
+  const baseUrl = `${url.origin}${url.pathname}${url.search}`;
+  const sortedKeys = Object.keys(payload).sort();
+  const data = sortedKeys.reduce((acc, key) => `${acc}${key}${payload[key]}`, baseUrl);
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(authToken),
+    { name: "HMAC", hash: "SHA-1" },
+    false,
+    ["sign"],
+  );
+
+  const signatureBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
+  const expectedBytes = new Uint8Array(signatureBuffer);
+  const providedBytes = Uint8Array.from(atob(signatureHeader), (c) => c.charCodeAt(0));
+
+  return timingSafeEqual(expectedBytes, providedBytes);
 };
 
 serve(async (req) => {
@@ -34,6 +67,20 @@ serve(async (req) => {
       if (typeof value === "string") {
         payload[key] = value;
       }
+    }
+
+    // Validate Twilio signature before processing
+    const isValid = await validateTwilioSignature(req, payload);
+    if (!isValid) {
+      console.error("Invalid Twilio signature - rejecting request");
+      return new Response(
+        `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>Unauthorized request</Say>
+  <Hangup/>
+</Response>`,
+        { status: 401, headers: corsHeaders }
+      );
     }
 
     const called = payload.To || payload.Called || "";
