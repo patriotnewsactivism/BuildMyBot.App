@@ -249,6 +249,18 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
     setErrorLog(prev => prev.filter(e => e.id !== errorId));
   };
 
+  // Helper: Format time ago
+  const formatTimeAgo = (date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
   const handleBotSelect = (bot: BotType) => {
       setSelectedBotId(bot.id);
       setActiveBot(bot);
@@ -447,10 +459,12 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
         await embedKnowledge(new URL(url).hostname || url, extractedData, 'url', { fileType: 'url', fileUrl: url });
     } catch (error) {
         console.error("Scrape failed", error);
+        const errorMessage = "Failed to scrape website. Please check the URL and try again.";
         setKnowledgeStatus({
             type: 'error',
-            message: "Failed to scrape website. Please check the URL and try again."
+            message: errorMessage
         });
+        logError('scrape', errorMessage, { url });
     } finally {
         setIsScraping(false);
     }
@@ -458,6 +472,25 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
 
   const handleFileUpload = async (file?: File | null) => {
     if (!file) return;
+
+    // AUTO-SAVE BOT BEFORE EMBEDDING if ID is 'new'
+    if (activeBot.id === 'new') {
+      setSaveState({ status: 'saving', message: 'Saving bot before uploading...' });
+      try {
+        const savedBot = await dbService.saveBot({ ...activeBot });
+        setActiveBot(savedBot);
+        setSelectedBotId(savedBot.id);
+        onSave(savedBot);
+        setSaveState({ status: 'success', message: 'Bot saved, processing file...' });
+        setTimeout(() => setSaveState({ status: 'idle' }), 2000);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        setSaveState({ status: 'error', message: 'Failed to save bot before upload' });
+        logError('save', errorMessage, { bot: activeBot });
+        return; // Abort upload
+      }
+    }
+
     setUploadingFileName(file.name);
 
     try {
@@ -469,6 +502,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to process file';
       setKnowledgeStatus({ type: 'error', message });
+      logError('embed', message, { fileName: file.name, fileType: file.type });
     } finally {
       setUploadingFileName(null);
     }
@@ -621,6 +655,13 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
                  <div className="flex items-center gap-2 text-xs text-slate-500">
                     <span className={`w-2 h-2 rounded-full ${activeBot.active ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
                     {activeBot.active ? 'Active' : 'Draft'} • {activeBot.model}
+                    {hasUnsavedChanges && activeBot.id !== 'new' ? (
+                      <span className="text-amber-600 font-medium ml-2">• Unsaved changes</span>
+                    ) : lastSaved && activeBot.id !== 'new' ? (
+                      <span className="ml-2">• Saved {formatTimeAgo(lastSaved)}</span>
+                    ) : activeBot.id === 'new' ? (
+                      <span className="text-slate-400 ml-2">• Not saved yet</span>
+                    ) : null}
                  </div>
                </div>
             </div>
@@ -629,11 +670,38 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
                  onClick={(e) => {
                    console.log('=== SAVE BUTTON CLICKED ===');
                    e.preventDefault();
-                   handleSaveBot();
+                   handleSaveBot(false);
                  }}
-                 className="flex items-center gap-2 px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-950 font-medium transition shadow-sm"
+                 disabled={saveState.status === 'saving' || (!hasUnsavedChanges && activeBot.id !== 'new')}
+                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition shadow-sm ${
+                   saveState.status === 'saving'
+                     ? 'bg-blue-400 cursor-wait text-white'
+                     : !hasUnsavedChanges && activeBot.id !== 'new'
+                     ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                     : 'bg-blue-900 text-white hover:bg-blue-950'
+                 }`}
                >
-                 <Save size={18} /> Save Changes
+                 {saveState.status === 'saving' ? (
+                   <>
+                     <RefreshCcw size={18} className="animate-spin" />
+                     Saving...
+                   </>
+                 ) : saveState.status === 'success' ? (
+                   <>
+                     <CheckCircle size={18} />
+                     Saved
+                   </>
+                 ) : (
+                   <>
+                     <Save size={18} />
+                     Save Changes
+                     {hasUnsavedChanges && (
+                       <kbd className="ml-1 px-1.5 py-0.5 text-xs bg-blue-800 rounded">
+                         Ctrl+S
+                       </kbd>
+                     )}
+                   </>
+                 )}
                </button>
             </div>
          </div>
