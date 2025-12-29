@@ -22,6 +22,7 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
   const [leadCapture, setLeadCapture] = useState<{ email: string; id?: string; score?: number } | null>(null);
   const [leadError, setLeadError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [parentOrigin, setParentOrigin] = useState<string | null>(null);
 
   // Check for embed mode in URL params
   const isEmbed = window.location.search.includes('mode=embed');
@@ -30,10 +31,20 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
   useEffect(() => {
     if (!isEmbed) return;
 
+    try {
+      const origin = document.referrer ? new URL(document.referrer).origin : window.location.origin;
+      setParentOrigin(origin);
+    } catch (err) {
+      console.warn('[FullPageChat] Unable to determine parent origin', err);
+      setParentOrigin(null);
+    }
+  }, [isEmbed]);
+
+  useEffect(() => {
+    if (!isEmbed || !parentOrigin) return;
+
     const handleMessage = (event: MessageEvent) => {
-      // In production, verify origin for security
-      // const allowedOrigins = ['https://buildmybot.app', 'http://localhost:8080'];
-      // if (!allowedOrigins.includes(event.origin)) return;
+      if (event.origin !== parentOrigin) return;
 
       const message = event.data;
 
@@ -68,17 +79,17 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
 
     // Send ready signal to parent
     if (window.parent !== window) {
-      window.parent.postMessage({ action: 'ready', botId }, '*');
+      window.parent.postMessage({ action: 'ready', botId }, parentOrigin);
     }
 
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [isEmbed, botId]);
+  }, [isEmbed, botId, parentOrigin]);
 
   // Notify parent window of new messages in embed mode
   useEffect(() => {
-    if (!isEmbed || messages.length === 0) return;
+    if (!isEmbed || !parentOrigin || messages.length === 0) return;
 
     const lastMessage = messages[messages.length - 1];
     if (lastMessage.role === 'assistant' && window.parent !== window) {
@@ -88,9 +99,9 @@ export const FullPageChat: React.FC<FullPageChatProps> = ({ botId }) => {
         botId,
         message: lastMessage.text,
         timestamp: lastMessage.timestamp
-      }, '*');
+      }, parentOrigin);
     }
-  }, [messages, isEmbed, botId]);
+  }, [messages, isEmbed, botId, parentOrigin]);
 
   useEffect(() => {
     const fetchBot = async () => {
