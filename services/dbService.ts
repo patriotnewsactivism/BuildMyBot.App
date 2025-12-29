@@ -402,21 +402,35 @@ export const dbService = {
   // --- USER & BILLING ---
 
   getUserProfile: async (uid: string): Promise<User | null> => {
+    console.log('[dbService.getUserProfile] START - UID:', uid);
     const client = supabase;
-    if (!client) return null;
+    if (!client) {
+        console.error('[dbService.getUserProfile] FAILED - Client not initialized');
+        return null;
+    }
+
+    console.log('[dbService.getUserProfile] Querying profiles table...');
     const { data, error } = await client
       .from('profiles')
       .select('*')
       .eq('id', uid)
       .single();
 
-    if (error || !data) return null;
+    if (error || !data) {
+        console.log('[dbService.getUserProfile] No profile found or error:', error?.message);
+        return null;
+    }
+    console.log('[dbService.getUserProfile] SUCCESS - Profile found');
     return objectToCamelCase<User>(data as Record<string, unknown>);
   },
 
   saveUserProfile: async (user: User) => {
+    console.log('[dbService.saveUserProfile] START - User ID:', user.id);
     const client = supabase;
-    if (!client) return;
+    if (!client) {
+        console.error('[dbService.saveUserProfile] FAILED - Client not initialized');
+        return;
+    }
     const now = new Date().toISOString();
 
     // Convert to snake_case for database
@@ -426,11 +440,16 @@ export const dbService = {
         createdAt: user.createdAt || now
     });
 
+    console.log('[dbService.saveUserProfile] Upserting profile...');
     const { error } = await client
       .from('profiles')
       .upsert(userData);
 
-    if (error) console.error("Error saving profile:", error);
+    if (error) {
+        console.error("[dbService.saveUserProfile] FAILED - Error:", error);
+        throw new Error(`Failed to save user profile: ${error.message}`);
+    }
+    console.log('[dbService.saveUserProfile] SUCCESS - Profile saved');
   },
 
   updateUserPlan: async (uid: string, plan: PlanType) => {

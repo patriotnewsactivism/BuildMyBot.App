@@ -275,10 +275,17 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
 
   // Timeout wrapper to prevent hanging operations
   const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, operationName: string): Promise<T> => {
+      console.log(`⏱️ Starting timeout for: ${operationName} (${timeoutMs}ms)`);
       return Promise.race([
-          promise,
+          promise.then((result) => {
+              console.log(`✅ Completed within timeout: ${operationName}`);
+              return result;
+          }),
           new Promise<T>((_, reject) =>
-              setTimeout(() => reject(new Error(`${operationName} timed out after ${timeoutMs}ms`)), timeoutMs)
+              setTimeout(() => {
+                  console.error(`⏰ TIMEOUT TRIGGERED: ${operationName} exceeded ${timeoutMs}ms`);
+                  reject(new Error(`${operationName} timed out after ${timeoutMs}ms`));
+              }, timeoutMs)
           )
       ]);
   };
@@ -315,34 +322,47 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
           // CRITICAL FIX: Ensure user profile exists before saving bot
           // This prevents foreign key constraint violations
           console.log('[1/3] Getting authenticated user...');
-          const { data: { user } } = await (supabase as any).auth.getUser();
+          const authResult = await withTimeout(
+              (supabase as any).auth.getUser(),
+              5000,
+              'Get authenticated user'
+          ) as any;
+          const user = authResult?.data?.user;
           console.log('[1/3] User retrieved:', user?.id, user?.email);
 
           if (user) {
               console.log('[2/3] Checking if user profile exists...');
-              const existingProfile = await dbService.getUserProfile(user.id);
+              const existingProfile = await withTimeout(
+                  dbService.getUserProfile(user.id),
+                  5000,
+                  'Get user profile'
+              );
               console.log('[2/3] Profile check result:', existingProfile ? 'EXISTS' : 'MISSING');
 
               if (!existingProfile) {
                   console.log('[2/3] Creating missing profile...');
-                  await dbService.saveUserProfile({
-                      id: user.id,
-                      email: user.email || '',
-                      name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-                      role: 'OWNER' as any,
-                      plan: PlanType.FREE,
-                      companyName: 'My Company'
-                  });
+                  await withTimeout(
+                      dbService.saveUserProfile({
+                          id: user.id,
+                          email: user.email || '',
+                          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+                          role: 'OWNER' as any,
+                          plan: PlanType.FREE,
+                          companyName: 'My Company'
+                      }),
+                      5000,
+                      'Save user profile'
+                  );
                   console.log('[2/3] Profile created successfully');
               }
           }
 
           // Save the bot and get the returned bot with the proper database ID
-          console.log('[3/3] Calling dbService.saveBot with 15s timeout...');
+          console.log('[3/3] Calling dbService.saveBot with 10s timeout...');
           const savedBot = await withTimeout(
               dbService.saveBot(botToSave),
-              15000,
-              'Bot save operation'
+              10000,
+              'Save bot to database'
           );
           console.log('[3/3] dbService.saveBot completed:', savedBot);
 
