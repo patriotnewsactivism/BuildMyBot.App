@@ -11,9 +11,9 @@ const toSnakeCase = (str: string): string =>
 const toCamelCase = (str: string): string =>
   str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 
-const objectToSnakeCase = <T extends Record<string, unknown>>(obj: T): Record<string, unknown> => {
+const objectToSnakeCase = (obj: object): Record<string, unknown> => {
   const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
     result[toSnakeCase(key)] = value;
   }
   return result;
@@ -84,7 +84,7 @@ export const dbService = {
     const botSnakeCase = objectToSnakeCase(bot);
 
     // Then add/override user_id (don't rely on conversion)
-    const payload = {
+    const payload: Record<string, unknown> = {
         ...botSnakeCase,
         user_id: user.id
     };

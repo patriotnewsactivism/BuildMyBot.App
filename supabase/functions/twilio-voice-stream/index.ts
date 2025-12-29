@@ -72,7 +72,7 @@ serve(async (req) => {
               const { data: bots } = await supabase
                 .from("bots")
                 .select("system_prompt, name")
-                .eq("owner_id", userId)
+                .eq("user_id", userId)
                 .limit(1);
 
               if (bots && bots.length > 0) {

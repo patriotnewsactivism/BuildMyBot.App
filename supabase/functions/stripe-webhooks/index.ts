@@ -2,13 +2,28 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno'
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2023-10-16',
-  httpClient: Stripe.createFetchHttpClient(),
-})
+const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')
+const stripeWebhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
+
+const stripe = stripeSecretKey
+  ? new Stripe(stripeSecretKey, {
+      apiVersion: '2023-10-16',
+      httpClient: Stripe.createFetchHttpClient(),
+    })
+  : null
 
 serve(async (req) => {
+  if (!stripe || !stripeSecretKey || !stripeWebhookSecret) {
+    console.error('Missing Stripe configuration for webhook processing')
+    return new Response('Server misconfiguration', { status: 500 })
+  }
+
   const signature = req.headers.get('stripe-signature')
+  if (!signature) {
+    console.error('Missing stripe-signature header')
+    return new Response('Missing signature', { status: 400 })
+  }
+
   const body = await req.text()
 
   let event: Stripe.Event
@@ -17,17 +32,25 @@ serve(async (req) => {
   try {
     event = stripe.webhooks.constructEvent(
       body,
-      signature!,
-      Deno.env.get('STRIPE_WEBHOOK_SECRET')!
+      signature,
+      stripeWebhookSecret
     )
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message)
     return new Response('Webhook signature verification failed', { status: 400 })
   }
 
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    console.error('Missing Supabase configuration for Stripe webhook handler')
+    return new Response('Server misconfiguration', { status: 500 })
+  }
+
   const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    supabaseUrl,
+    supabaseServiceRoleKey
   )
 
   console.log('Processing webhook event:', event.type)

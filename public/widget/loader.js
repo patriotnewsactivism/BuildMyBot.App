@@ -22,11 +22,39 @@
 
   // Configuration
   const WIDGET_VERSION = '1.0.0';
-  const API_BASE = window.location.hostname === 'localhost'
-    ? 'http://localhost:8080'
-    : 'https://buildmybot.app';
-
   const config = window.BuildMyBot || {};
+  const loaderScript = document.currentScript;
+
+  const resolveApiBase = function() {
+    if (config.apiBase && typeof config.apiBase === 'string' && config.apiBase.trim()) {
+      return config.apiBase.trim();
+    }
+
+    try {
+      if (loaderScript && loaderScript.src) {
+        return new URL(loaderScript.src).origin;
+      }
+    } catch (e) {
+      // Fall through to location-based defaults
+    }
+
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      const port = window.location.port || '3000';
+      return `${window.location.protocol}//${window.location.hostname}:${port}`;
+    }
+
+    return window.location.origin;
+  };
+
+  const API_BASE = resolveApiBase();
+  const WIDGET_ORIGIN = (() => {
+    try {
+      return new URL(API_BASE).origin;
+    } catch (e) {
+      return API_BASE;
+    }
+  })();
+
   const botId = config.botId;
 
   if (!botId) {
@@ -286,7 +314,7 @@
     try {
       window.addEventListener('message', function(event) {
         // Verify origin for security
-        const allowedOrigins = [API_BASE, 'http://localhost:8080'];
+        const allowedOrigins = [WIDGET_ORIGIN];
         if (!allowedOrigins.includes(event.origin)) {
           return;
         }
@@ -332,7 +360,7 @@
   const sendMessageToWidget = function(message) {
     try {
       if (widgetState.iframe && widgetState.iframe.contentWindow) {
-        widgetState.iframe.contentWindow.postMessage(message, API_BASE);
+        widgetState.iframe.contentWindow.postMessage(message, WIDGET_ORIGIN);
       }
     } catch (error) {
       handleError(error, 'sendMessageToWidget');

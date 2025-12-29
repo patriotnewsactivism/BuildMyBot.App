@@ -52,10 +52,8 @@ const parsePayload = async (req: Request): Promise<TwilioPayload> => {
   return payload;
 };
 
-const validateTwilioSignature = async (req: Request, payload: TwilioPayload) => {
-  const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-  if (!authToken) return true; // Skip validation if token isn't provided
-
+const validateTwilioSignature = async (req: Request, payload: TwilioPayload, authToken: string) => {
+  
   const signatureHeader = req.headers.get("x-twilio-signature");
   if (!signatureHeader) return false;
 
@@ -94,9 +92,10 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
 
-  if (!supabaseUrl || !supabaseServiceKey) {
-    return new Response(JSON.stringify({ error: "Missing Supabase credentials" }), {
+  if (!supabaseUrl || !supabaseServiceKey || !twilioAuthToken) {
+    return new Response(JSON.stringify({ error: "Missing required server configuration" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -115,7 +114,7 @@ serve(async (req) => {
       });
     }
 
-    const signatureValid = await validateTwilioSignature(req, payload);
+    const signatureValid = await validateTwilioSignature(req, payload, twilioAuthToken);
     if (!signatureValid) {
       return new Response(JSON.stringify({ error: "Signature validation failed" }), {
         status: 401,
