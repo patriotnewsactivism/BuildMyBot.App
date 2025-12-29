@@ -1217,6 +1217,77 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
             )}
          </div>
       </div>
+
+      {/* Floating Save Status Toast */}
+      {saveState.status !== 'idle' && (
+        <div className={`fixed bottom-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up ${
+          saveState.status === 'saving' ? 'bg-blue-600 text-white' :
+          saveState.status === 'success' ? 'bg-emerald-600 text-white' :
+          'bg-red-600 text-white'
+        }`}>
+          {saveState.status === 'saving' && (
+            <>
+              <RefreshCcw className="animate-spin" size={18} />
+              <span>{saveState.message || 'Saving changes...'}</span>
+            </>
+          )}
+          {saveState.status === 'success' && (
+            <>
+              <CheckCircle size={18} />
+              <span>{saveState.message || 'Saved successfully'}</span>
+            </>
+          )}
+          {saveState.status === 'error' && (
+            <>
+              <AlertCircle size={18} />
+              <div>
+                <div className="font-semibold">Save failed</div>
+                <div className="text-xs opacity-90">{saveState.message}</div>
+              </div>
+              <button
+                onClick={() => handleSaveBot(false)}
+                className="ml-2 px-3 py-1 bg-white/20 rounded hover:bg-white/30 text-xs font-medium"
+              >
+                Retry
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Error Recovery Panel */}
+      {errorLog.length > 0 && (
+        <div className="fixed bottom-20 right-4 w-96 bg-white rounded-lg shadow-xl border-2 border-red-200 p-4 z-40 max-h-80 flex flex-col">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-bold text-red-700 flex items-center gap-2">
+              <AlertCircle size={18} /> Recent Errors
+            </h4>
+            <button
+              onClick={() => setErrorLog([])}
+              className="text-xs text-slate-400 hover:text-slate-600"
+            >
+              Clear all
+            </button>
+          </div>
+          <div className="space-y-2 overflow-y-auto flex-1">
+            {errorLog.map(err => (
+              <div key={err.id} className="bg-red-50 p-3 rounded-lg text-sm">
+                <div className="font-semibold text-red-800 capitalize">{err.operation} Failed</div>
+                <div className="text-xs text-red-600 mt-1">{err.error}</div>
+                <div className="text-[10px] text-slate-500 mt-1">
+                  {new Date(err.timestamp).toLocaleTimeString()}
+                </div>
+                <button
+                  onClick={() => retryFromErrorLog(err.id)}
+                  className="mt-2 px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+                >
+                  Retry
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
