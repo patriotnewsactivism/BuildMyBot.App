@@ -77,6 +77,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Drop existing admin policies if they exist (to ensure clean recreation)
+DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
+DROP POLICY IF EXISTS "Admins can update any profile" ON profiles;
+DROP POLICY IF EXISTS "Admins can view all bots" ON bots;
+DROP POLICY IF EXISTS "Admins can update any bot" ON bots;
+DROP POLICY IF EXISTS "Admins can view all leads" ON leads;
+DROP POLICY IF EXISTS "Admins can update any lead" ON leads;
+DROP POLICY IF EXISTS "Admins can view all conversations" ON conversations;
+DROP POLICY IF EXISTS "Admins can view all phone calls" ON phone_calls;
+DROP POLICY IF EXISTS "Admins can view all usage" ON usage_events;
+
 -- PROFILES: Admin can view all profiles
 CREATE POLICY "Admins can view all profiles" ON profiles
     FOR SELECT
@@ -148,6 +159,7 @@ COMMENT ON INDEX idx_leads_unique_email_bot IS 'Prevent duplicate leads for same
 -- ============================================================================
 
 -- PHONE_CALLS: Users can delete own phone calls
+DROP POLICY IF EXISTS "Users can delete own phone calls" ON phone_calls;
 CREATE POLICY "Users can delete own phone calls" ON phone_calls
     FOR DELETE
     USING (auth.uid() = user_id);
