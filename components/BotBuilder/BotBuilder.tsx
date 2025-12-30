@@ -345,7 +345,24 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
           onSave(savedBot);
       } catch (error) {
           console.error('Error in handleSaveBot:', error);
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+          // Extract error message from various error types
+          let errorMessage = 'Unknown error occurred while saving bot';
+
+          if (error instanceof Error) {
+              errorMessage = error.message;
+          } else if (typeof error === 'string') {
+              errorMessage = error;
+          } else if (error && typeof error === 'object') {
+              // Handle Supabase PostgrestError objects
+              const pgError = error as any;
+              errorMessage = pgError.message
+                  || pgError.details
+                  || pgError.hint
+                  || JSON.stringify(error);
+          }
+
+          console.error('Extracted error message:', errorMessage);
 
           // Rollback on failure
           if (saveState.previousBot) {
@@ -358,7 +375,11 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
           });
 
           // Log error for retry
-          logError('save', errorMessage, { bot: activeBot });
+          logError('save', errorMessage, {
+              bot: activeBot,
+              errorType: error?.constructor?.name,
+              errorCode: (error as any)?.code
+          });
 
           // Show alert for manual saves
           if (!isAutoSave) {
@@ -503,9 +524,17 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
         setSaveState({ status: 'success', message: 'Bot saved, processing file...' });
         setTimeout(() => setSaveState({ status: 'idle' }), 2000);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        setSaveState({ status: 'error', message: 'Failed to save bot before upload' });
-        logError('save', errorMessage, { bot: activeBot });
+        let errorMessage = 'Unknown error occurred while saving bot';
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        } else if (typeof error === 'string') {
+            errorMessage = error;
+        } else if (error && typeof error === 'object') {
+            const pgError = error as any;
+            errorMessage = pgError.message || pgError.details || pgError.hint || JSON.stringify(error);
+        }
+        setSaveState({ status: 'error', message: 'Failed to save bot before upload: ' + errorMessage });
+        logError('save', errorMessage, { bot: activeBot, errorType: error?.constructor?.name });
         return; // Abort upload
       }
     }

@@ -72,10 +72,28 @@ export const dbService = {
     const client = supabase;
     if (!client) throw new Error("Supabase client not initialized");
 
-    const { data: { user } } = await client.auth.getUser();
+    // Validate authentication
+    const { data: { user }, error: authError } = await client.auth.getUser();
+    if (authError) {
+        console.error("Authentication error:", authError);
+        throw new Error("Authentication failed: " + (authError.message || "Please log in again"));
+    }
     if (!user) {
         console.error("Cannot save bot: User not logged in");
         throw new Error("Cannot save bot: User not logged in");
+    }
+
+    // Validate required fields
+    if (!bot.name || !bot.name.trim()) {
+        throw new Error("Bot name is required");
+    }
+    if (!bot.systemPrompt || !bot.systemPrompt.trim()) {
+        throw new Error("System prompt is required");
+    }
+
+    // Validate temperature range
+    if (bot.temperature !== undefined && (bot.temperature < 0 || bot.temperature > 2)) {
+        throw new Error("Temperature must be between 0 and 2");
     }
 
     const isNewBot = !bot.id || bot.id === 'new';
@@ -96,6 +114,7 @@ export const dbService = {
 
     console.log('SaveBot - Operation:', isNewBot ? 'INSERT' : 'UPDATE');
     console.log('SaveBot - User ID:', user.id);
+    console.log('SaveBot - User Email:', user.email);
     console.log('SaveBot - Payload being sent:', payload);
 
     const { data, error } = await client
@@ -128,7 +147,20 @@ export const dbService = {
         if (error?.code === '42501') {
             throw new Error("Permission denied. Please ensure you're logged in.");
         }
-        throw error || new Error("Failed to save bot - no data returned");
+        if (error?.code === '23503') {
+            throw new Error("User profile not found. Please refresh the page and try again.");
+        }
+        if (error?.code === '23505') {
+            throw new Error("A bot with this ID already exists.");
+        }
+
+        // Extract meaningful error message from Supabase error object
+        const errorMessage = error?.message
+            || error?.details
+            || error?.hint
+            || (typeof error === 'string' ? error : 'Failed to save bot - no data returned');
+
+        throw new Error(errorMessage);
     }
 
     return objectToCamelCase<Bot>(data as Record<string, unknown>);
