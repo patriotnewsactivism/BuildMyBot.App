@@ -13,7 +13,7 @@ interface LandingProps {
 }
 
 const HUMAN_NAMES = ['Sarah', 'Michael', 'Jessica', 'David', 'Emma', 'James'];
-const AVATAR_COLORS = ['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed'];
+const AVATAR_COLORS = ['#1e3a8a', '#be123c', '#047857', '#d97706', '#991b1b'];
 
 export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartner, onAdminLogin }) => {
   const [modalContent, setModalContent] = useState<'privacy' | 'terms' | 'about' | 'contact' | 'features' | null>(null);
@@ -254,7 +254,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     {
       title: 'Influencers',
       icon: Instagram,
-      color: 'purple',
+      color: 'red',
       desc: 'Scale your personal brand. Reply to every DM, engage fans, and sell merch automatically without spending all day on your phone.'
     },
     {
@@ -350,7 +350,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         {/* Background Gradients */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
            <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-           <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+           <div className="absolute top-0 right-1/4 w-96 h-96 bg-crimson-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
            <div className="absolute -bottom-8 left-1/2 w-96 h-96 bg-emerald-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
         </div>
 
@@ -787,10 +787,10 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                </div>
 
                {/* 2. Viral Post Generator Demo */}
-               <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col shadow-2xl hover:shadow-purple-900/20 transition-all duration-300">
+               <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col shadow-2xl hover:shadow-crimson-900/20 transition-all duration-300">
                   <div className="p-6 border-b border-slate-700 bg-slate-800/50">
                      <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 bg-purple-900/50 text-purple-400 rounded-lg border border-purple-500/20"><Megaphone size={20} /></div>
+                        <div className="p-2 bg-crimson-900/50 text-crimson-400 rounded-lg border border-crimson-500/20"><Megaphone size={20} /></div>
                         <h3 className="font-bold text-lg text-white">Viral Post Creator</h3>
                      </div>
                      <p className="text-sm text-slate-400">Generate high-engagement social media content in seconds.</p>
@@ -803,12 +803,12 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                              placeholder="e.g. AI is changing marketing" 
                              value={marketingTopic}
                              onChange={(e) => setMarketingTopic(e.target.value)}
-                             className="flex-1 rounded-lg border-slate-600 bg-slate-900 text-white text-sm focus:ring-purple-500 focus:border-purple-500 placeholder-slate-500"
+                             className="flex-1 rounded-lg border-slate-600 bg-slate-900 text-white text-sm focus:ring-crimson-500 focus:border-crimson-500 placeholder-slate-500"
                            />
                            <button 
                              onClick={handleViralGenerate}
                              disabled={isMarketingLoading || !marketingTopic}
-                             className="bg-purple-600 text-white px-4 rounded-lg text-sm font-bold disabled:opacity-50 hover:bg-purple-500 transition"
+                             className="bg-crimson-600 text-white px-4 rounded-lg text-sm font-bold disabled:opacity-50 hover:bg-crimson-500 transition"
                            >
                               {isMarketingLoading ? <Loader className="animate-spin" size={16}/> : 'Generate'}
                            </button>
