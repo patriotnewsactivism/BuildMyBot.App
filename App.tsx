@@ -559,7 +559,7 @@ function AppContent() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900">
+    <div className="flex h-screen bg-slate-100 font-sans text-slate-900">
       <Sidebar
         currentView={currentView}
         setView={setCurrentView}
@@ -584,7 +584,7 @@ function AppContent() {
            </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-100">
           {notification && (
               <div className="fixed top-6 right-6 z-50 bg-slate-900 text-white px-6 py-3 rounded-lg shadow-xl animate-bounce-slow flex items-center gap-3">
                  <Bell size={18} className="text-blue-400" /> {notification}

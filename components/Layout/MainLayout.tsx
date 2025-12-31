@@ -35,7 +35,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, notification }
       </header>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-slate-100">
         {notification && (
           <div className="fixed top-6 right-6 z-40 bg-slate-900 text-white px-6 py-3 rounded-lg shadow-xl animate-bounce-slow flex items-center gap-3">
             <span className="text-blue-400">*</span> {notification}
