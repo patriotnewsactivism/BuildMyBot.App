@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus, Loader, RefreshCcw, Send, Mic, PhoneCall, Star, Clock, Award, ChevronDown, ChevronUp, AlertTriangle, Gift, Sparkles, BadgeCheck, Timer, ThumbsUp, XCircle, Rocket, MousePointerClick, Calculator, BarChart3, ChevronRight, Circle, Settings, Palette } from 'lucide-react';
+import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, MessageSquare, Users, TrendingUp, Flame, Smartphone, Bell, Target, Briefcase, Instagram, DollarSign, Crown, Menu, Gavel, Stethoscope, Home, Landmark, ShoppingBag, Wrench, Car, Utensils, Dumbbell, GraduationCap, Phone, Megaphone, Layout, Shield, FileText, Upload, Link as LinkIcon, Search, Mail, Plus, Loader, RefreshCcw, Send, Mic, PhoneCall } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
 import { generateBotResponse, generateMarketingContent, scrapeWebsiteContent, generateWebsiteStructure } from '../../services/openaiService';
@@ -12,8 +12,6 @@ interface LandingProps {
 
 const HUMAN_NAMES = ['Sarah', 'Michael', 'Jessica', 'David', 'Emma', 'James'];
 const AVATAR_COLORS = ['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed'];
-const NOTIFICATION_NAMES = ['Alex from Denver', 'Sarah from NYC', 'Mike from Austin', 'Emily from LA', 'David from Miami', 'Jessica from Chicago', 'Chris from Seattle', 'Amanda from Boston'];
-const NOTIFICATION_ACTIONS = ['just signed up', 'captured 5 new leads', 'closed a $2,500 deal', 'upgraded to Professional', 'built their first bot'];
 
 export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartner, onAdminLogin }) => {
   const [modalContent, setModalContent] = useState<'privacy' | 'terms' | 'about' | 'contact' | 'features' | null>(null);
@@ -46,25 +44,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   const [siteResult, setSiteResult] = useState<any>(null);
   const [isSiteBuilding, setIsSiteBuilding] = useState(false);
 
-  // FAQ State
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-
-  // Animated counter state
-  const [countersVisible, setCountersVisible] = useState(false);
-  const [animatedStats, setAnimatedStats] = useState({ leads: 0, businesses: 0, messages: 0, saved: 0 });
-  const countersRef = useRef<HTMLDivElement>(null);
-
-  // ROI Calculator State
-  const [roiLeadsPerMonth, setRoiLeadsPerMonth] = useState(100);
-  const [roiAvgDealValue, setRoiAvgDealValue] = useState(1000);
-  const [roiCurrentConversion, setRoiCurrentConversion] = useState(10);
-
-  // Live notification state for social proof
-  const [liveNotifications, setLiveNotifications] = useState<{name: string; action: string; time: string}[]>([]);
-  const [showNotification, setShowNotification] = useState(false);
-  const chatHistoryRef = useRef(chatHistory);
-  const demoIdentityRef = useRef(demoIdentity);
-
 
   // Initialize random identity on mount
   useEffect(() => {
@@ -73,90 +52,23 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     setDemoIdentity({ name: randomName, color: randomColor });
   }, []);
 
-  // Live notification popup - social proof
-  useEffect(() => {
-    const showRandomNotification = () => {
-      const name = NOTIFICATION_NAMES[Math.floor(Math.random() * NOTIFICATION_NAMES.length)];
-      const action = NOTIFICATION_ACTIONS[Math.floor(Math.random() * NOTIFICATION_ACTIONS.length)];
-      setLiveNotifications([{ name, action, time: 'Just now' }]);
-      setShowNotification(true);
-      setTimeout(() => setShowNotification(false), 4000);
-    };
-
-    // Initial notification after 5 seconds
-    const initialTimeout = setTimeout(showRandomNotification, 5000);
-    // Then every 15-25 seconds
-    const interval = setInterval(showRandomNotification, 15000 + Math.random() * 10000);
-
-    return () => {
-      clearTimeout(initialTimeout);
-      clearInterval(interval);
-    };
-  }, []);
-
-  // Animated counters intersection observer
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !countersVisible) {
-          setCountersVisible(true);
-          // Animate to target numbers
-          const targets = { leads: 2847593, businesses: 12847, messages: 48000000, saved: 847 };
-          const duration = 2000;
-          const steps = 60;
-          const stepTime = duration / steps;
-          let step = 0;
-
-          const timer = setInterval(() => {
-            step++;
-            const progress = step / steps;
-            const easeOut = 1 - Math.pow(1 - progress, 3);
-
-            setAnimatedStats({
-              leads: Math.floor(targets.leads * easeOut),
-              businesses: Math.floor(targets.businesses * easeOut),
-              messages: Math.floor(targets.messages * easeOut),
-              saved: Math.floor(targets.saved * easeOut)
-            });
-
-            if (step >= steps) clearInterval(timer);
-          }, stepTime);
-        }
-      },
-      { threshold: 0.3 }
-    );
-
-    if (countersRef.current) observer.observe(countersRef.current);
-    return () => observer.disconnect();
-  }, [countersVisible]);
-
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [chatHistory, isTyping, isChatOpen]);
 
+  // Open Greeting
   useEffect(() => {
-    chatHistoryRef.current = chatHistory;
-  }, [chatHistory]);
-
-  useEffect(() => {
-    demoIdentityRef.current = demoIdentity;
-  }, [demoIdentity]);
-
-  // Open Greeting - only depends on isChatOpen, uses ref for identity to avoid re-triggers
-  useEffect(() => {
-    if (isChatOpen && !hasGreeted.current && chatHistoryRef.current.length === 0) {
+    if (isChatOpen && !hasGreeted.current && chatHistory.length === 0) {
         setIsTyping(true);
         hasGreeted.current = true;
-        // Capture current identity value to avoid stale closure
-        const currentName = demoIdentityRef.current.name;
         setTimeout(() => {
-            setChatHistory([{ role: 'model', text: `Hi! I'm ${currentName}. I can qualify leads, schedule appointments, and answer questions 24/7. How can I help your business grow today?` }]);
+            setChatHistory([{ role: 'model', text: `Hi! I'm ${demoIdentity.name}. I can qualify leads, schedule appointments, and answer questions 24/7. How can I help your business grow today?` }]);
             setIsTyping(false);
         }, 1500);
     }
-  }, [isChatOpen]); // Remove demoIdentity dependency - hasGreeted ref prevents duplicate greetings
+  }, [isChatOpen, demoIdentity]);
 
   const handleDemoSend = async () => {
     if (!chatInput.trim()) return;
@@ -308,7 +220,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
             content = (
                 <>
                   <p>BuildMyBot helps businesses scale their personal touch. In a world of infinite noise, responsiveness is the only competitive advantage that matters.</p>
-                  <p>We built this platform for Influencers, Agencies, and Business Owners who are tired of leaving money on the table because they couldn’t answer the phone or reply to a DM fast enough.</p>
+                  <p>We built this platform for Influencers, Agencies, and Business Owners who are tired of leaving money on the table because they couldn't answer the phone or reply to a DM fast enough.</p>
                 </>
             );
             break;
@@ -316,7 +228,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
             title = 'Contact Support';
             content = (
                 <>
-                  <p>Have questions? We’re here to help.</p>
+                  <p>Have questions? We're here to help.</p>
                   <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 my-4">
                       <p className="font-bold text-slate-800">Sales Inquiries</p>
                       <p className="text-blue-900">sales@buildmybot.app</p>
@@ -393,12 +305,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       desc: 'Instant case intake. Capture high-value clients when they need you most. Automate the initial screening process securely.'
     },
     {
-      title: 'Bail Bonds',
-      icon: Shield,
-      color: 'red',
-      desc: '24/7 response for families who need someone out now. Collect arrest details, explain fees, and dispatch an agent instantly.'
-    },
-    {
       title: 'Politicians',
       icon: Landmark,
       color: 'slate',
@@ -442,133 +348,10 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     }
   ];
 
-  // Testimonials data
-  const testimonials = [
-    {
-      name: 'Marcus Johnson',
-      role: 'Owner, Elite Roofing Co.',
-      image: 'MJ',
-      color: '#1e3a8a',
-      quote: "We went from missing 40% of our leads to capturing 100%. BuildMyBot paid for itself in the first week. Last month alone, it booked $127,000 in jobs while I slept.",
-      rating: 5
-    },
-    {
-      name: 'Dr. Sarah Chen',
-      role: 'Founder, Smile Dental Group',
-      image: 'SC',
-      color: '#be123c',
-      quote: "Our no-show rate dropped by 60%. The AI confirms appointments, sends reminders, and handles rescheduling automatically. Staff morale has never been higher.",
-      rating: 5
-    },
-    {
-      name: 'James Rodriguez',
-      role: 'CEO, Rodriguez Law Firm',
-      image: 'JR',
-      color: '#047857',
-      quote: "Client intake used to take 15 minutes per call. Now it's instant. We've taken on 3x more cases this quarter without hiring anyone new.",
-      rating: 5
-    },
-    {
-      name: 'Ashley Williams',
-      role: 'Realtor, Keller Williams',
-      image: 'AW',
-      color: '#7c3aed',
-      quote: "In real estate, the first agent to respond wins. BuildMyBot responds in under 2 seconds. My conversion rate went from 12% to 34%.",
-      rating: 5
-    }
-  ];
-
-  // FAQ data
-  const faqs = [
-    {
-      question: "How is this different from ChatGPT or other chatbots?",
-      answer: "ChatGPT is a general-purpose AI. BuildMyBot is purpose-built for lead capture and sales. It's trained on YOUR business, understands YOUR services, scores leads in real-time, captures contact info, sends you instant alerts, and integrates with your CRM. It's not just a chatbot - it's a 24/7 sales machine."
-    },
-    {
-      question: "Do I need technical skills to set this up?",
-      answer: "Absolutely not. If you can copy-paste a line of code, you can install BuildMyBot. Most users are live in under 10 minutes. Just enter your website URL, and our AI scrapes your content and trains itself automatically. No coding, no developers, no headaches."
-    },
-    {
-      question: "What if the AI says something wrong?",
-      answer: "BuildMyBot only uses information YOU provide. It's trained on your website content, FAQs, and knowledge base. It will never make up information. And if it can't answer a question, it gracefully collects the lead's contact info so you can follow up personally."
-    },
-    {
-      question: "Can I see what the bot is saying to my customers?",
-      answer: "Yes! Every conversation is logged in real-time. You can monitor chats live, review transcripts, see lead scores, and even jump in to take over a conversation at any moment. Full transparency, full control."
-    },
-    {
-      question: "What happens when I hit my conversation limit?",
-      answer: "We'll notify you when you're approaching your limit. You can upgrade your plan instantly with one click, or the bot will continue capturing leads and notify them that a human will follow up shortly. You'll never lose a lead."
-    },
-    {
-      question: "Is there a contract or commitment?",
-      answer: "No contracts, no commitments, cancel anytime. We're confident you'll see ROI in your first week, so we don't need to lock you in. Start free, upgrade when you're ready, downgrade or cancel whenever you want."
-    },
-    {
-      question: "How fast can I be up and running?",
-      answer: "Most businesses are live in under 10 minutes. Enter your website URL, customize your bot's personality, copy one line of code to your site, and you're done. Our AI handles the training automatically."
-    }
-  ];
-
-  const industryColorThemes: Record<string, { icon: string; border: string; accent: string }> = {
-    blue: { icon: 'bg-blue-100 text-blue-700', border: 'border-blue-100', accent: 'text-blue-700' },
-    emerald: { icon: 'bg-emerald-100 text-emerald-700', border: 'border-emerald-100', accent: 'text-emerald-700' },
-    red: { icon: 'bg-red-100 text-red-700', border: 'border-red-100', accent: 'text-red-700' },
-    cyan: { icon: 'bg-cyan-100 text-cyan-700', border: 'border-cyan-100', accent: 'text-cyan-700' },
-    amber: { icon: 'bg-amber-100 text-amber-700', border: 'border-amber-100', accent: 'text-amber-700' },
-    slate: { icon: 'bg-slate-100 text-slate-700', border: 'border-slate-200', accent: 'text-slate-700' },
-    orange: { icon: 'bg-orange-100 text-orange-700', border: 'border-orange-100', accent: 'text-orange-700' },
-    navy: { icon: 'bg-blue-100 text-blue-900', border: 'border-blue-100', accent: 'text-blue-900' },
-    lime: { icon: 'bg-lime-100 text-lime-700', border: 'border-lime-100', accent: 'text-lime-700' },
-    indigo: { icon: 'bg-indigo-100 text-indigo-700', border: 'border-indigo-100', accent: 'text-indigo-700' },
-    darkred: { icon: 'bg-red-100 text-red-900', border: 'border-red-100', accent: 'text-red-900' },
-    sky: { icon: 'bg-sky-100 text-sky-700', border: 'border-sky-100', accent: 'text-sky-700' }
-  };
-
-  const statColorThemes: Record<string, { bg: string; text: string }> = {
-    blue: { bg: 'bg-blue-50', text: 'text-blue-600' },
-    red: { bg: 'bg-red-50', text: 'text-red-600' },
-    amber: { bg: 'bg-amber-50', text: 'text-amber-600' },
-    emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600' },
-  };
-
-  const timelineColorThemes: Record<string, { badgeBg: string; badgeText: string; circleBg: string; shadow: string }> = {
-    blue: { badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', circleBg: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
-    navy: { badgeBg: 'bg-blue-100', badgeText: 'text-blue-900', circleBg: 'bg-blue-900', shadow: 'shadow-blue-900/30' },
-    emerald: { badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700', circleBg: 'bg-emerald-500', shadow: 'shadow-emerald-500/30' },
-    amber: { badgeBg: 'bg-amber-100', badgeText: 'text-amber-700', circleBg: 'bg-amber-500', shadow: 'shadow-amber-500/30' },
-  };
-
-  // ROI calculation
-  const roiImprovedConversion = Math.min(roiCurrentConversion * 2.5, 80); // 2.5x improvement, max 80%
-  const roiCurrentRevenue = roiLeadsPerMonth * roiAvgDealValue * (roiCurrentConversion / 100);
-  const roiImprovedRevenue = roiLeadsPerMonth * roiAvgDealValue * (roiImprovedConversion / 100);
-  const roiAdditionalRevenue = roiImprovedRevenue - roiCurrentRevenue;
-  const roiAnnualGain = roiAdditionalRevenue * 12;
-
   return (
-    <div className="min-h-screen bg-slate-950 font-sans text-slate-100 overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden">
       {modalContent && <InfoModal />}
-
-      {/* Live Social Proof Notification Toast */}
-      {showNotification && liveNotifications.length > 0 && (
-        <div className="fixed bottom-24 left-6 z-30 animate-slide-in-left">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 p-4 flex items-center gap-3 max-w-sm">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white">
-              <CheckCircle size={20} />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-800">{liveNotifications[0].name}</p>
-              <p className="text-xs text-slate-500">{liveNotifications[0].action} - {liveNotifications[0].time}</p>
-            </div>
-            <div className="ml-2 flex items-center gap-1">
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-              <span className="text-xs text-emerald-600 font-medium">Live</span>
-            </div>
-          </div>
-        </div>
-      )}
-
+      
       {/* Demo Chatbot Widget */}
       <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-4">
           {/* Chat Window */}
@@ -589,14 +372,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                       </div>
                       <button onClick={() => setIsChatOpen(false)} className="p-1 hover:bg-white/10 rounded"><X size={18}/></button>
                   </div>
-
-                  {/* Demo Disclaimer Banner */}
-                  <div className="bg-blue-50 border-b border-blue-200 px-3 py-2">
-                      <p className="text-[10px] text-blue-800 text-center font-medium">
-                          🎭 <strong>Interactive Demo</strong> - Try our AI (no signup required)
-                      </p>
-                  </div>
-
+                  
                   <div className="flex-1 bg-slate-50 overflow-y-auto p-4 space-y-4" ref={chatScrollRef}>
                       <div className="text-center text-[10px] text-slate-400 font-medium uppercase tracking-wider my-2">Powered by GPT-4o</div>
                       {chatHistory.map((msg, i) => (
@@ -658,27 +434,27 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       </div>
 
       {/* Navbar */}
-      <nav className="fixed w-full bg-slate-950/80 backdrop-blur-md z-30 border-b border-slate-800 transition-all shadow-lg shadow-indigo-900/40">
+      <nav className="fixed w-full bg-white/90 backdrop-blur-md z-30 border-b border-slate-200 transition-all">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-bold text-xl text-white cursor-pointer" onClick={() => window.scrollTo(0,0)}>
-            <div className="w-8 h-8 bg-gradient-to-br from-fuchsia-500 to-blue-500 rounded-lg flex items-center justify-center text-white shadow-md shadow-fuchsia-800/40">
+          <div className="flex items-center gap-2 font-bold text-xl text-slate-900 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
+            <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center text-white shadow-md">
               <Bot size={20} />
             </div>
             BuildMyBot
           </div>
-
+          
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-200">
-            <button onClick={() => openModal('features')} className="hover:text-white transition">Features</button>
-            <a href="#voice" className="hover:text-white transition">Voice AI</a>
-            <a href="#pricing" className="hover:text-white transition">Pricing</a>
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+            <button onClick={() => openModal('features')} className="hover:text-blue-900 transition">Features</button>
+            <a href="#voice" className="hover:text-blue-900 transition">Voice AI</a>
+            <a href="#pricing" className="hover:text-blue-900 transition">Pricing</a>
             {onNavigateToPartner && (
-              <button onClick={onNavigateToPartner} className="text-sky-200 font-bold hover:text-white transition">Partner Program</button>
+              <button onClick={onNavigateToPartner} className="text-blue-900 font-bold hover:text-blue-700 transition">Partner Program</button>
             )}
           </div>
           <div className="hidden md:flex items-center gap-4">
-             <button onClick={onLogin} className="text-sm font-medium text-slate-200 hover:text-white">Log in</button>
-             <button onClick={onLogin} className="px-5 py-2 bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-sky-400 text-white rounded-lg text-sm font-bold hover:from-fuchsia-600 hover:via-indigo-600 hover:to-sky-500 transition shadow-lg shadow-fuchsia-900/40">
+             <button onClick={onLogin} className="text-sm font-medium text-slate-600 hover:text-blue-900">Log in</button>
+             <button onClick={onLogin} className="px-5 py-2 bg-blue-900 text-white rounded-lg text-sm font-bold hover:bg-blue-950 transition shadow-lg shadow-blue-900/30">
                Get Started Free
              </button>
           </div>
@@ -693,91 +469,55 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
         {/* Mobile Menu Dropdown */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-slate-900/95 border-t border-slate-800 absolute w-full px-6 py-4 flex flex-col gap-4 shadow-xl">
-             <button onClick={() => {openModal('features'); setMobileMenuOpen(false);}} className="text-left font-medium text-slate-100 py-2">Features</button>
-             <a href="#voice" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-100 py-2">Voice AI</a>
-             <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-100 py-2">Pricing</a>
+          <div className="md:hidden bg-white border-t border-slate-100 absolute w-full px-6 py-4 flex flex-col gap-4 shadow-xl">
+             <button onClick={() => {openModal('features'); setMobileMenuOpen(false);}} className="text-left font-medium text-slate-600 py-2">Features</button>
+             <a href="#voice" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-600 py-2">Voice AI</a>
+             <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-600 py-2">Pricing</a>
              {onNavigateToPartner && (
-               <button onClick={() => {onNavigateToPartner(); setMobileMenuOpen(false);}} className="text-left font-bold text-sky-200 py-2">Partner Program</button>
+               <button onClick={() => {onNavigateToPartner(); setMobileMenuOpen(false);}} className="text-left font-bold text-blue-900 py-2">Partner Program</button>
              )}
-             <div className="h-px bg-slate-700 my-2"></div>
-             <button onClick={onLogin} className="text-left font-medium text-slate-100 py-2">Log in</button>
-             <button onClick={onLogin} className="w-full py-3 bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-sky-400 text-white rounded-lg font-bold">Get Started Free</button>
+             <div className="h-px bg-slate-100 my-2"></div>
+             <button onClick={onLogin} className="text-left font-medium text-blue-900 py-2">Log in</button>
+             <button onClick={onLogin} className="w-full py-3 bg-blue-900 text-white rounded-lg font-bold">Get Started Free</button>
           </div>
         )}
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      <section className="pt-32 pb-20 px-6 relative overflow-hidden">
         {/* Background Gradients */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
-           <div className="absolute -top-10 left-1/4 w-96 h-96 bg-fuchsia-500/30 rounded-full mix-blend-screen filter blur-3xl opacity-70 animate-blob"></div>
-           <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/30 rounded-full mix-blend-screen filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
-           <div className="absolute -bottom-8 left-1/2 w-96 h-96 bg-emerald-400/25 rounded-full mix-blend-screen filter blur-3xl opacity-60 animate-blob animation-delay-4000"></div>
+           <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+           <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+           <div className="absolute -bottom-8 left-1/2 w-96 h-96 bg-emerald-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
         </div>
 
         <div className="max-w-7xl mx-auto text-center relative z-10">
-           {/* Urgency Badge */}
-           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-400 via-fuchsia-500 to-indigo-500 text-white text-xs font-bold uppercase tracking-wide mb-6 shadow-lg shadow-fuchsia-900/40 animate-pulse cursor-pointer" onClick={() => openModal('features')}>
-             <Timer size={14} />
-             Limited Time: Free Setup + 30-Day Trial
+           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-blue-100 text-blue-900 text-xs font-bold uppercase tracking-wide mb-6 shadow-sm hover:shadow-md transition cursor-pointer" onClick={() => openModal('features')}>
+             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+             New: Auto-Qualify "Hot Leads"
            </div>
-
-           <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight mb-6 leading-tight drop-shadow-lg">
-             Stop Losing Leads to <span className="line-through text-rose-300 opacity-80">Slow Response</span><br/>
-             <span className="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-300 via-sky-300 to-emerald-200">Close 3x More Deals on Autopilot</span>
+           <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight mb-6 leading-tight">
+             Capture Every Lead. <br/> 
+             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-900 to-sky-600">Automate Every Answer.</span>
            </h1>
-
-           <h2 className="text-xl md:text-2xl font-semibold text-slate-200 tracking-wide mb-4 max-w-4xl mx-auto">
-             The AI employee that never sleeps, never takes breaks, and converts website visitors into paying customers 24/7/365.
+           
+           <h2 className="text-xl md:text-2xl font-semibold text-slate-500 tracking-wide mb-10 max-w-3xl mx-auto">
+             Stop trading time for money. The ultimate AI workforce that answers questions, books appointments, and identifies hot leads 24/7.
            </h2>
 
-           {/* Pain Point Callout */}
-           <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-200/80 mb-10">
-             <div className="flex items-center gap-2">
-               <XCircle size={16} className="text-rose-300" />
-               <span>No more missed calls</span>
-             </div>
-             <div className="flex items-center gap-2">
-               <XCircle size={16} className="text-rose-300" />
-               <span>No more lost leads</span>
-             </div>
-             <div className="flex items-center gap-2">
-               <XCircle size={16} className="text-rose-300" />
-               <span>No more slow response times</span>
-             </div>
-           </div>
-
-           <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-6">
-              <button onClick={onLogin} className="group w-full md:w-auto px-10 py-5 bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-sky-400 text-white rounded-xl text-lg font-bold hover:from-fuchsia-600 hover:via-indigo-600 hover:to-sky-500 transition-all shadow-2xl shadow-fuchsia-900/40 flex items-center justify-center gap-3 transform hover:-translate-y-1 hover:scale-105">
-                <Gift size={22} className="group-hover:animate-bounce" />
-                Start Free - No Credit Card
-                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+           <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-20">
+              <button onClick={onLogin} className="w-full md:w-auto px-8 py-4 bg-blue-900 text-white rounded-xl text-lg font-bold hover:bg-blue-950 transition shadow-xl shadow-blue-900/40 flex items-center justify-center gap-2 transform hover:-translate-y-1">
+                Start Building Free <ArrowRight size={20} />
               </button>
-              <button onClick={() => setIsChatOpen(true)} className="w-full md:w-auto px-8 py-5 bg-white/10 text-white border-2 border-white/20 rounded-xl text-lg font-bold hover:border-sky-200 hover:bg-white/15 transition flex items-center justify-center gap-2 transform hover:-translate-y-1">
-                <Play size={20} fill="currentColor" className="text-sky-300" /> See It In Action
+              <button onClick={() => setIsChatOpen(true)} className="w-full md:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-xl text-lg font-bold hover:bg-slate-50 transition flex items-center justify-center gap-2 transform hover:-translate-y-1">
+                <Play size={20} fill="currentColor" className="text-slate-400" /> Live Demo
               </button>
-           </div>
-
-           {/* Social Proof Mini */}
-           <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-slate-200/80 mb-16">
-             <div className="flex -space-x-2">
-               {['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed'].map((color, i) => (
-                 <div key={i} className="w-8 h-8 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: color }}>
-                   {String.fromCharCode(65 + i)}
-                 </div>
-               ))}
-             </div>
-             <span className="ml-2">Join <strong className="text-white">12,847+</strong> businesses already converting more leads</span>
-             <div className="flex items-center gap-0.5 ml-2">
-               {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="#f59e0b" className="text-amber-400" />)}
-             </div>
-             <span className="font-bold text-white">4.9/5</span>
            </div>
            
            {/* High Fidelity Dashboard Preview */}
            <div className="relative max-w-6xl mx-auto transform hover:scale-[1.01] transition duration-700 ease-out z-20">
-              <div className="absolute -inset-1 bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-sky-400 rounded-2xl blur-lg opacity-30"></div>
+              <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl blur-lg opacity-20"></div>
               <div className="relative bg-white rounded-xl border border-slate-200 shadow-2xl overflow-hidden">
                 {/* Browser Controls */}
                 <div className="h-10 bg-slate-50 border-b border-slate-200 flex items-center px-4 gap-2 justify-between">
@@ -808,30 +548,27 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                    
                    {/* Main Content */}
                    <div className="flex-1 p-4 md:p-8 overflow-hidden">
-                          <div className="flex justify-between items-center mb-8">
-                             <div>
-                                <h2 className="text-2xl font-bold text-slate-800">Overview</h2>
-                                <p className="text-slate-500 text-sm">Welcome back, Alex.</p>
-                             </div>
+                      <div className="flex justify-between items-center mb-8">
+                         <div>
+                            <h2 className="text-2xl font-bold text-slate-800">Overview</h2>
+                            <p className="text-slate-500 text-sm">Welcome back, Alex.</p>
+                         </div>
                          <button className="bg-blue-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hidden md:block">+ Create Bot</button>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
-                        {[ 
-                           {l: 'Active Chats', v: '1,240', i: MessageSquare, c: 'blue'},
-                           {l: 'Hot Leads', v: '328', i: Flame, c: 'red'},
-                           {l: 'Response', v: '0.8s', i: Zap, c: 'amber'},
-                           {l: 'Revenue', v: '$4,200', i: TrendingUp, c: 'emerald'}
-                         ].map((s, i) => {
-                            const theme = statColorThemes[s.c] ?? statColorThemes.blue;
-                            return (
-                              <div key={i} className="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
-                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 ${theme.bg} ${theme.text}`}><s.i size={16}/></div>
-                                 <div className="text-xl md:text-2xl font-bold text-slate-800">{s.v}</div>
-                                 <div className="text-xs text-slate-500">{s.l}</div>
-                              </div>
-                            );
-                         })}
+                         {[
+                            {l: 'Active Chats', v: '1,240', i: MessageSquare, c: 'blue'},
+                            {l: 'Hot Leads', v: '328', i: Flame, c: 'red'},
+                            {l: 'Response', v: '0.8s', i: Zap, c: 'amber'},
+                            {l: 'Revenue', v: '$4,200', i: TrendingUp, c: 'emerald'}
+                         ].map((s, i) => (
+                            <div key={i} className="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
+                               <div className={`w-8 h-8 rounded-lg bg-${s.c}-50 text-${s.c}-600 flex items-center justify-center mb-3`}><s.i size={16}/></div>
+                               <div className="text-xl md:text-2xl font-bold text-slate-800">{s.v}</div>
+                               <div className="text-xs text-slate-500">{s.l}</div>
+                            </div>
+                         ))}
                       </div>
 
                       {/* Mock Chart Area */}
@@ -849,382 +586,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                 </div>
               </div>
            </div>
-        </div>
-      </section>
-
-      {/* Animated Stats Section */}
-      <section ref={countersRef} className="py-20 px-6 bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDM0djZoNnYtNmgtNnptNiA2aDZ2LTZoLTZ2NnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-50"></div>
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div className="space-y-2">
-              <div className="text-4xl md:text-5xl font-extrabold text-white">
-                {animatedStats.leads.toLocaleString()}+
-              </div>
-              <div className="text-blue-200 font-medium">Leads Captured</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl md:text-5xl font-extrabold text-white">
-                {animatedStats.businesses.toLocaleString()}+
-              </div>
-              <div className="text-blue-200 font-medium">Happy Businesses</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl md:text-5xl font-extrabold text-white">
-                {(animatedStats.messages / 1000000).toFixed(0)}M+
-              </div>
-              <div className="text-blue-200 font-medium">Messages Handled</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl md:text-5xl font-extrabold text-emerald-400">
-                ${animatedStats.saved}K+
-              </div>
-              <div className="text-blue-200 font-medium">Avg. Monthly Savings</div>
-            </div>
-          </div>
-
-          {/* Trust Badges */}
-          <div className="mt-12 pt-8 border-t border-white/10">
-            <p className="text-center text-blue-200/60 text-sm mb-6 uppercase tracking-wider">Trusted by teams at</p>
-            <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500">
-              <div className="text-white font-bold text-xl">YCombinator</div>
-              <div className="text-white font-bold text-xl">TechStars</div>
-              <div className="text-white font-bold text-xl">500 Global</div>
-              <div className="text-white font-bold text-xl">Stripe</div>
-              <div className="text-white font-bold text-xl">Shopify</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-24 px-6 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold uppercase tracking-wide mb-4">
-              <Star size={12} fill="currentColor" /> Real Results
-            </div>
-            <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-4">
-              Don’t Take Our Word For It
-            </h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              See what business owners just like you are saying about BuildMyBot
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {testimonials.map((t, idx) => (
-              <div key={idx} className="bg-gradient-to-br from-slate-50 to-white p-8 rounded-2xl border border-slate-200 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(t.rating)].map((_, i) => (
-                    <Star key={i} size={20} fill="#f59e0b" className="text-amber-400" />
-                  ))}
-                </div>
-                <p className="text-lg text-slate-700 mb-6 leading-relaxed">“{t.quote}”</p>
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg"
-                    style={{ backgroundColor: t.color }}
-                  >
-                    {t.image}
-                  </div>
-                  <div>
-                    <div className="font-bold text-slate-900">{t.name}</div>
-                    <div className="text-sm text-slate-500">{t.role}</div>
-                  </div>
-                  <BadgeCheck className="ml-auto text-blue-500" size={24} />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* CTA after testimonials */}
-          <div className="text-center mt-12">
-            <button onClick={onLogin} className="px-8 py-4 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-950 transition shadow-xl shadow-blue-900/30 inline-flex items-center gap-2">
-              Join {animatedStats.businesses.toLocaleString()}+ Happy Businesses <ArrowRight size={18} />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works Section - New Timeline */}
-      <section className="py-24 px-6 bg-gradient-to-b from-white to-slate-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold uppercase tracking-wide mb-4">
-              <Rocket size={12} /> Simple Setup
-            </div>
-            <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-4">
-              Live in 3 Minutes, Not 3 Months
-            </h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              Most AI solutions take forever to implement. BuildMyBot is different.
-            </p>
-          </div>
-
-          <div className="relative">
-            {/* Timeline line */}
-            <div className="hidden md:block absolute left-1/2 transform -translate-x-1/2 w-1 h-full bg-gradient-to-b from-blue-500 via-purple-500 to-emerald-500 rounded-full" />
-
-            <div className="space-y-12 md:space-y-24">
-              {[
-                {
-                  step: '01',
-                  title: 'Enter Your Website',
-                  description: 'Just paste your URL. Our AI instantly scrapes your site, understands your business, products, services, and FAQs.',
-                  icon: Globe,
-                  color: 'blue',
-                  side: 'left'
-                },
-                {
-                  step: '02',
-                  title: 'Customize Your Bot',
-                  description: 'Choose a persona, tweak the responses, set your brand colors. Make it yours in seconds - no coding required.',
-                  icon: Settings,
-                  color: 'purple',
-                  side: 'right'
-                },
-                {
-                  step: '03',
-                  title: 'Copy One Line of Code',
-                  description: 'Embed on any website with a single script tag. Works with WordPress, Shopify, Wix, Squarespace - anything.',
-                  icon: FileText,
-                  color: 'emerald',
-                  side: 'left'
-                },
-                {
-                  step: '04',
-                  title: 'Watch Leads Roll In',
-                  description: 'Your AI employee is now live 24/7. Get instant alerts when hot leads are captured. Close deals while you sleep.',
-                  icon: TrendingUp,
-                  color: 'amber',
-                  side: 'right'
-                }
-              ].map((item, idx) => (
-                <div key={idx} className={`flex flex-col md:flex-row items-center gap-8 ${item.side === 'right' ? 'md:flex-row-reverse' : ''}`}>
-                  <div className={`flex-1 ${item.side === 'right' ? 'md:text-left' : 'md:text-right'}`}>
-                    <div className={`bg-white p-8 rounded-2xl shadow-xl border border-slate-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1`}>
-                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-4 ${timelineColorThemes[item.color]?.badgeBg ?? timelineColorThemes.blue.badgeBg} ${timelineColorThemes[item.color]?.badgeText ?? timelineColorThemes.blue.badgeText}`}>
-                        Step {item.step}
-                      </div>
-                      <h3 className="text-2xl font-bold text-slate-900 mb-3">{item.title}</h3>
-                      <p className="text-slate-600 leading-relaxed">{item.description}</p>
-                    </div>
-                  </div>
-
-                  {/* Center icon */}
-                  <div className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center shadow-lg ${timelineColorThemes[item.color]?.circleBg ?? timelineColorThemes.blue.circleBg} ${timelineColorThemes[item.color]?.shadow ?? timelineColorThemes.blue.shadow}`}>
-                    <item.icon size={32} className="text-white" />
-                  </div>
-
-                  <div className="flex-1 hidden md:block" />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="text-center mt-16">
-            <button onClick={onLogin} className="px-10 py-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl text-lg font-bold hover:from-blue-700 hover:to-purple-700 transition-all shadow-2xl shadow-purple-500/30 inline-flex items-center gap-3 transform hover:scale-105">
-              <Rocket size={22} />
-              Get Started in 3 Minutes
-              <ArrowRight size={20} />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Interactive ROI Calculator */}
-      <section className="py-24 px-6 bg-slate-900 relative overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
-        </div>
-
-        <div className="max-w-6xl mx-auto relative z-10">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold uppercase tracking-wide mb-4">
-              <Calculator size={12} /> ROI Calculator
-            </div>
-            <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">
-              See Your Potential Revenue Boost
-            </h2>
-            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              Drag the sliders to see how much additional revenue BuildMyBot could generate for your business.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Calculator Inputs */}
-            <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700">
-              <div className="space-y-8">
-                <div>
-                  <div className="flex justify-between mb-3">
-                    <label className="text-white font-medium">Monthly Website Leads</label>
-                    <span className="text-blue-400 font-bold">{roiLeadsPerMonth}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="10"
-                    max="1000"
-                    step="10"
-                    value={roiLeadsPerMonth}
-                    onChange={(e) => setRoiLeadsPerMonth(Number(e.target.value))}
-                    className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                  />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
-                    <span>10</span>
-                    <span>1,000</span>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-3">
-                    <label className="text-white font-medium">Average Deal Value</label>
-                    <span className="text-emerald-400 font-bold">${roiAvgDealValue.toLocaleString()}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="100"
-                    max="50000"
-                    step="100"
-                    value={roiAvgDealValue}
-                    onChange={(e) => setRoiAvgDealValue(Number(e.target.value))}
-                    className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                  />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
-                    <span>$100</span>
-                    <span>$50,000</span>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-3">
-                    <label className="text-white font-medium">Current Conversion Rate</label>
-                    <span className="text-blue-400 font-bold">{roiCurrentConversion}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="50"
-                    step="1"
-                    value={roiCurrentConversion}
-                    onChange={(e) => setRoiCurrentConversion(Number(e.target.value))}
-                    className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                  />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
-                    <span>1%</span>
-                    <span>50%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Results */}
-            <div className="space-y-6">
-              <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-2xl border border-slate-700">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <p className="text-slate-400 text-sm">Current Monthly Revenue</p>
-                    <p className="text-3xl font-bold text-white">${roiCurrentRevenue.toLocaleString()}</p>
-                  </div>
-                  <ArrowRight className="text-slate-500" size={24} />
-                  <div>
-                    <p className="text-slate-400 text-sm">With BuildMyBot</p>
-                    <p className="text-3xl font-bold text-emerald-400">${roiImprovedRevenue.toLocaleString()}</p>
-                  </div>
-                </div>
-
-                <div className="h-4 bg-slate-700 rounded-full overflow-hidden mb-4">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min((roiImprovedRevenue / Math.max(roiImprovedRevenue, roiCurrentRevenue)) * 100, 100)}%` }}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700">
-                  <div>
-                    <p className="text-slate-400 text-sm">New Conversion Rate</p>
-                    <p className="text-xl font-bold text-blue-400">{roiImprovedConversion.toFixed(1)}%</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-sm">Monthly Increase</p>
-                    <p className="text-xl font-bold text-emerald-400">+${roiAdditionalRevenue.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 p-6 rounded-2xl text-center">
-                <p className="text-emerald-100 text-sm mb-2">Projected Annual Revenue Increase</p>
-                <p className="text-4xl md:text-5xl font-extrabold text-white mb-4">
-                  +${roiAnnualGain.toLocaleString()}
-                </p>
-                <button onClick={onLogin} className="px-8 py-3 bg-white text-emerald-700 rounded-xl font-bold hover:bg-emerald-50 transition shadow-lg inline-flex items-center gap-2">
-                  <Sparkles size={18} />
-                  Claim Your Revenue Boost
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Problem/Solution Section */}
-      <section className="py-24 px-6 bg-slate-100">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-4">
-              The Problem With Your Current Setup
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Before - Problems */}
-            <div className="bg-red-50 rounded-2xl p-8 border-2 border-red-200 relative">
-              <div className="absolute -top-4 left-8 bg-red-500 text-white px-4 py-1 rounded-full text-sm font-bold">WITHOUT BuildMyBot</div>
-              <ul className="space-y-4 mt-4">
-                {[
-                  { icon: Clock, text: "Average response time: 47 minutes (leads go cold)" },
-                  { icon: AlertTriangle, text: "78% of leads never get a follow-up" },
-                  { icon: DollarSign, text: "Hiring staff costs $3,500+/month per person" },
-                  { icon: XCircle, text: "After-hours inquiries = lost business" },
-                  { icon: Users, text: "Staff turnover = constant retraining" }
-                ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-600 shrink-0">
-                      <item.icon size={16} />
-                    </div>
-                    <span className="text-red-900 font-medium">{item.text}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* After - Solutions */}
-            <div className="bg-emerald-50 rounded-2xl p-8 border-2 border-emerald-200 relative">
-              <div className="absolute -top-4 left-8 bg-emerald-500 text-white px-4 py-1 rounded-full text-sm font-bold">WITH BuildMyBot</div>
-              <ul className="space-y-4 mt-4">
-                {[
-                  { icon: Zap, text: "Instant response in under 2 seconds" },
-                  { icon: Target, text: "100% of leads get qualified and captured" },
-                  { icon: TrendingUp, text: "Costs less than $99/month (not $3,500+)" },
-                  { icon: Clock, text: "24/7/365 coverage - even holidays" },
-                  { icon: Bot, text: "Never calls in sick, never needs training" }
-                ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-600 shrink-0">
-                      <item.icon size={16} />
-                    </div>
-                    <span className="text-emerald-900 font-medium">{item.text}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="text-center mt-12">
-            <p className="text-2xl font-bold text-slate-900 mb-2">The Math Is Simple</p>
-            <p className="text-lg text-slate-600">If BuildMyBot captures just <span className="font-bold text-emerald-600">ONE extra lead per month</span>, it pays for itself 10x over.</p>
-          </div>
         </div>
       </section>
 
@@ -1275,71 +636,22 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                     <div className="space-y-4">
                        <div className="bg-slate-50 p-4 rounded-xl rounded-tl-none border border-slate-100">
                           <p className="text-xs font-bold text-slate-400 mb-1">Incoming Call • 2m ago</p>
-                          <p className="text-slate-700 font-medium">“Hi, do you have any appointments available for a consultation this Tuesday?”</p>
+                          <p className="text-slate-700 font-medium">"Hi, do you have any appointments available for a consultation this Tuesday?"</p>
                        </div>
                        <div className="bg-indigo-50 p-4 rounded-xl rounded-tr-none border border-indigo-100 text-right">
                           <p className="text-xs font-bold text-indigo-400 mb-1">AI Agent (Sarah)</p>
-                          <p className="text-slate-800 font-medium">“Yes! We have a slot open at 2:00 PM or 4:30 PM. Which works best for you?”</p>
+                          <p className="text-slate-800 font-medium">"Yes! We have a slot open at 2:00 PM or 4:30 PM. Which works best for you?"</p>
                        </div>
                        <div className="bg-slate-50 p-4 rounded-xl rounded-tl-none border border-slate-100">
-                          <p className="text-slate-700 font-medium">“2:00 PM is perfect.”</p>
+                          <p className="text-slate-700 font-medium">"2:00 PM is perfect."</p>
                        </div>
                        <div className="bg-indigo-50 p-4 rounded-xl rounded-tr-none border border-indigo-100 text-right">
-                          <p className="text-slate-800 font-medium">“Great, I’ve booked you for Tuesday at 2:00 PM. Is there anything else I can help with?”</p>
+                          <p className="text-slate-800 font-medium">"Great, I've booked you for Tuesday at 2:00 PM. Is there anything else I can help with?"</p>
                        </div>
                     </div>
                  </div>
               </div>
            </div>
-        </div>
-      </section>
-
-      {/* Industries We Supercharge */}
-      <section className="py-24 px-6 bg-white border-y border-slate-100">
-        <div className="max-w-7xl mx-auto space-y-12">
-          <div className="text-center max-w-4xl mx-auto space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wide border border-blue-100">
-              Built for Every Industry
-            </div>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight">Industries that win with BuildMyBot</h2>
-            <p className="text-lg text-slate-600">We can’t list every single field, so here are just a few places where faster responses and smarter conversations create an immediate edge.</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {industries.map((industry) => {
-              const theme = industryColorThemes[industry.color] || industryColorThemes.blue;
-              const Icon = industry.icon;
-
-              return (
-                <div
-                  key={industry.title}
-                  className={`p-6 rounded-2xl bg-white border shadow-sm hover:-translate-y-1 hover:shadow-lg transition ${theme.border}`}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${theme.icon}`}>
-                      <Icon size={22} />
-                    </div>
-                    <div className="space-y-1">
-                      <div className={`text-sm font-bold ${theme.accent} uppercase tracking-wide`}>{industry.title}</div>
-                      <p className="text-slate-600 text-sm leading-relaxed">{industry.desc}</p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="text-center space-y-3">
-            <p className="text-xl md:text-2xl font-extrabold text-slate-900 uppercase">And HUNDREDS of other industries.</p>
-            <p className="text-lg text-slate-600">Can you think of any industry that couldn’t benefit from more customers, faster response times, and total knowledge about your business for a fraction of the cost?</p>
-          </div>
-
-          <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 text-white p-8 md:p-10 rounded-3xl shadow-2xl border border-blue-900/60">
-            <h3 className="text-2xl md:text-3xl font-extrabold mb-4 uppercase">Unlike others, we don’t replace people—we reward them.</h3>
-            <p className="text-lg leading-relaxed text-slate-100">
-              UNLIKE OTHERS, OUR ONE-OF-A-KIND SYSTEM DOESN’T “TAKE AWAY” JOBS FROM EMPLOYEES THAT WANT TO WORK. IT REPLACES JOBS ENABLING YOU THE BUSINESS TO SIGNIFICANTLY LOWER YOUR EXPENSES WHILE ENABLING THEM TO EARN SUBSTANTIALLY MORE THAN THEY DID BEFORE. OUR COMPENSATION MODEL IS MUCH MORE THAN AGGRESSIVE... IT’S UNHEARD OF!
-            </p>
-          </div>
         </div>
       </section>
 
@@ -1352,10 +664,10 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
          <div className="max-w-7xl mx-auto px-6 relative z-10">
             <div className="text-center mb-16">
                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-blue-300 text-xs font-bold uppercase tracking-wide mb-6">
-                 Try It Live - No Signup Required
+                 Live Interactive Demos
                </div>
                <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">See the Magic in Action</h2>
-               <p className="text-lg text-slate-400">Fully functional AI tools you can test right now. Uses your OpenAI key if configured.</p>
+               <p className="text-lg text-slate-400">Try our AI capabilities right here, right now.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -1439,10 +751,10 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                </div>
 
                {/* 2. Viral Post Generator Demo */}
-               <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col shadow-2xl hover:shadow-blue-900/20 transition-all duration-300">
+               <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col shadow-2xl hover:shadow-purple-900/20 transition-all duration-300">
                   <div className="p-6 border-b border-slate-700 bg-slate-800/50">
                      <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 bg-blue-900/50 text-blue-400 rounded-lg border border-blue-500/20"><Megaphone size={20} /></div>
+                        <div className="p-2 bg-purple-900/50 text-purple-400 rounded-lg border border-purple-500/20"><Megaphone size={20} /></div>
                         <h3 className="font-bold text-lg text-white">Viral Post Creator</h3>
                      </div>
                      <p className="text-sm text-slate-400">Generate high-engagement social media content in seconds.</p>
@@ -1558,7 +870,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                  <Flame size={12} fill="currentColor" /> Hot Lead System
               </div>
               <h2 className="text-3xl md:text-5xl font-extrabold mb-6 leading-tight">
-                It doesn’t just chat. <br/>
+                It doesn't just chat. <br/>
                 <span className="text-blue-400">It closes deals.</span>
               </h2>
               <p className="text-lg text-slate-300 mb-8 leading-relaxed">
@@ -1570,13 +882,13 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                    <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xl">1</div>
                    <div>
                      <h4 className="font-bold text-lg">Qualifies Automatically</h4>
-                     <p className="text-slate-400 text-sm">The AI identifies who is “just looking” vs who is ready to buy.</p>
+                     <p className="text-slate-400 text-sm">The AI identifies who is "just looking" vs who is ready to buy.</p>
                    </div>
                  </div>
                  <div className="flex gap-4">
                    <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 font-bold text-xl">2</div>
                    <div>
-                     <h4 className="font-bold text-lg">Triggers “Hot Lead” Status</h4>
+                     <h4 className="font-bold text-lg">Triggers "Hot Lead" Status</h4>
                      <p className="text-slate-400 text-sm">When score &gt; 80, the bot asks for name & phone number.</p>
                    </div>
                  </div>
@@ -1613,8 +925,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
                      {/* Chat Screen Background */}
                      <div className="mt-auto p-4 space-y-3">
-                        <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-xs self-end ml-12">I’m ready to move forward. Can we talk pricing?</div>
-                        <div className="bg-slate-700 text-white p-3 rounded-2xl rounded-bl-none text-xs self-start mr-12">Absolutely! What’s the best number to reach you at right now?</div>
+                        <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-xs self-end ml-12">I'm ready to move forward. Can we talk pricing?</div>
+                        <div className="bg-slate-700 text-white p-3 rounded-2xl rounded-bl-none text-xs self-start mr-12">Absolutely! What's the best number to reach you at right now?</div>
                         <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none text-xs self-end ml-12">555-012-3456</div>
                      </div>
                   </div>
@@ -1699,120 +1011,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="py-24 px-6 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold uppercase tracking-wide mb-4">
-              <MessageSquare size={12} /> Common Questions
-            </div>
-            <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-4">
-              Frequently Asked Questions
-            </h2>
-            <p className="text-lg text-slate-600">
-              Everything you need to know before getting started
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {faqs.map((faq, idx) => (
-              <div
-                key={idx}
-                className={`border rounded-2xl overflow-hidden transition-all duration-300 ${openFaq === idx ? 'border-blue-300 shadow-lg' : 'border-slate-200'}`}
-              >
-                <button
-                  onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                  className="w-full px-6 py-5 flex items-center justify-between text-left bg-white hover:bg-slate-50 transition"
-                >
-                  <span className="font-bold text-slate-900 pr-4">{faq.question}</span>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${openFaq === idx ? 'bg-blue-900 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                    {openFaq === idx ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                  </div>
-                </button>
-                {openFaq === idx && (
-                  <div className="px-6 pb-6 pt-2 bg-slate-50 border-t border-slate-100">
-                    <p className="text-slate-600 leading-relaxed">{faq.answer}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center mt-12">
-            <p className="text-slate-600 mb-4">Still have questions?</p>
-            <button onClick={() => openModal('contact')} className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition inline-flex items-center gap-2">
-              <Mail size={18} /> Contact Support
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Guarantee Section */}
-      <section className="py-20 px-6 bg-gradient-to-r from-emerald-600 to-emerald-500 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djZoNnYtNmgtNnptNiA2aDZ2LTZoLTZ2NnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-50"></div>
-        <div className="max-w-5xl mx-auto text-center relative z-10">
-          <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-2xl">
-              <Shield size={40} className="text-emerald-600" />
-            </div>
-          </div>
-          <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">
-            30-Day Money-Back Guarantee
-          </h2>
-          <p className="text-xl text-emerald-100 max-w-3xl mx-auto mb-8 leading-relaxed">
-            Try BuildMyBot risk-free. If you don’t see a measurable improvement in lead capture within 30 days,
-            we’ll refund every penny. No questions asked. No hoops to jump through.
-          </p>
-          <div className="flex flex-wrap justify-center gap-8 mb-10">
-            {[
-              { icon: ThumbsUp, text: "No contracts" },
-              { icon: Clock, text: "Cancel anytime" },
-              { icon: Award, text: "Full refund" }
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-2 text-white">
-                <item.icon size={20} className="text-emerald-200" />
-                <span className="font-bold">{item.text}</span>
-              </div>
-            ))}
-          </div>
-          <button onClick={onLogin} className="px-10 py-5 bg-white text-emerald-700 rounded-xl text-lg font-bold hover:bg-emerald-50 transition shadow-2xl inline-flex items-center gap-3 transform hover:scale-105">
-            <Sparkles size={22} />
-            Start Your Free Trial Now
-            <ArrowRight size={20} />
-          </button>
-        </div>
-      </section>
-
-      {/* Final CTA Section */}
-      <section className="py-24 px-6 bg-slate-900 relative overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10"></div>
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-6">
-            Ready to Stop Losing Leads?
-          </h2>
-          <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto">
-            Every minute you wait is another potential customer going to your competitor.
-            Join 12,847+ businesses already closing more deals with BuildMyBot.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button onClick={onLogin} className="group w-full sm:w-auto px-10 py-5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-lg font-bold hover:from-blue-700 hover:to-blue-600 transition-all shadow-2xl shadow-blue-900/40 flex items-center justify-center gap-3 transform hover:-translate-y-1">
-              <Gift size={22} />
-              Get Started Free
-              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-            <button onClick={() => setIsChatOpen(true)} className="w-full sm:w-auto px-8 py-5 bg-transparent text-white border-2 border-white/20 rounded-xl text-lg font-bold hover:bg-white/10 transition flex items-center justify-center gap-2">
-              <MessageSquare size={20} /> Talk to a Bot First
-            </button>
-          </div>
-          <p className="text-slate-500 text-sm mt-6">
-            No credit card required. Setup takes less than 10 minutes.
-          </p>
-        </div>
-      </section>
-
       {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 py-16 px-6 border-t border-slate-800">
+      <footer className="bg-slate-900 text-slate-400 py-16 px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
            <div className="col-span-1 md:col-span-1">
              <div className="flex items-center gap-2 font-bold text-xl text-white mb-4">

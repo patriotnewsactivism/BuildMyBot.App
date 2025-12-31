@@ -1,14 +1,13 @@
-# BuildMyBot.App – Consolidated Improvement Plan
+# BuildMyBot.app – Engineering Plan
 
-This plan operationalizes the provided recommendations into prioritized, actionable workstreams with clear deliverables, sequencing, and checkpoints. It complements the existing `PLAN.md` and `IMPLEMENTATION_SUMMARY.md` by focusing on completion, hardening, UX polish, branding, and SEO.
+This document defines the **architecture**, **schema**, **security model**, **backend functions**, **feature completion**, **roadmap**, and **development workflow** for the BuildMyBot.app platform.
 
 ---
 
 # 1. System Architecture
 
 **Current State:** React + Vite + Firebase (Firestore/Auth)
-
-**Target Architecture (Phase 1 — Near-Term Stabilization):**
+**Target Architecture:**
 React + Vite (Frontend SPA)
 ↓
 Supabase Auth (JWT)
@@ -21,78 +20,63 @@ Supabase Postgres (RLS-protected tables)
 ↓
 OpenAI GPT-4o (LLM + embeddings)
 
-**Target Architecture (Phase 2 — SEO & Scale Migration):**
-Next.js (App Router) for SSR/SSG/ISR marketing + dashboard surfaces
-↓
-Supabase Auth (JWT) with server-side session validation
-↓
-Supabase Edge Functions (secure backend)
-↓
-Supabase Postgres (RLS-protected tables) with pgvector
-↳ Stripe webhooks for billing
-↓
-OpenAI GPT-4o (LLM + embeddings)
+---
+
+# 2. Database Schema
+
+All tables are defined in the migration file:
+
+- `profiles`  
+- `bots`  
+- `knowledge_base`  
+- `conversations`  
+- `leads`  
+- `marketing_content`  
+- `billing_accounts`  
+- `usage_events`  
+- `templates`  
+- `plans`  
+- `reseller_accounts`  
+- `reseller_clients`  
+- `referrals`  
+- `commissions`  
+- `website_pages`  
+- `phone_calls`  
+
+See migration SQL for detailed fields, indexes, and relationships.
 
 ---
 
-## Guiding Principles
-- **Security first:** No secrets in the client; enforce RLS on every table; validate ownership before mutations; log and alert on anomalies.
-- **Type safety:** Generate typed SDKs from the Supabase schema; avoid `any`; align front-end models with database types.
-- **Incremental delivery:** Land value in small, testable increments with fast feedback and automated coverage.
-- **Observability:** Trace critical paths (auth, AI calls, billing) with Sentry and audit logs; add alerts for regressions.
+# 3. Row-Level Security (RLS)
 
----
+### **Principles**
+- Every resource belongs to exactly one `owner_id`.  
+- Users may only access their own resources.  
+- Resellers may view clients via relational checks.  
+- Admins bypass all restrictions.  
 
-## Workstreams & Key Actions
+### **Categories of Policies**
+1. **Owner CRUD** policies for:
+   - bots  
+   - leads  
+   - conversations  
+   - knowledge_base  
+   - marketing_content  
+   - billing_accounts  
+   - website_pages  
+   - phone_calls  
 
-### 1) Supabase Completion & Data Integrity
-- Deploy all Edge Functions (`ai-complete`, `create-lead`, `embed-knowledge-base`, `billing-overage-check`, `marketplace-install-template`, `reseller-track-referral`) and run the data-migration script.
-- Verify RLS policies per table (owners, collaborators, reseller/client) and add automated policy tests.
-- Add pgvector storage and search for knowledge base items; ensure embeddings are written via secure Edge Functions.
-- Generate TypeScript types from the Supabase schema for API payloads and database rows; wire into the React codebase.
+2. **Public Read** policies for:
+   - plans  
+   - templates  
 
-### 2) Background Processing & Reliability
-- Integrate a queue service (e.g., Inngest or Trigger.dev) for long-running tasks: embeddings, phone transcriptions, heavy AI completions.
-- Add retry/backoff and monitoring dashboards for queued jobs; surface job status in the UI where relevant.
-- Ensure API calls and background tasks enforce billing/usage checks before execution.
+3. **Reseller Access** policies for:
+   - reseller_accounts  
+   - reseller_clients  
+   - referrals  
+   - commissions  
 
-### 3) Billing & Compliance
-- Connect Stripe for subscriptions, plan enforcement, and overage handling through Supabase Edge webhooks.
-- Map plans to entitlements (limits for AI calls, storage, seats); block or warn on overages.
-- Document data handling (export/delete) for GDPR; publish updated privacy/terms; ensure audit logs are immutable and rotated.
-
-### 4) Architecture, Performance & Error Handling
-- Migrate marketing/landing pages to Next.js for SSR/SSG and consider ISR for dashboards with cache invalidation.
-- Apply code-splitting and dynamic imports for heavy modules (phone agent, marketing studio) and analyze bundles regularly.
-- Implement modern React Error Boundaries with user-friendly recovery paths; keep Sentry instrumentation aligned.
-- Add PWA capabilities (manifest, service worker) for offline reads and faster re-visits where appropriate.
-
-### 5) Accessibility (WCAG 2.1 AA)
-- Conduct an accessibility audit (contrast, focus states, labels, aria attributes, keyboard navigation).
-- Integrate automated checks (axe-core or Lighthouse) into CI and add manual spot-checks for critical flows.
-
-### 6) Testing & CI Stability
-- Stabilize Playwright e2e in CI (investigate Vitest/Playwright interaction); if unresolved, consider Cypress for e2e.
-- Maintain >90% coverage for core user journeys (auth, bot build, knowledge base search, lead capture, billing).
-- Add contract tests for Edge Functions and RLS policies; ensure mocks/stubs exist for third-party services.
-
-### 7) Branding & Marketing Experience
-- Define brand attributes (intelligent, reliable, empowering, white-label) and update palette (e.g., royal blue/purple primary with accessible contrast) and typography (e.g., Inter or IBM Plex Sans).
-- Refresh logo and iconography to reflect conversational AI; ensure scalability for the widget.
-- Redesign landing pages: clear value proposition, strong hero CTA, feature highlights, social proof, transparent pricing (including reseller tiers), and mobile-first layouts.
-- Add micro-interactions (subtle hovers, loaders) without harming performance or accessibility.
-
-### 8) Widget & Reseller Customisation
-- Ship a theme editor with preset themes (light, dark, corporate, playful) plus custom CSS for resellers.
-- Enable logo upload, primary/accent color selection, and welcome text configuration in the admin UI.
-- Ensure widget performance (<2 KB loader) and accessibility (aria labels, keyboard support, descriptive alt text).
-
-### 9) SEO Execution
-- With Next.js, generate programmatic sitemaps and `robots.txt` (block staging).
-- Implement metadata per page (`generateMetadata`), OpenGraph tags, and schema.org (SoftwareApplication/Product/FAQ) via JSON-LD.
-- Enforce descriptive filenames and alt text for all images; avoid keyword stuffing.
-- Improve internal linking, breadcrumbs, semantic HTML structure, and optimize assets (WebP, HTTP/2, caching/CDN).
-- Build a content hub (blog/knowledge center) targeting AI chatbot, automation, and case-study keywords.
+RLS policy file included in repository.
 
 ---
 
@@ -129,14 +113,6 @@ OpenAI GPT-4o (LLM + embeddings)
 - Tracks reseller-client relationship  
 
 Each function lives in `supabase/functions/<name>`.
-
-### 4.7. Background Queue Integration (planned)
-- Queue provider: Inngest or Trigger.dev (evaluate cost, latency, retries)  
-- Workloads: embeddings, phone transcriptions, bulk imports, long-running marketing jobs  
-- Ingress: Edge Functions enqueue jobs with auth context and tenant IDs  
-- Guarantees: at-least-once with idempotency keys, exponential backoff, DLQ monitoring  
-- Observability: structured logs, per-tenant metrics, alerting on retry exhaustion  
-- Security: RLS-aware payloads only; no secrets in queue payloads; server-side env for credentials  
 
 ---
 
@@ -247,17 +223,6 @@ Each function lives in `supabase/functions/<name>`.
 - SEO & landing page polish  
 - Final docs  
 
-## Milestone 5 – Next.js Migration (3–4 weeks)
-- Stand up Next.js App Router with Tailwind + shadcn-compatible components  
-- Migrate marketing pages to SSG/SSR with ISR for high-traffic sections  
-- Implement programmatic sitemap and robots.txt (production vs staging rules)  
-- Implement structured data (JSON-LD) for Product/FAQ and OpenGraph defaults  
-- Add server-side Supabase auth helpers (cookies, server actions) and protect dashboard routes  
-- Create API route proxies to Edge Functions to keep secrets server-side  
-- Enable image/font optimization, route-level code splitting, and streaming where applicable  
-- Run Lighthouse + axe-core accessibility checks in CI; ensure WCAG 2.1 AA for new pages  
-- Cutover plan: dual-run Vite + Next.js during migration, gate by subpath or subdomain, then deprecate Vite build  
-
 ---
 
 # 8. DevOps & Deployment
@@ -281,13 +246,6 @@ GitHub Actions:
 3. Test
 4. Build
 5. Deploy
-
-### Supabase Migration Completion Checklist
-- [ ] Deploy all Edge Functions (`ai-complete`, `create-lead`, `embed-knowledge-base`, `billing-overage-check`, `marketplace-install-template`, `reseller-track-referral`)  
-- [ ] Run and validate data-migration script end-to-end  
-- [ ] Verify RLS policies per table for owner/reseller/admin contexts; add regression tests  
-- [ ] Confirm no service-role or secret keys are exposed to clients; enforce server-only env usage  
-- [ ] Validate PostgREST and client SDK permissions against RLS expectations  
 
 ---
 
@@ -334,17 +292,25 @@ Each endpoint is fully documented in the Edge Function code.
 
 ---
 
-## Risks & Mitigations
-- **CI flakiness:** Parallelize isolated suites; run Playwright in dedicated workflow with stable browser versions.
-- **Billing regressions:** Use Stripe test mode, replayable webhooks, and strict entitlement checks before AI/embedding calls.
-- **Data leakage:** Continuous RLS tests; ownership validation in every Edge Function; secrets restricted to server-side env vars.
-- **Performance regressions:** Budget-based bundle analysis; monitor Core Web Vitals; cache and compress assets/CDN.
+# 12. Release Checklist
+- [ ] All migrations applied
+- [ ] RLS tested
+- [ ] Edge Functions deployed
+- [ ] Stripe keys configured
+- [ ] OpenAI key configured
+- [ ] Embedding engine live
+- [ ] Landing page updated
+- [ ] Documentation complete
+- [ ] Sentry/live error tracking enabled
+- [ ] Production logging verified
 
 ---
 
-## Definition of Done (per release train)
-- All new features backed by automated tests (unit + e2e where applicable).
-- Security checks (RLS, auth, secret validation) pass in CI.
-- Accessibility checks pass (automated + targeted manual).
-- Observability in place (Sentry + audit logs) with no untriaged errors.
-- Documentation updated (README/implementation notes) for new capabilities.
+# 13. Post-Launch Plans
+- Webhook integrations (Zapier, Make.com)
+- Agency white-label domain system
+- Team seats
+- User roles inside organization
+- Advanced analytics
+- Unified search across bots, leads, KB
+- Multi-language support

@@ -1,96 +1,43 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign, CheckCircle, AlertCircle } from 'lucide-react';
-import { Bot as BotType, Conversation, PlanType, StorageUsage } from '../../types';
-import { scrapeWebsiteContent } from '../../services/openaiService';
-import { AVAILABLE_MODELS, PLANS } from '../../constants';
+import { Save, Play, FileText, Settings, Upload, Globe, Share2, Code, Bot as BotIcon, Shield, Users, RefreshCcw, Image as ImageIcon, X, Clock, Zap, Monitor, LayoutTemplate, Trash2, Plus, Sparkles, Link, ExternalLink, Linkedin, Facebook, Twitter, MessageSquare, Building2, Briefcase, Plane, DollarSign } from 'lucide-react';
+import { Bot as BotType } from '../../types';
+import { generateBotResponse, scrapeWebsiteContent } from '../../services/openaiService';
+import { AVAILABLE_MODELS } from '../../constants';
 import { dbService } from '../../services/dbService';
-import { edgeFunctions } from '../../services/edgeFunctions';
-import { supabase } from '../../services/supabaseClient';
-import { PreviewMessage, buildAiCompleteMessages, deriveSentiment } from './utils';
-import { ModelSelector } from './ModelSelector';
-import { StorageIndicator } from './StorageIndicator';
 
 interface BotBuilderProps {
   bots: BotType[];
   onSave: (bot: BotType) => void;
   customDomain?: string;
   onLeadDetected?: (email: string) => void;
-  onConversationLogged?: (conversation: Conversation) => void;
-  userPlan?: PlanType;
-  storageUsage?: StorageUsage;
-  onUpgrade?: () => void;
 }
 
 const HUMAN_NAMES = ['Sarah', 'Michael', 'Jessica', 'David', 'Emma', 'James', 'Emily', 'Robert'];
 const AVATAR_COLORS = ['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed', '#db2777'];
 
 const PERSONAS = [
-  { id: 'support', name: 'Customer Support Agent', prompt: 'You are a helpful customer support agent for {company}. Be polite, patient, and concise. Your goal is to resolve issues quickly. If you do not know the answer, ask for their contact info so a team member can follow up.' },
-  { id: 'sales', name: 'Sales Representative', prompt: 'You are a top-performing sales representative for {company}. Your goal is to qualify leads and close deals. Be persuasive but not pushy. Focus on value and benefits. Always try to get a meeting booked or collect their email for follow-up.' },
-  { id: 'faq', name: 'FAQ Assistant', prompt: 'You are a knowledgeable FAQ assistant for {company}. Answer common questions clearly and concisely using the knowledge base provided. If a question is outside your knowledge, politely ask for their email so someone can get back to them.' },
-  { id: 'scheduler', name: 'Appointment Booking Agent', prompt: 'You are a dedicated appointment booking assistant for {company}. Your primary goal is to schedule appointments efficiently. Ask about their preferred date, time, and purpose. Confirm all details before finalizing. Be accommodating and professional.' },
-  { id: 'leadgen', name: 'Lead Qualification Bot', prompt: 'You are a lead qualification specialist for {company}. Your goal is to qualify potential customers by asking about their needs, budget, timeline, and decision-making process. Score their interest level and collect contact information for follow-up by the sales team.' },
-  { id: 'receptionist', name: 'AI Receptionist', prompt: 'You are the front desk receptionist for {company}. Be warm and welcoming. Help schedule appointments and route inquiries to the right department. Keep responses short and professional.' },
-  { id: 'hr', name: 'HR Assistant', prompt: 'You are a Human Resources assistant for {company}. Answer employee questions about benefits, holidays, and company policy. Maintain strict confidentiality and professionalism.' },
-  { id: 'tech', name: 'Technical Support', prompt: 'You are a Tier 1 Technical Support agent for {company}. Walk users through troubleshooting steps logically. Ask clarifying questions to diagnose the issue. Escalate complex issues by collecting contact information.' },
+  { id: 'support', name: 'Customer Support Agent', prompt: 'You are a helpful customer support agent for {company}. Be polite, patient, and concise. Your goal is to resolve issues quickly. If you do not know the answer, ask for their contact info.' },
+  { id: 'sales', name: 'Sales Representative', prompt: 'You are a top-performing sales representative for {company}. Your goal is to qualify leads and close deals. Be persuasive but not pushy. Focus on value and benefits. Always try to get a meeting booked.' },
+  { id: 'receptionist', name: 'AI Receptionist', prompt: 'You are the front desk receptionist for {company}. Be warm and welcoming. Help schedule appointments and route calls. Keep responses short and professional.' },
+  { id: 'city_gov', name: 'City Services Agent', prompt: 'You are the official AI agent for {company} (City Government). Assist citizens with utility bill payments, trash pickup schedules, and permit applications. Be authoritative, helpful, and community-focused. If a citizen reports an emergency, tell them to dial 911 immediately.' },
+  { id: 'batesville', name: 'Batesville City Assistant', prompt: 'You are the official AI liaison for the City of Batesville, Mississippi. Your primary duties are to assist residents with utility bill payments (water, gas, electricity), answer questions about city ordinances, and help schedule inspections. \n\nContext:\n- City Hall is located at 103 College St.\n- Utility payments can be made in person or via the online portal.\n- Trash pickup is weekly.\n\nBe professional, warm, and neighborly. Always direct utility payment queries to the secure payment portal.' },
+  { id: 'hr', name: 'HR Assistant', prompt: 'You are a Human Resources assistant. Answer employee questions about benefits, holidays, and company policy. Maintain strict confidentiality and professionalism.' },
+  { id: 'tech', name: 'Technical Support', prompt: 'You are a Tier 1 Technical Support agent. Walk users through troubleshooting steps logically. Ask clarifying questions to diagnose the issue.' },
+  { id: 'scheduler', name: 'Appointment Scheduler', prompt: 'You are a dedicated scheduling assistant for {company}. Your primary goal is to book appointments. Be efficient and accommodating. Always offer specific time slots and confirm details.' },
   { id: 'product', name: 'Product Specialist', prompt: 'You are an expert product specialist for {company}. Assist customers in finding the perfect product. Ask about their needs, compare options, and explain benefits clearly.' },
-  { id: 'realestate', name: 'Real Estate Agent', prompt: 'You are a knowledgeable real estate agent for {company}. Qualify buyers by asking about budget, location, and preferences. Schedule property viewings and collect contact details.' },
-  { id: 'legal', name: 'Legal Intake', prompt: 'You are a legal intake specialist for {company}. Collect potential client details and case information with empathy and discretion. Do not provide legal advice - focus on gathering information for attorney review.' },
+  { id: 'realestate', name: 'Real Estate Agent', prompt: 'You are a knowledgeable real estate agent for {company}. Qualify buyers by asking about budget, location, and preferences. Schedule property viewings.' },
+  { id: 'legal', name: 'Legal Intake', prompt: 'You are a legal intake specialist for {company}. Collect potential client details and case information with empathy and discretion. Do not provide legal advice.' },
+  { id: 'coach', name: 'Lifestyle Coach', prompt: 'You are a lifestyle and wellness coach representing {company}. Motivate users, track progress, and provide encouraging feedback. Maintain a positive, energetic tone.' },
   { id: 'recruiter', name: 'Recruitment Assistant', prompt: 'You are a recruitment assistant for {company}. Screen candidates by asking about their experience, availability, and skills. Be professional, encouraging, and efficient. If they seem qualified, ask for their email to schedule an interview.' },
   { id: 'travel', name: 'Travel Concierge', prompt: 'You are a knowledgeable travel concierge for {company}. Help users plan their perfect trip by asking about their budget, preferred climate, and interests. Suggest destinations and activities. Be enthusiastic and descriptive.' },
   { id: 'financial', name: 'Financial Guide', prompt: 'You are a financial guide for {company}. Help users understand our banking products, credit cards, and loan options. Explain complex terms simply. Be trustworthy and precise. Do not give personal investment advice.' }
 ];
 
-type IngestionRun = {
-  id: string;
-  label: string;
-  type: 'pdf' | 'url' | 'text';
-  status: 'processing' | 'success' | 'error';
-  chunksProcessed?: number;
-  totalTokens?: number;
-  message?: string;
-  createdAt: number;
-};
-
-type SaveState = {
-  status: 'idle' | 'saving' | 'success' | 'error';
-  message?: string;
-  previousBot?: BotType;
-};
-
-type ErrorLog = {
-  id: string;
-  timestamp: number;
-  operation: 'save' | 'embed' | 'scrape' | 'test';
-  error: string;
-  failedData?: any;
-};
-
-type UploadQueueItem = {
-  id: string;
-  file: File;
-  status: 'pending' | 'processing' | 'complete' | 'error';
-  progress: number;
-};
-
-export const BotBuilder: React.FC<BotBuilderProps> = ({
-  bots,
-  onSave,
-  customDomain,
-  onLeadDetected,
-  onConversationLogged,
-  userPlan = PlanType.FREE,
-  storageUsage,
-  onUpgrade
-}) => {
-  console.log('=== BOT BUILDER COMPONENT RENDERED - TIMESTAMP:', new Date().toISOString(), '===');
-  console.log('Props - bots:', bots);
-  console.log('Props - onSave:', onSave);
-
+export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDomain, onLeadDetected }) => {
   const [selectedBotId, setSelectedBotId] = useState<string>(bots[0]?.id || 'new');
   // Initialize with the selected bot or a default new one
   const [activeBot, setActiveBot] = useState<BotType>(bots[0] || {
-    id: 'new',
+    id: `b${Date.now()}`,
     name: 'New Assistant',
     type: 'Customer Support',
     systemPrompt: 'You are a helpful customer support assistant.',
@@ -107,30 +54,15 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
   });
 
   const [activeTab, setActiveTab] = useState<'config' | 'knowledge' | 'test' | 'embed'>('config');
-  const [previewInput, setPreviewInput] = useState('');
-  const [previewHistory, setPreviewHistory] = useState<PreviewMessage[]>([]);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const [isPreviewing, setIsPreviewing] = useState(false);
-  const [previewSessionId] = useState(() => `preview_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
-  const [previewConversationId, setPreviewConversationId] = useState<string | null>(null);
-  const [tokensUsed, setTokensUsed] = useState<number | null>(null);
-
+  const [testInput, setTestInput] = useState('');
+  const [testHistory, setTestHistory] = useState<{role: 'user'|'model', text: string, timestamp: number}[]>([]);
+  const [isTesting, setIsTesting] = useState(false);
+  
   // Knowledge Base State
   const [kbInput, setKbInput] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [isScraping, setIsScraping] = useState(false);
-  const [ingestionRuns, setIngestionRuns] = useState<IngestionRun[]>([]);
-  const [uploadingFileName, setUploadingFileName] = useState<string | null>(null);
-  const [knowledgeStatus, setKnowledgeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  // New state for enhanced features
-  const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [errorLog, setErrorLog] = useState<ErrorLog[]>([]);
-  const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
-  const autoSaveTimerRef = useRef<NodeJS.Timeout>();
-
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Embed Config State
@@ -162,230 +94,24 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [previewHistory, isPreviewing]);
-
-  // Auto-save detection
-  useEffect(() => {
-    // Detect changes
-    const originalBot = bots.find(b => b.id === activeBot.id);
-    const botChanged = JSON.stringify(activeBot) !== JSON.stringify(originalBot);
-    setHasUnsavedChanges(botChanged && activeBot.id !== 'new');
-
-    // Auto-save after 10 seconds of inactivity
-    if (botChanged && activeBot.id !== 'new') {
-      clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = setTimeout(() => {
-        console.log('Auto-save triggered');
-        handleSaveBot(true); // silent auto-save
-      }, 10000);
-    }
-
-    return () => clearTimeout(autoSaveTimerRef.current);
-  }, [activeBot, bots]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        if (hasUnsavedChanges || activeBot.id === 'new') {
-          handleSaveBot(false);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hasUnsavedChanges, activeBot]);
-
-  // Helper: Log errors for retry functionality
-  const logError = (operation: ErrorLog['operation'], error: string, data?: any) => {
-    const entry: ErrorLog = {
-      id: `err_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      timestamp: Date.now(),
-      operation,
-      error,
-      failedData: data,
-    };
-
-    setErrorLog(prev => [entry, ...prev].slice(0, 10)); // Keep last 10 errors
-
-    // Persist to localStorage for crash recovery
-    try {
-      localStorage.setItem(`error_log_${activeBot.id}`, JSON.stringify(entry));
-    } catch (e) {
-      console.error('Failed to save error log to localStorage:', e);
-    }
-  };
-
-  // Helper: Retry from error log
-  const retryFromErrorLog = async (errorId: string) => {
-    const error = errorLog.find(e => e.id === errorId);
-    if (!error) return;
-
-    switch (error.operation) {
-      case 'save':
-        await handleSaveBot();
-        break;
-      case 'embed':
-        if (error.failedData) {
-          await embedKnowledge(
-            error.failedData.label,
-            error.failedData.content,
-            error.failedData.type,
-            error.failedData.options
-          );
-        }
-        break;
-      case 'scrape':
-        if (error.failedData?.url) {
-          setUrlInput(error.failedData.url);
-          await handleScrapeUrl();
-        }
-        break;
-      // Add other operations as needed
-    }
-
-    // Remove from error log on successful retry
-    setErrorLog(prev => prev.filter(e => e.id !== errorId));
-  };
-
-  // Helper: Format time ago
-  const formatTimeAgo = (date: Date) => {
-    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-    if (seconds < 60) return 'just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  };
+  }, [testHistory, isTesting]);
 
   const handleBotSelect = (bot: BotType) => {
       setSelectedBotId(bot.id);
       setActiveBot(bot);
-      setPreviewHistory([]);
-      setPreviewError(null);
-      setTokensUsed(null);
-      setPreviewConversationId(null);
-      setHasUnsavedChanges(false);
-      setLastSaved(null);
+      setTestHistory([]);
   };
 
-  const handleSaveBot = async (isAutoSave = false) => {
-      console.log('=== HANDLE SAVE BOT CALLED ===', isAutoSave ? '(AUTO-SAVE)' : '(MANUAL)');
-
-      // Prevent double-saves
-      if (saveState.status === 'saving') {
-          console.log('Save already in progress, skipping...');
-          return;
+  const handleSaveBot = () => {
+      // Ensure we have a valid ID if it's new
+      const botToSave = { ...activeBot };
+      if (botToSave.id === 'new') {
+          botToSave.id = `b${Date.now()}`;
       }
-
-      // Validation
-      if (!activeBot.name?.trim()) {
-          if (!isAutoSave) alert('Bot name is required');
-          return;
-      }
-
-      if (!activeBot.systemPrompt?.trim()) {
-          if (!isAutoSave) alert('System prompt is required');
-          return;
-      }
-
-      // Optimistic update
-      setSaveState({ status: 'saving', previousBot: { ...activeBot } });
-
-      try {
-          const botToSave = { ...activeBot };
-          console.log('Bot before processing:', activeBot);
-
-          console.log('Saving bot:', botToSave);
-
-          // CRITICAL FIX: Ensure user profile exists before saving bot
-          // This prevents foreign key constraint violations
-          const { data: { user } } = await (supabase as any).auth.getUser();
-          if (user) {
-              const existingProfile = await dbService.getUserProfile(user.id);
-              if (!existingProfile) {
-                  console.log('Profile missing, creating one before saving bot...');
-                  await dbService.saveUserProfile({
-                      id: user.id,
-                      email: user.email || '',
-                      name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-                      role: 'OWNER' as any,
-                      plan: PlanType.FREE,
-                      companyName: 'My Company'
-                  });
-              }
-          }
-
-          // Save the bot and get the returned bot with the proper database ID
-          const savedBot = await dbService.saveBot(botToSave);
-
-          console.log('Bot saved successfully:', savedBot);
-
-          // CRITICAL: Verify we got a valid response
-          if (!savedBot || !savedBot.id || savedBot.id === 'new') {
-              throw new Error('Failed to save bot - invalid response from database');
-          }
-
-          // Success state with auto-dismiss
-          setSaveState({
-            status: 'success',
-            message: isAutoSave ? 'Auto-saved successfully' : 'Bot saved successfully'
-          });
-          setTimeout(() => setSaveState({ status: 'idle' }), 3000);
-
-          // Update local state with the saved bot (which has the database-generated UUID)
-          setActiveBot(savedBot);
-          setSelectedBotId(savedBot.id);
-          setLastSaved(new Date());
-          setHasUnsavedChanges(false);
-          onSave(savedBot);
-      } catch (error) {
-          console.error('Error in handleSaveBot:', error);
-
-          // Extract error message from various error types
-          let errorMessage = 'Unknown error occurred while saving bot';
-
-          if (error instanceof Error) {
-              errorMessage = error.message;
-          } else if (typeof error === 'string') {
-              errorMessage = error;
-          } else if (error && typeof error === 'object') {
-              // Handle Supabase PostgrestError objects
-              const pgError = error as any;
-              errorMessage = pgError.message
-                  || pgError.details
-                  || pgError.hint
-                  || JSON.stringify(error);
-          }
-
-          console.error('Extracted error message:', errorMessage);
-
-          // Rollback on failure
-          if (saveState.previousBot) {
-              setActiveBot(saveState.previousBot);
-          }
-
-          setSaveState({
-              status: 'error',
-              message: errorMessage,
-          });
-
-          // Log error for retry
-          logError('save', errorMessage, {
-              bot: activeBot,
-              errorType: error?.constructor?.name,
-              errorCode: (error as any)?.code
-          });
-
-          // Show alert for manual saves
-          if (!isAutoSave) {
-              alert('Failed to save bot: ' + errorMessage);
-          }
-      }
+      onSave(botToSave);
+      // Update local view
+      setActiveBot(botToSave);
+      setSelectedBotId(botToSave.id);
   };
 
   const handleApplyPersona = (personaId: string) => {
@@ -406,216 +132,62 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
     }
   };
 
-  const startIngestionRun = (label: string, type: IngestionRun['type']) => {
-    const run: IngestionRun = {
-      id: `ingest_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      label,
-      type,
-      status: 'processing',
-      createdAt: Date.now()
-    };
-
-    setIngestionRuns((prev) => [run, ...prev]);
-    return run.id;
-  };
-
-  const updateIngestionRun = (id: string, updates: Partial<IngestionRun>) => {
-    setIngestionRuns((prev) => prev.map((run) => run.id === id ? { ...run, ...updates } : run));
-  };
-
-  const attachKnowledgeLocally = (content: string) => {
-    setActiveBot((current) => ({
-      ...current,
-      knowledgeBase: [...(current.knowledgeBase || []), content]
-    }));
-  };
-
-  const embedKnowledge = async (
-    label: string,
-    content: string,
-    type: IngestionRun['type'],
-    options?: { fileType?: string; fileUrl?: string; chunkSize?: number }
-  ) => {
-    setKnowledgeStatus(null);
-    const runId = startIngestionRun(label, type);
-
-    if (!content.trim()) {
-      updateIngestionRun(runId, { status: 'error', message: 'No content to embed.' });
-      return;
-    }
-
-    if (!activeBot.id || activeBot.id === 'new') {
-      attachKnowledgeLocally(content);
-      const message = 'Save your bot before embedding knowledge.';
-      updateIngestionRun(runId, { status: 'error', message });
-      setKnowledgeStatus({ type: 'error', message });
-      return;
-    }
-
-    try {
-      const result = await edgeFunctions.embedKnowledgeBase(
-        activeBot.id,
-        content,
-        label,
-        options
-      );
-
-      attachKnowledgeLocally(content);
-      updateIngestionRun(runId, {
-        status: 'success',
-        chunksProcessed: result.chunksProcessed,
-        totalTokens: result.totalTokens,
-        message: `Embedded ${result.chunksProcessed} chunks (${result.totalTokens} tokens)`
-      });
-      setKnowledgeStatus({
-        type: 'success',
-        message: `Embedded ${result.chunksProcessed} chunks from ${result.fileName}`
-      });
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to embed knowledge';
-      updateIngestionRun(runId, { status: 'error', message: errorMessage });
-      setKnowledgeStatus({ type: 'error', message: errorMessage });
-      console.error('Embedding failed:', err);
-    }
-  };
-
-  const handleAddKnowledge = async () => {
+  const handleAddKnowledge = () => {
     if (!kbInput.trim()) return;
-
-    const newContent = kbInput;
+    setActiveBot({
+      ...activeBot,
+      knowledgeBase: [...(activeBot.knowledgeBase || []), kbInput]
+    });
     setKbInput('');
-    await embedKnowledge(`manual_${Date.now()}.txt`, newContent, 'text', { fileType: 'text' });
   };
 
   const handleScrapeUrl = async () => {
     if (!urlInput.trim()) return;
     setIsScraping(true);
-
-    const url = urlInput;
-    setUrlInput('');
-
+    
     try {
-        const extractedData = await scrapeWebsiteContent(url);
-        await embedKnowledge(new URL(url).hostname || url, extractedData, 'url', { fileType: 'url', fileUrl: url });
+        const extractedData = await scrapeWebsiteContent(urlInput);
+        setActiveBot({
+            ...activeBot,
+            knowledgeBase: [...(activeBot.knowledgeBase || []), extractedData]
+        });
+        setUrlInput('');
     } catch (error) {
         console.error("Scrape failed", error);
-        const errorMessage = "Failed to scrape website. Please check the URL and try again.";
-        setKnowledgeStatus({
-            type: 'error',
-            message: errorMessage
-        });
-        logError('scrape', errorMessage, { url });
+        alert("Failed to scrape website. Please check the URL and try again.");
     } finally {
         setIsScraping(false);
     }
   };
 
-  const handleFileUpload = async (file?: File | null) => {
-    if (!file) return;
-
-    // AUTO-SAVE BOT BEFORE EMBEDDING if ID is 'new'
-    if (activeBot.id === 'new') {
-      setSaveState({ status: 'saving', message: 'Saving bot before uploading...' });
-      try {
-        const savedBot = await dbService.saveBot({ ...activeBot });
-        setActiveBot(savedBot);
-        setSelectedBotId(savedBot.id);
-        onSave(savedBot);
-        setSaveState({ status: 'success', message: 'Bot saved, processing file...' });
-        setTimeout(() => setSaveState({ status: 'idle' }), 2000);
-      } catch (error) {
-        let errorMessage = 'Unknown error occurred while saving bot';
-        if (error instanceof Error) {
-            errorMessage = error.message;
-        } else if (typeof error === 'string') {
-            errorMessage = error;
-        } else if (error && typeof error === 'object') {
-            const pgError = error as any;
-            errorMessage = pgError.message || pgError.details || pgError.hint || JSON.stringify(error);
-        }
-        setSaveState({ status: 'error', message: 'Failed to save bot before upload: ' + errorMessage });
-        logError('save', errorMessage, { bot: activeBot, errorType: error?.constructor?.name });
-        return; // Abort upload
-      }
-    }
-
-    setUploadingFileName(file.name);
-
-    try {
-      const text = await file.text();
-      await embedKnowledge(file.name, text, file.type.includes('pdf') ? 'pdf' : 'text', {
-        fileType: file.type.includes('pdf') ? 'pdf' : 'text',
-        chunkSize: 800
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to process file';
-      setKnowledgeStatus({ type: 'error', message });
-      logError('embed', message, { fileName: file.name, fileType: file.type });
-    } finally {
-      setUploadingFileName(null);
-    }
-  };
-
-  const logConversation = (messages: PreviewMessage[], conversationId: string) => {
-    if (!onConversationLogged) return;
-
-    const normalizedMessages = messages.map(msg => ({
-      role: msg.role === 'assistant' ? 'model' as const : 'user' as const,
-      text: msg.text,
-      timestamp: msg.timestamp
-    }));
-
-    onConversationLogged({
-      id: conversationId,
-      botId: activeBot.id,
-      sessionId: conversationId,
-      messages: normalizedMessages,
-      sentiment: deriveSentiment(messages),
-      timestamp: Date.now()
-    });
-  };
-
   const handleTestSend = async () => {
-    if (!previewInput.trim()) return;
-    if (!activeBot.id || activeBot.id === 'new') {
-      setPreviewError('Save your bot before running a live preview.');
-      return;
-    }
+    if (!testInput.trim()) return;
     
     // Check for "hot lead" triggers (simple regex for email)
-    const emailMatch = previewInput.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi);
+    const emailMatch = testInput.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi);
     if (emailMatch && onLeadDetected) {
        onLeadDetected(emailMatch[0]);
     }
 
-    const newMessage: PreviewMessage = { role: 'user', text: previewInput, timestamp: Date.now() };
-    const updatedHistory = [...previewHistory, newMessage];
+    const newMessage = { role: 'user' as const, text: testInput, timestamp: Date.now() };
+    const updatedHistory = [...testHistory, newMessage];
     
-    setPreviewHistory(updatedHistory);
-    setPreviewInput('');
-    setIsPreviewing(true);
-    setPreviewError(null);
+    setTestHistory(updatedHistory);
+    setTestInput('');
+    setIsTesting(true);
 
     try {
-        const payload = buildAiCompleteMessages(activeBot, updatedHistory);
-        const response = await edgeFunctions.aiComplete(activeBot.id, payload, previewSessionId);
+        const context = activeBot.knowledgeBase.join('\n\n');
+        const response = await generateBotResponse(activeBot.systemPrompt, updatedHistory, newMessage.text, activeBot.model, context);
+        
+        // Use configured delay
+        setTimeout(() => {
+            setTestHistory(prev => [...prev, { role: 'model', text: response, timestamp: Date.now() }]);
+            setIsTesting(false);
+        }, activeBot.responseDelay || 1500);
 
-        const assistantMessage: PreviewMessage = {
-          role: 'assistant',
-          text: response.message,
-          timestamp: Date.now()
-        };
-
-        const finalHistory = [...updatedHistory, assistantMessage];
-        const conversationId = response.conversationId || previewConversationId || previewSessionId;
-        setPreviewHistory(finalHistory);
-        setPreviewConversationId(conversationId);
-        setTokensUsed(response.tokensUsed || null);
-        logConversation(finalHistory, conversationId);
     } catch (e) {
-        setPreviewError(e instanceof Error ? e.message : 'Failed to get response');
-    } finally {
-        setIsPreviewing(false);
+        setIsTesting(false);
     }
   };
 
@@ -630,12 +202,12 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
 <script src="https://${displayDomain}/embed.js" async></script>`;
 
   return (
-    <div className="h-full flex flex-col lg:flex-row gap-4 lg:gap-6 animate-fade-in">
+    <div className="h-[calc(100vh-6rem)] flex gap-6 animate-fade-in">
       {/* Sidebar List */}
-      <div className="w-full lg:w-64 shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden hidden lg:flex">
+      <div className="w-64 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden hidden md:flex">
          <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
            <h3 className="font-semibold text-slate-800">My Bots</h3>
-           <button
+           <button 
              onClick={() => {
                 const newBot = {
                     id: 'new',
@@ -650,15 +222,10 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
                     themeColor: '#1e3a8a',
                     maxMessages: 20,
                     randomizeIdentity: true,
-                    avatar: '',
                     responseDelay: 1500
                 } as BotType;
                 setActiveBot(newBot);
                 setSelectedBotId('new');
-                // Clear preview history when creating new bot
-                setPreviewHistory([]);
-                setPreviewError(null);
-                setTokensUsed(null);
              }}
              className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition"
            >
@@ -703,53 +270,15 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
                  <div className="flex items-center gap-2 text-xs text-slate-500">
                     <span className={`w-2 h-2 rounded-full ${activeBot.active ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
                     {activeBot.active ? 'Active' : 'Draft'} • {activeBot.model}
-                    {hasUnsavedChanges && activeBot.id !== 'new' ? (
-                      <span className="text-amber-600 font-medium ml-2">• Unsaved changes</span>
-                    ) : lastSaved && activeBot.id !== 'new' ? (
-                      <span className="ml-2">• Saved {formatTimeAgo(lastSaved)}</span>
-                    ) : activeBot.id === 'new' ? (
-                      <span className="text-slate-400 ml-2">• Not saved yet</span>
-                    ) : null}
                  </div>
                </div>
             </div>
             <div className="flex gap-2">
-               <button
-                 onClick={(e) => {
-                   console.log('=== SAVE BUTTON CLICKED ===');
-                   e.preventDefault();
-                   handleSaveBot(false);
-                 }}
-                 disabled={saveState.status === 'saving' || (!hasUnsavedChanges && activeBot.id !== 'new')}
-                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition shadow-sm ${
-                   saveState.status === 'saving'
-                     ? 'bg-blue-400 cursor-wait text-white'
-                     : !hasUnsavedChanges && activeBot.id !== 'new'
-                     ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                     : 'bg-blue-900 text-white hover:bg-blue-950'
-                 }`}
+               <button 
+                 onClick={handleSaveBot}
+                 className="flex items-center gap-2 px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-950 font-medium transition shadow-sm"
                >
-                 {saveState.status === 'saving' ? (
-                   <>
-                     <RefreshCcw size={18} className="animate-spin" />
-                     Saving...
-                   </>
-                 ) : saveState.status === 'success' ? (
-                   <>
-                     <CheckCircle size={18} />
-                     Saved
-                   </>
-                 ) : (
-                   <>
-                     <Save size={18} />
-                     Save Changes
-                     {hasUnsavedChanges && (
-                       <kbd className="ml-1 px-1.5 py-0.5 text-xs bg-blue-800 rounded">
-                         Ctrl+S
-                       </kbd>
-                     )}
-                   </>
-                 )}
+                 <Save size={18} /> Save Changes
                </button>
             </div>
          </div>
@@ -820,20 +349,23 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
                               <p className="text-xs text-slate-500 mt-1">These instructions define how the bot behaves.</p>
                            </div>
                            
-                           <div className="space-y-6">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div>
                                  <label className="block text-sm font-medium text-slate-700 mb-2">AI Model</label>
-                                 <ModelSelector
-                                   selectedModelId={activeBot.model}
-                                   onSelectModel={(modelId) => setActiveBot({...activeBot, model: modelId})}
-                                   showCostEstimate={true}
-                                   estimatedMonthlyMessages={PLANS[userPlan]?.conversations || 60}
-                                 />
+                                 <select 
+                                    value={activeBot.model}
+                                    onChange={(e) => setActiveBot({...activeBot, model: e.target.value})}
+                                    className="w-full rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900"
+                                 >
+                                    {AVAILABLE_MODELS.map(m => (
+                                        <option key={m.id} value={m.id}>{m.name}</option>
+                                    ))}
+                                 </select>
                               </div>
                               <div>
                                  <label className="block text-sm font-medium text-slate-700 mb-2">Creativity (Temperature)</label>
-                                 <input
-                                   type="range"
+                                 <input 
+                                   type="range" 
                                    min="0" max="1" step="0.1"
                                    value={activeBot.temperature}
                                    onChange={(e) => setActiveBot({...activeBot, temperature: parseFloat(e.target.value)})}
@@ -887,150 +419,63 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
             )}
 
             {activeTab === 'knowledge' && (
-                <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-                   {/* Storage Usage Indicator */}
-                   {storageUsage && (
-                     <StorageIndicator
-                       usage={storageUsage}
-                       plan={userPlan}
-                       onUpgrade={onUpgrade}
-                     />
-                   )}
-
-                   {knowledgeStatus && (
-                     <div className={`p-4 rounded-lg flex items-center gap-3 ${knowledgeStatus.type === 'success' ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
-                       {knowledgeStatus.type === 'success' ? <CheckCircle className="text-emerald-600" size={18} /> : <AlertCircle className="text-red-600" size={18} />}
-                       <span className={`${knowledgeStatus.type === 'success' ? 'text-emerald-700' : 'text-red-700'} text-sm`}>{knowledgeStatus.message}</span>
-                       <button
-                         onClick={() => setKnowledgeStatus(null)}
-                         className="ml-auto text-slate-400 hover:text-slate-600"
-                       >
-                         <X size={16} />
-                       </button>
-                     </div>
-                   )}
-
-                   {activeBot.id === 'new' && (
-                     <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 flex items-center gap-3">
-                       <AlertCircle className="text-blue-700" size={18} />
-                       <span className="text-blue-800 text-sm">Save your bot first to enable AI-powered knowledge embeddings.</span>
-                     </div>
-                   )}
-
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-                           <Upload size={18} className="text-blue-900" /> Upload PDF/Text
-                        </h3>
-                        <p className="text-xs text-slate-500 mb-4">Drop a PDF, TXT, or Markdown file to embed it into your bot’s knowledge base.</p>
-                        <label className="flex items-center justify-between w-full border-2 border-dashed border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-600 cursor-pointer hover:border-blue-300 hover:bg-blue-50/50 transition">
-                          <span>{uploadingFileName ? `Processing ${uploadingFileName}...` : 'Choose a file to upload'}</span>
-                          <Upload size={16} className="text-blue-900" />
-                          <input 
-                            type="file" 
-                            accept=".pdf,.txt,.md,.markdown" 
-                            className="hidden"
-                            onChange={(e) => handleFileUpload(e.target.files?.[0] || null)}
-                          />
-                        </label>
-                        <p className="text-[11px] text-slate-400 mt-2">Files stay private. Content is chunked and embedded via the secured edge function.</p>
-                     </div>
-
-                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-                           <Globe size={18} className="text-blue-900" /> Ingest from URL
-                        </h3>
-                        <p className="text-xs text-slate-500 mb-3">We will scrape the page, summarize it, and push it to embeddings.</p>
-                        <div className="flex gap-2">
-                           <input 
-                             type="url" 
-                             value={urlInput}
-                             onChange={(e) => setUrlInput(e.target.value)}
-                             placeholder="https://yourbusiness.com/docs"
-                             className="flex-1 rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900"
-                           />
-                           <button 
-                             onClick={handleScrapeUrl}
-                             disabled={isScraping || !urlInput}
-                             className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-950 disabled:opacity-50 transition font-medium flex items-center gap-2"
-                           >
-                             {isScraping ? <RefreshCcw className="animate-spin" size={16} /> : <Zap size={16} />}
-                             Train Bot
-                           </button>
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-2">Supports public URLs. Private pages should be uploaded as PDFs instead.</p>
-                     </div>
+                <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                      <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                         <Globe size={18} className="text-blue-900" /> Train from Website
+                      </h3>
+                      <div className="flex gap-2">
+                         <input 
+                           type="url" 
+                           value={urlInput}
+                           onChange={(e) => setUrlInput(e.target.value)}
+                           placeholder="https://yourbusiness.com"
+                           className="flex-1 rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900"
+                         />
+                         <button 
+                           onClick={handleScrapeUrl}
+                           disabled={isScraping || !urlInput}
+                           className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-950 disabled:opacity-50 transition font-medium flex items-center gap-2"
+                         >
+                           {isScraping ? <RefreshCcw className="animate-spin" size={16} /> : <Zap size={16} />}
+                           Train Bot
+                         </button>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-2">We will scrape this URL and add key info to the bot's memory.</p>
                    </div>
 
                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                      <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                         <FileText size={18} className="text-blue-900" /> Paste Text Snippet
+                      <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                         <FileText size={18} className="text-blue-900" /> Manual Training Data
                       </h3>
-                      <textarea 
-                        value={kbInput}
-                        onChange={(e) => setKbInput(e.target.value)}
-                        placeholder="Add specific facts, FAQs, or troubleshooting steps."
-                        className="w-full h-28 rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900 text-sm"
-                      />
-                      <div className="flex justify-between items-center mt-3">
-                        <p className="text-xs text-slate-500">Rich text is flattened automatically. Keep sensitive data out of prompts.</p>
-                        <button 
+                      <div className="flex gap-2 mb-4">
+                         <input 
+                           type="text" 
+                           value={kbInput}
+                           onChange={(e) => setKbInput(e.target.value)}
+                           placeholder="Add specific fact (e.g. 'We are closed on Sundays')"
+                           className="flex-1 rounded-lg border-slate-200 focus:ring-blue-900 focus:border-blue-900"
+                         />
+                         <button 
                            onClick={handleAddKnowledge}
-                           className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition font-medium"
-                        >
-                           Embed Text
-                        </button>
+                           className="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-200 transition font-medium"
+                         >
+                           Add Fact
+                         </button>
                       </div>
-                   </div>
-
-                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                      <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                         <RefreshCcw size={18} className="text-blue-900" /> Ingestion Activity
-                      </h3>
-                      <div className="space-y-3">
-                        {ingestionRuns.length === 0 && (
-                          <div className="text-center py-6 text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-lg">
-                             No ingestion runs yet. Upload a PDF, paste text, or ingest a URL to see chunking status.
-                          </div>
-                        )}
-                        {ingestionRuns.map(run => (
-                          <div key={run.id} className="flex items-start justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <div>
-                              <div className="font-medium text-slate-800 text-sm">{run.label}</div>
-                              <div className="text-[11px] text-slate-500">{run.type.toUpperCase()} • {new Date(run.createdAt).toLocaleTimeString()}</div>
-                              {run.message && <div className="text-xs text-slate-600 mt-1">{run.message}</div>}
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                              {run.status === 'processing' && <RefreshCcw className="animate-spin text-blue-600" size={16} />}
-                              {run.status === 'success' && <CheckCircle className="text-emerald-600" size={16} />}
-                              {run.status === 'error' && <AlertCircle className="text-red-600" size={16} />}
-                              <div className="text-xs text-slate-500">
-                                {run.status === 'processing' && 'Embedding...'}
-                                {run.status === 'success' && `${run.chunksProcessed || 0} chunks`}
-                                {run.status === 'error' && 'Failed'}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                   </div>
-
-                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                      <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                         <FileText size={18} className="text-blue-900" /> Knowledge Base Entries
-                      </h3>
+                      
                       <div className="space-y-2">
-                         {(activeBot.knowledgeBase?.length || 0) === 0 && (
+                         {activeBot.knowledgeBase.length === 0 && (
                             <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-lg">
                                No knowledge added yet.
                             </div>
                          )}
-                         {(activeBot.knowledgeBase || []).map((item, i) => (
+                         {activeBot.knowledgeBase.map((item, i) => (
                             <div key={i} className="flex items-start justify-between bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm">
                                <p className="text-slate-700 whitespace-pre-wrap">{item}</p>
                                <button 
                                  onClick={() => {
-                                     const newKb = [...(activeBot.knowledgeBase || [])];
+                                     const newKb = [...activeBot.knowledgeBase];
                                      newKb.splice(i, 1);
                                      setActiveBot({...activeBot, knowledgeBase: newKb});
                                  }}
@@ -1053,7 +498,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
                               <Code size={18} className="text-blue-900"/> Website Embed
                            </h3>
                            <p className="text-sm text-slate-600 mb-4">
-                              Copy and paste this code into your website’s <code>&lt;head&gt;</code> tag.
+                              Copy and paste this code into your website's <code>&lt;head&gt;</code> tag.
                            </p>
                            <div className="bg-slate-900 text-slate-300 p-4 rounded-lg font-mono text-xs overflow-x-auto relative group">
                               <pre>{embedCode}</pre>
@@ -1185,42 +630,20 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
                             </div>
                          </div>
                       </div>
-                      <button 
-                        onClick={() => {
-                          setPreviewHistory([]);
-                          setPreviewConversationId(null);
-                          setTokensUsed(null);
-                          setPreviewError(null);
-                        }} 
-                        className="text-xs text-slate-400 hover:text-red-500 flex items-center gap-1"
-                      >
+                      <button onClick={() => setTestHistory([])} className="text-xs text-slate-400 hover:text-red-500 flex items-center gap-1">
                          <Trash2 size={12}/> Clear Chat
                       </button>
                    </div>
 
-                   {previewError && (
-                     <div className="mx-4 mt-2 px-3 py-2 bg-red-50 border border-red-200 text-xs text-red-700 rounded-lg">
-                       {previewError}
-                     </div>
-                   )}
-                   {previewConversationId && (
-                     <div className="mx-4 mb-2 text-[11px] text-slate-500 flex items-center gap-2">
-                       <span className="px-2 py-0.5 bg-slate-100 rounded-md border border-slate-200">Session {previewConversationId.slice(0, 12)}</span>
-                       {tokensUsed !== null && (
-                         <span className="px-2 py-0.5 bg-slate-100 rounded-md border border-slate-200">Tokens: {tokensUsed}</span>
-                       )}
-                     </div>
-                   )}
-
                    {/* Chat History */}
                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50" ref={scrollRef}>
-                      {previewHistory.length === 0 && (
+                      {testHistory.length === 0 && (
                          <div className="text-center py-12 text-slate-400 text-sm">
                             <BotIcon size={32} className="mx-auto mb-2 opacity-20"/>
                             Start typing to test your bot.
                          </div>
                       )}
-                      {previewHistory.map((msg, i) => (
+                      {testHistory.map((msg, i) => (
                          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm shadow-sm ${
                                msg.role === 'user' 
@@ -1231,7 +654,7 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
                             </div>
                          </div>
                       ))}
-                      {isPreviewing && (
+                      {isTesting && (
                          <div className="flex justify-start">
                             <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm flex gap-1 items-center">
                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
@@ -1246,17 +669,17 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
                    <div className="p-4 bg-white border-t border-slate-100">
                       <div className="relative">
                          <input 
-                           value={previewInput}
-                          onChange={(e) => setPreviewInput(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleTestSend()}
-                          placeholder="Type a message..."
-                          className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:ring-blue-900 focus:border-blue-900 shadow-sm"
-                        />
-                        <button 
-                          onClick={handleTestSend}
-                          disabled={!previewInput.trim() || isPreviewing}
-                          className="absolute right-2 top-2 p-2 bg-blue-900 text-white rounded-lg hover:bg-blue-950 disabled:opacity-50 transition"
-                        >
+                           value={testInput}
+                           onChange={(e) => setTestInput(e.target.value)}
+                           onKeyDown={(e) => e.key === 'Enter' && handleTestSend()}
+                           placeholder="Type a message..."
+                           className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:ring-blue-900 focus:border-blue-900 shadow-sm"
+                         />
+                         <button 
+                           onClick={handleTestSend}
+                           disabled={!testInput.trim() || isTesting}
+                           className="absolute right-2 top-2 p-2 bg-blue-900 text-white rounded-lg hover:bg-blue-950 disabled:opacity-50 transition"
+                         >
                             <Play size={16} fill="currentColor" />
                          </button>
                       </div>
@@ -1265,77 +688,6 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({
             )}
          </div>
       </div>
-
-      {/* Floating Save Status Toast */}
-      {saveState.status !== 'idle' && (
-        <div className={`fixed bottom-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up ${
-          saveState.status === 'saving' ? 'bg-blue-600 text-white' :
-          saveState.status === 'success' ? 'bg-emerald-600 text-white' :
-          'bg-red-600 text-white'
-        }`}>
-          {saveState.status === 'saving' && (
-            <>
-              <RefreshCcw className="animate-spin" size={18} />
-              <span>{saveState.message || 'Saving changes...'}</span>
-            </>
-          )}
-          {saveState.status === 'success' && (
-            <>
-              <CheckCircle size={18} />
-              <span>{saveState.message || 'Saved successfully'}</span>
-            </>
-          )}
-          {saveState.status === 'error' && (
-            <>
-              <AlertCircle size={18} />
-              <div>
-                <div className="font-semibold">Save failed</div>
-                <div className="text-xs opacity-90">{saveState.message}</div>
-              </div>
-              <button
-                onClick={() => handleSaveBot(false)}
-                className="ml-2 px-3 py-1 bg-white/20 rounded hover:bg-white/30 text-xs font-medium"
-              >
-                Retry
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Error Recovery Panel */}
-      {errorLog.length > 0 && (
-        <div className="fixed bottom-20 right-4 w-96 bg-white rounded-lg shadow-xl border-2 border-red-200 p-4 z-40 max-h-80 flex flex-col">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="font-bold text-red-700 flex items-center gap-2">
-              <AlertCircle size={18} /> Recent Errors
-            </h4>
-            <button
-              onClick={() => setErrorLog([])}
-              className="text-xs text-slate-400 hover:text-slate-600"
-            >
-              Clear all
-            </button>
-          </div>
-          <div className="space-y-2 overflow-y-auto flex-1">
-            {errorLog.map(err => (
-              <div key={err.id} className="bg-red-50 p-3 rounded-lg text-sm">
-                <div className="font-semibold text-red-800 capitalize">{err.operation} Failed</div>
-                <div className="text-xs text-red-600 mt-1">{err.error}</div>
-                <div className="text-[10px] text-slate-500 mt-1">
-                  {new Date(err.timestamp).toLocaleTimeString()}
-                </div>
-                <button
-                  onClick={() => retryFromErrorLog(err.id)}
-                  className="mt-2 px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
-                >
-                  Retry
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

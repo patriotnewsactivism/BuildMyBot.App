@@ -2,15 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Users, DollarSign, Server, Activity, AlertTriangle, CheckCircle, Search, Briefcase, Globe, Loader } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { dbService } from '../../services/dbService';
-import { supabase } from '../../services/supabaseClient';
 import { User, UserRole } from '../../types';
 import { PLANS, RESELLER_TIERS } from '../../constants';
 
-interface AdminDashboardProps {
-  readOnly?: boolean;
-}
-
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false }) => {
+export const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [partners, setPartners] = useState<User[]>([]);
@@ -18,58 +13,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
   const [stats, setStats] = useState({
       totalMRR: 0,
       totalUsers: 0,
-      activeBots: 0,
+      activeBots: 3850, // Mock for now until we query all bots
       partnerCount: 0
   });
-  const [roleUpdateEmail, setRoleUpdateEmail] = useState('');
-  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.ADMIN);
-  const [roleUpdateStatus, setRoleUpdateStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
         try {
-            console.log('AdminDashboard - Fetching all users...');
             const allUsers = await dbService.getAllUsers();
-            console.log('AdminDashboard - Got users:', allUsers.length);
-
+            
             // Calculate MRR
             const mrr = allUsers.reduce((acc, u) => acc + (PLANS[u.plan]?.price || 0), 0);
-            console.log('AdminDashboard - Calculated MRR:', mrr);
-
+            
             // Segregate Partners
             const partnerList = allUsers.filter(u => u.role === UserRole.RESELLER);
-            console.log('AdminDashboard - Partners:', partnerList.length);
-
-            // Count all bots across all users using the database helper function
-            let totalBots = 0;
-            if (supabase) {
-                console.log('AdminDashboard - Fetching bots count...');
-                const { data: botsCount, error: botsError } = await supabase.rpc('get_total_bots_count');
-                if (botsError) console.error('Error fetching bots count:', botsError);
-                totalBots = botsCount || 0;
-                console.log('AdminDashboard - Total bots:', totalBots);
-            }
-
+            
             setUsers(allUsers);
             setPartners(partnerList);
-
+            
             setStats({
                 totalMRR: mrr,
                 totalUsers: allUsers.length,
-                activeBots: totalBots,
+                activeBots: 3850, // Placeholder
                 partnerCount: partnerList.length
             });
 
-            // Generate revenue trend data (using current MRR as baseline)
-            // TODO: Replace with actual historical revenue data from billing_events table
+            // Mock Revenue Data based on MRR for visualization
             setRevenueData([
-                { month: 'Jan', amount: Math.round(mrr * 0.4) },
-                { month: 'Feb', amount: Math.round(mrr * 0.55) },
-                { month: 'Mar', amount: Math.round(mrr * 0.7) },
-                { month: 'Apr', amount: Math.round(mrr * 0.85) },
-                { month: 'May', amount: Math.round(mrr * 0.92) },
-                { month: 'Jun', amount: Math.round(mrr) },
+                { month: 'Jan', amount: mrr * 0.4 },
+                { month: 'Feb', amount: mrr * 0.55 },
+                { month: 'Mar', amount: mrr * 0.7 },
+                { month: 'Apr', amount: mrr * 0.85 },
+                { month: 'May', amount: mrr * 0.92 },
+                { month: 'Jun', amount: mrr },
             ]);
 
         } catch (e) {
@@ -82,73 +58,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
   }, []);
 
   const handleApprovePartner = async (id: string) => {
-    if (readOnly) return;
     await dbService.approvePartner(id);
     // Optimistic update
     setPartners(prev => prev.map(p => p.id === id ? { ...p, status: 'Active' } : p));
   };
 
   const handleToggleBusinessStatus = async (id: string, currentStatus: string) => {
-    if (readOnly) return;
     const newStatus = currentStatus === 'Active' ? 'Suspended' : 'Active';
     await dbService.updateUserStatus(id, newStatus);
     setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus } : u));
   };
-
-  const handleRoleUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (readOnly || isUpdatingRole) return;
-
-    const email = roleUpdateEmail.trim().toLowerCase();
-    if (!email) {
-      setRoleUpdateStatus({ type: 'error', message: 'Please enter an email address.' });
-      return;
-    }
-
-    setIsUpdatingRole(true);
-    setRoleUpdateStatus(null);
-
-    try {
-      const updatedProfile = await dbService.setUserRoleByEmail(email, selectedRole);
-
-      if (updatedProfile) {
-        setUsers(prev => {
-          const existingIndex = prev.findIndex(u => u.id === updatedProfile.id);
-          if (existingIndex === -1) {
-            return [...prev, updatedProfile];
-          }
-          const updatedUsers = [...prev];
-          updatedUsers[existingIndex] = { ...prev[existingIndex], ...updatedProfile };
-          return updatedUsers;
-        });
-
-        setPartners(prev => {
-          const filtered = prev.filter(p => p.id !== updatedProfile.id);
-          return selectedRole === UserRole.RESELLER ? [...filtered, updatedProfile] : filtered;
-        });
-
-        setRoleUpdateStatus({
-          type: 'success',
-          message: `${email} is now set to ${selectedRole.replace(/_/g, ' ').toLowerCase()}.`,
-        });
-      } else {
-        setRoleUpdateStatus({ type: 'error', message: 'No user found with that email address.' });
-      }
-    } catch (error) {
-      console.error('Admin role update error:', error);
-      setRoleUpdateStatus({ type: 'error', message: 'Failed to update role. Please try again.' });
-    } finally {
-      setIsUpdatingRole(false);
-    }
-  };
-
-  const roleOptions = [
-    { value: UserRole.ADMIN, label: 'Admin' },
-    { value: UserRole.BETA_TESTER, label: 'Beta Tester' },
-    { value: UserRole.ADVERTISER, label: 'Advertiser' },
-    { value: UserRole.WEBMASTER, label: 'Webmaster' },
-    { value: UserRole.RESELLER, label: 'Partner / Reseller' },
-  ];
 
   if (loading) {
       return <div className="flex items-center justify-center h-96"><Loader className="animate-spin text-blue-900" size={32}/></div>;
@@ -156,16 +75,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
 
   return (
     <div className="space-y-8 animate-fade-in pb-20">
-      {readOnly && (
-        <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-800">
-          <AlertTriangle size={18} className="mt-0.5" />
-          <div>
-            <p className="font-semibold text-sm">Read-only admin access</p>
-            <p className="text-xs">You can review all system data, but account or platform changes are disabled for this user.</p>
-          </div>
-        </div>
-      )}
-
       <div className="bg-slate-900 text-white p-6 -mx-4 -mt-4 md:-mx-8 md:-mt-8 md:rounded-b-2xl mb-8 shadow-lg">
           <div className="flex justify-between items-center max-w-7xl mx-auto">
             <div>
@@ -180,48 +89,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
                 </button>
             </div>
           </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div>
-            <h3 className="text-xl font-semibold text-slate-800">Assign privileged roles</h3>
-            <p className="text-sm text-slate-500">Update admin, beta, advertiser, webmaster, or partner access instantly by email.</p>
-          </div>
-          <form onSubmit={handleRoleUpdate} className="flex flex-col md:flex-row gap-3 md:items-center w-full md:w-auto">
-            <input
-              type="email"
-              value={roleUpdateEmail}
-              onChange={(e) => setRoleUpdateEmail(e.target.value)}
-              placeholder="user@example.com"
-              className="w-full md:w-64 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-blue-900 focus:border-blue-900"
-              disabled={readOnly}
-              required
-            />
-            <select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value as UserRole)}
-              className="w-full md:w-56 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-blue-900 focus:border-blue-900 bg-white"
-              disabled={readOnly}
-            >
-              {roleOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              disabled={readOnly || isUpdatingRole}
-              className="px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-950 disabled:opacity-60 disabled:cursor-not-allowed text-sm font-semibold shadow-sm"
-            >
-              {isUpdatingRole ? 'Updating...' : 'Set Role'}
-            </button>
-          </form>
-        </div>
-        {roleUpdateStatus && (
-          <div className={`mt-4 text-sm ${roleUpdateStatus.type === 'success' ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : 'text-red-700 bg-red-50 border border-red-100'} p-3 rounded-lg`}>
-            {roleUpdateStatus.message}
-          </div>
-        )}
       </div>
 
       {/* Global Stats */}
@@ -252,8 +119,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
           </div>
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-blue-50 text-blue-900 rounded-lg"><Briefcase size={20} /></div>
-              <span className="text-xs font-medium bg-blue-50 text-blue-900 px-2 py-1 rounded-full">New</span>
+              <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><Briefcase size={20} /></div>
+              <span className="text-xs font-medium bg-purple-50 text-purple-600 px-2 py-1 rounded-full">New</span>
             </div>
             <p className="text-3xl font-bold text-slate-800">{stats.partnerCount}</p>
             <p className="text-sm text-slate-500 mt-1">Active Partners</p>
@@ -363,16 +230,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
                     </span>
                     </td>
                     <td className="px-6 py-4 flex gap-2">
-                      {readOnly ? (
-                        <span className="text-xs text-slate-400">View only</span>
-                      ) : (
-                        <button
-                          onClick={() => handleToggleBusinessStatus(user.id, user.status || 'Active')}
-                          className={`text-xs px-2 py-1 rounded border ${user.status === 'Active' ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
-                        >
-                           {user.status === 'Active' ? 'Suspend' : 'Activate'}
-                        </button>
-                      )}
+                      <button 
+                        onClick={() => handleToggleBusinessStatus(user.id, user.status || 'Active')}
+                        className={`text-xs px-2 py-1 rounded border ${user.status === 'Active' ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}
+                      >
+                         {user.status === 'Active' ? 'Suspend' : 'Activate'}
+                      </button>
                     </td>
                 </tr>
                 ))}
@@ -414,7 +277,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
                         <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
                             tier.label === 'Platinum' ? 'bg-slate-900 text-white' : 
                             tier.label === 'Gold' ? 'bg-yellow-100 text-yellow-800' : 
-                            'bg-red-100 text-red-800'
+                            'bg-orange-100 text-orange-800'
                         }`}>
                             {tier.label}
                         </span>
@@ -422,20 +285,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
                         <td className="px-6 py-4">{clientCount}</td>
                         <td className="px-6 py-4 font-mono text-slate-500">{partner.resellerCode}</td>
                         <td className="px-6 py-4">
-                            <span className={`text-xs ${partner.status === 'Active' ? 'text-emerald-700' : 'text-red-700'}`}>{partner.status || 'Pending'}</span>
+                            <span className={`text-xs ${partner.status === 'Active' ? 'text-emerald-600' : 'text-orange-600'}`}>{partner.status || 'Pending'}</span>
                         </td>
                         <td className="px-6 py-4">
                         {(partner.status === 'Pending' || !partner.status) ? (
-                            readOnly ? (
-                              <span className="text-xs text-slate-400">Pending (view only)</span>
-                            ) : (
-                              <button
-                                onClick={() => handleApprovePartner(partner.id)}
-                                className="bg-blue-900 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-950 shadow-sm"
-                              >
-                                  Approve Application
-                              </button>
-                            )
+                            <button 
+                            onClick={() => handleApprovePartner(partner.id)}
+                            className="bg-blue-900 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-950 shadow-sm"
+                            >
+                                Approve Application
+                            </button>
                         ) : (
                             <span className="text-xs text-slate-400">Approved</span>
                         )}

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Search, Phone, Mail, User as UserIcon, Flame, Send, X, Check, Download, ArrowUpRight, LayoutGrid, List, BarChart3 } from 'lucide-react';
+import { Search, Filter, Phone, Mail, MoreHorizontal, User as UserIcon, Flame, Send, X, Check, Download, ArrowUpRight, LayoutGrid, List, GripVertical } from 'lucide-react';
 import { Lead } from '../../types';
-import { getScoreBand } from '../../services/leadCapture';
 
 interface LeadsCRMProps {
   leads: Lead[];
@@ -30,25 +29,13 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
     return matchesFilter && matchesSearch;
   });
 
-  const averageScore = filteredLeads.length ? Math.round(filteredLeads.reduce((acc, lead) => acc + (lead.score || 0), 0) / filteredLeads.length) : 0;
-  const hotLeads = filteredLeads.filter((lead) => getScoreBand(lead.score) === 'Hot');
-  const warmLeads = filteredLeads.filter((lead) => getScoreBand(lead.score) === 'Warm');
-  const coldLeads = filteredLeads.filter((lead) => getScoreBand(lead.score) === 'Cold');
-
-  const scoreBadge = (score: number) => {
-    const band = getScoreBand(score);
-    if (band === 'Hot') return 'bg-red-50 text-red-800 border-red-200';
-    if (band === 'Warm') return 'bg-blue-50 text-blue-800 border-blue-200';
-    return 'bg-slate-100 text-slate-800 border-slate-200';
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'New': return 'bg-blue-100 text-blue-900 border-blue-200';
-      case 'Contacted': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-      case 'Qualified': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'Closed': return 'bg-slate-200 text-slate-800 border-slate-300';
-      default: return 'bg-slate-100 text-slate-800';
+      case 'Contacted': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'Qualified': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'Closed': return 'bg-slate-200 text-slate-600 border-slate-300';
+      default: return 'bg-slate-100 text-slate-700';
     }
   };
 
@@ -86,45 +73,27 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
     setEmailSent(false);
   };
 
-  const handleSendEmail = async () => {
-    // Mark as contacted without sending email (email integration pending)
+  const handleSendEmail = () => {
+    // Mock send
     setEmailSent(true);
     setTimeout(() => {
         setEmailModalOpen(false);
-        if (selectedLead) {
-          handleStatusChange(selectedLead.id, 'Contacted');
-          // TODO: Integrate with email service (SendGrid, AWS SES, etc.)
-        }
-    }, 800);
+        if (selectedLead) handleStatusChange(selectedLead.id, 'Contacted');
+    }, 1500);
   };
 
   const handleExportCSV = () => {
-    const headers = ['ID', 'Name', 'Email', 'Phone', 'Score', 'Score Band', 'Status', 'Date', 'Source'];
-    const rows = filteredLeads.map(l => [
-      l.id,
-      l.name,
-      l.email,
-      l.phone || '',
-      l.score,
-      getScoreBand(l.score),
-      l.status,
-      l.createdAt,
-      l.sourceUrl || 'N/A',
-    ]);
-
-    const encodeCell = (value: string | number) => {
-      const stringValue = String(value ?? '');
-      return `"${stringValue.replace(/"/g, '""')}"`;
-    };
-
-    const csvLines = [headers.map(encodeCell).join(','), ...rows.map(row => row.map(encodeCell).join(','))].join('\n');
-    const blob = new Blob([csvLines], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `leads_export_${new Date().toISOString().split('T')[0]}.csv`;
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'Score', 'Status', 'Date'];
+    const rows = leads.map(l => [l.id, l.name, l.email, l.phone || '', l.score, l.status, l.createdAt]);
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `leads_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
   };
 
   const KanbanColumn: React.FC<{ status: string; items: Lead[] }> = ({ status, items }) => (
@@ -135,7 +104,7 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
     >
       <div className={`flex justify-between items-center mb-4 pb-2 border-b-2 ${
          status === 'New' ? 'border-blue-500' : 
-         status === 'Contacted' ? 'border-indigo-500' : 
+         status === 'Contacted' ? 'border-yellow-500' : 
          status === 'Qualified' ? 'border-emerald-500' : 'border-slate-400'
       }`}>
         <h3 className="font-bold text-slate-700">{status}</h3>
@@ -154,17 +123,12 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
           >
             <div className="flex justify-between items-start mb-2">
                <div className="flex items-center gap-2">
-                 {lead.score > 75 && <Flame size={14} className="text-red-600 fill-red-600" />}
-                 <span className="font-bold text-slate-900 text-sm">{lead.name}</span>
+                 {lead.score > 75 && <Flame size={14} className="text-orange-500 fill-orange-500" />}
+                 <span className="font-bold text-slate-800 text-sm">{lead.name}</span>
                </div>
-               <div className="flex items-center gap-1">
-                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${lead.score > 75 ? 'bg-red-50 text-red-800' : 'bg-slate-100 text-slate-800'}`}>
-                   {lead.score}
-                 </span>
-                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${scoreBadge(lead.score)}`}>
-                   {getScoreBand(lead.score)}
-                 </span>
-               </div>
+               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${lead.score > 75 ? 'bg-orange-50 text-orange-600' : 'bg-slate-100 text-slate-500'}`}>
+                 {lead.score}
+               </span>
             </div>
             
             <div className="text-xs text-slate-500 space-y-1 mb-3">
@@ -172,7 +136,7 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
                  <Mail size={12}/> {lead.email}
                </div>
                <div className="flex items-center gap-1.5">
-                 <UserIcon size={12}/> Bot #{lead.botId}
+                 <UserIcon size={12}/> Bot #{lead.sourceBotId}
                </div>
             </div>
 
@@ -209,7 +173,7 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
                           <Check size={32} />
                        </div>
                        <h4 className="font-bold text-lg text-slate-800">Email Sent!</h4>
-                       <p className="text-slate-500">Lead status updated to ‘Contacted’.</p>
+                       <p className="text-slate-500">Lead status updated to 'Contacted'.</p>
                    </div>
                ) : (
                    <div className="p-6 space-y-4">
@@ -275,51 +239,6 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
           >
             <Download size={16} /> Export CSV
           </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase text-slate-400 font-semibold">Average Score</p>
-            <p className="text-3xl font-bold text-slate-800">{averageScore}</p>
-            <p className="text-xs text-slate-500">Across filtered leads</p>
-          </div>
-          <div className="w-14 h-14 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-800 font-bold">
-            <BarChart3 size={24} />
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <div className="flex justify-between items-center mb-2">
-            <p className="text-xs uppercase text-slate-400 font-semibold">Lead Quality</p>
-            <span className="text-[11px] text-slate-500">{filteredLeads.length} leads</span>
-          </div>
-          <div className="space-y-2">
-            {[{label: 'Hot', count: hotLeads.length, color: 'bg-red-600'}, {label: 'Warm', count: warmLeads.length, color: 'bg-blue-600'}, {label: 'Cold', count: coldLeads.length, color: 'bg-slate-600'}].map(item => {
-              const percent = filteredLeads.length ? Math.round((item.count / filteredLeads.length) * 100) : 0;
-              return (
-                <div key={item.label}>
-                  <div className="flex justify-between text-xs text-slate-600">
-                    <span>{item.label} Leads</span>
-                    <span className="font-semibold">{percent}%</span>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden mt-1">
-                    <div className={`${item.color} h-2`} style={{width: `${percent}%`}}></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <p className="text-xs uppercase text-slate-400 font-semibold mb-2">Scoring Signals</p>
-          <ul className="text-sm text-slate-600 space-y-1">
-            <li>• Email + phone capture automatically boosts score</li>
-            <li>• High-intent phrases (demo, quote, call) increase priority</li>
-            <li>• Longer messages add confidence to lead quality</li>
-          </ul>
         </div>
       </div>
 
@@ -406,12 +325,9 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
                     </td>
                     <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          {lead.score > 75 && <Flame size={16} className="text-red-600 fill-red-600" />}
-                          <span className={`font-bold ${lead.score > 75 ? 'text-red-700' : 'text-slate-800'}`}>
+                          {lead.score > 75 && <Flame size={16} className="text-orange-500 fill-orange-500" />}
+                          <span className={`font-bold ${lead.score > 75 ? 'text-orange-600' : 'text-slate-600'}`}>
                             {lead.score}
-                          </span>
-                          <span className={`text-[11px] px-2 py-0.5 rounded-full border ${scoreBadge(lead.score)}`}>
-                            {getScoreBand(lead.score)}
                           </span>
                         </div>
                     </td>
@@ -440,7 +356,7 @@ export const LeadsCRM: React.FC<LeadsCRMProps> = ({ leads, onUpdateLead }) => {
                         </select>
                     </td>
                     <td className="px-6 py-4 text-slate-500">
-                        Bot #{lead.botId}
+                        Bot #{lead.sourceBotId}
                     </td>
                     <td className="px-6 py-4 text-right">
                         <button 

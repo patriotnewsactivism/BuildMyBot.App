@@ -13,40 +13,23 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
 
   const activeConversation = conversations.find(c => c.id === selectedConversationId) || conversations[0];
 
-  React.useEffect(() => {
-    if (conversations.length === 0) return;
-    const found = conversations.find((c) => c.id === selectedConversationId);
-    if (!found) {
-      setSelectedConversationId(conversations[0].id);
-    }
-  }, [conversations, selectedConversationId]);
-
   const getSentimentIcon = (sentiment: string) => {
     switch (sentiment) {
-      case 'Positive': return <Smile className="text-emerald-600" size={16} />;
-      case 'Negative': return <Frown className="text-red-600" size={16} />;
-      default: return <Meh className="text-slate-700" size={16} />;
+      case 'Positive': return <Smile className="text-emerald-500" size={16} />;
+      case 'Negative': return <Frown className="text-red-500" size={16} />;
+      default: return <Meh className="text-yellow-500" size={16} />;
     }
   };
 
-  const getTimestamp = (conversation: Conversation) => {
-    if (conversation.createdAt) return new Date(conversation.createdAt).getTime();
-    return conversation.timestamp;
-  };
-
-  const getSessionSuffix = (conversation: Conversation) =>
-    conversation.sessionId ? conversation.sessionId.slice(-6) : 'unknown';
-
   const filteredConversations = conversations.filter(c => 
-    c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.sessionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
     c.messages.some(m => m.text.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
-    <div className="h-full flex flex-col md:flex-row gap-4 md:gap-6 animate-fade-in">
+    <div className="h-[calc(100vh-6rem)] flex gap-6 animate-fade-in">
       {/* Sidebar List */}
-      <div className="w-full md:w-80 shrink-0 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden max-h-64 md:max-h-none">
+      <div className="w-80 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-slate-50">
           <h3 className="font-semibold text-slate-800 mb-3">Conversations</h3>
           <div className="relative">
@@ -71,13 +54,10 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
                }`}
              >
                <div className="flex justify-between items-start mb-1">
-                 <div className="flex flex-col">
-                  <span className="font-medium text-slate-700 text-sm">Visitor #{conv.id.substring(0,4)}</span>
-                  <span className="text-[10px] text-slate-400">Session {getSessionSuffix(conv)}</span>
-                 </div>
-                 <span className="text-[10px] text-slate-400">{new Date(getTimestamp(conv)).toLocaleTimeString(undefined, {hour: '2-digit', minute:'2-digit'})}</span>
-                </div>
-               <p className="text-xs text-slate-500 truncate mb-2">{conv.messages[conv.messages.length - 1]?.text || 'No messages yet'}</p>
+                 <span className="font-medium text-slate-700 text-sm">Visitor #{conv.id.substring(0,4)}</span>
+                 <span className="text-[10px] text-slate-400">{new Date(conv.timestamp).toLocaleTimeString(undefined, {hour: '2-digit', minute:'2-digit'})}</span>
+               </div>
+               <p className="text-xs text-slate-500 truncate mb-2">{conv.messages[conv.messages.length - 1].text}</p>
                <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-200 text-[10px] font-medium text-slate-600">
                     {getSentimentIcon(conv.sentiment)} {conv.sentiment}
@@ -85,11 +65,6 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
                   <div className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
                     {conv.messages.length} msgs
                   </div>
-                  {conv.leadId && (
-                    <div className="text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded text-emerald-600 border border-emerald-100">
-                      Lead #{conv.leadId.substring(0, 6)}
-                    </div>
-                  )}
                </div>
              </div>
            ))}
@@ -113,37 +88,17 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
                 <div>
                   <h3 className="font-bold text-slate-800">Visitor #{activeConversation.id.substring(0,4)}</h3>
                   <div className="flex items-center gap-2 text-xs text-slate-500">
-                     <Clock size={12} /> {new Date(getTimestamp(activeConversation)).toLocaleString()}
+                     <Clock size={12} /> {new Date(activeConversation.timestamp).toLocaleString()}
                      <span className="mx-1">•</span>
                      <span className="flex items-center gap-1">{getSentimentIcon(activeConversation.sentiment)} {activeConversation.sentiment} Sentiment</span>
-                     <span className="mx-1">•</span>
-                     <span className="text-slate-500">Session {getSessionSuffix(activeConversation)}</span>
                   </div>
-                  {activeConversation.leadId && (
-                    <div className="flex items-center gap-1 text-[11px] text-emerald-700 mt-1">
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100">Lead #{activeConversation.leadId.substring(0,6)}</span>
-                    </div>
-                  )}
                 </div>
               </div>
               <div className="flex gap-2">
                  <button className="p-2 text-slate-400 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition">
                    <Filter size={18} />
                  </button>
-                 <button 
-                   onClick={() => {
-                     if (!activeConversation) return;
-                     const dataStr = JSON.stringify(activeConversation, null, 2);
-                     const blob = new Blob([dataStr], { type: 'application/json' });
-                     const url = URL.createObjectURL(blob);
-                     const link = document.createElement('a');
-                     link.href = url;
-                     link.download = `conversation-${activeConversation.sessionId || activeConversation.id}.json`;
-                     link.click();
-                     URL.revokeObjectURL(url);
-                   }}
-                   className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition"
-                 >
+                 <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition">
                    <Download size={16} /> Export JSON
                  </button>
               </div>
@@ -162,7 +117,7 @@ export const ChatLogs: React.FC<ChatLogsProps> = ({ conversations }) => {
                        {msg.text}
                      </div>
                      <p className={`text-[10px] text-slate-400 mt-1 ${msg.role === 'user' ? 'text-left' : 'text-right'}`}>
-                       {new Date(msg.timestamp || getTimestamp(activeConversation)).toLocaleTimeString()}
+                       {new Date(msg.timestamp).toLocaleTimeString()}
                      </p>
                   </div>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${

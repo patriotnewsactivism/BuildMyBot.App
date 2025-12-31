@@ -1,8 +1,8 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Next.js environment variables (NEXT_PUBLIC_ prefix required for client-side access)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Support both Next.js and Vite environment variable patterns
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 let supabaseInstance: SupabaseClient | null = null;
 

@@ -25,6 +25,7 @@ export const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
       });
     }
     setNotification('Settings saved successfully!');
+    setTimeout(() => setNotification(null), 3000);
   };
 
   return (
@@ -33,14 +34,7 @@ export const Settings: React.FC<SettingsProps> = ({ user, onUpdateUser }) => {
 
       {notification && (
         <div className="absolute top-0 right-0 bg-emerald-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm animate-fade-in flex items-center gap-2">
-          <Save size={16} />
-          <span>{notification}</span>
-          <button
-            onClick={() => setNotification(null)}
-            className="ml-2 text-white/80 hover:text-white text-lg font-bold"
-          >
-            ×
-          </button>
+          <Save size={16} /> {notification}
         </div>
       )}
 
