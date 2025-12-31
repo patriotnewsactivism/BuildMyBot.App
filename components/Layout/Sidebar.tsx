@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, MessageSquare, Users, TrendingUp, Settings, Briefcase, Bot, Megaphone, Globe, Shield, ShoppingBag, Phone, X, ChevronLeft, ChevronRight, Code, Sparkles } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Users, TrendingUp, Settings, Briefcase, Bot, Megaphone, Globe, Shield, ShoppingBag, Phone, X, ChevronLeft, ChevronRight, Code, Sparkles, LogOut, Home } from 'lucide-react';
 import { UserRole, User } from '../../types';
 import { PLANS } from '../../constants';
 import { useLayout, SIDEBAR_WIDTH_EXPANDED, SIDEBAR_WIDTH_COLLAPSED } from './LayoutContext';
@@ -10,9 +10,11 @@ interface SidebarProps {
   role: UserRole;
   user?: User;
   usage?: number;
+  onLogout?: () => void;
+  onViewLandingPage?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, role, user, usage = 0 }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, role, user, usage = 0, onLogout, onViewLandingPage }) => {
   const { sidebarOpen, sidebarCollapsed, setSidebarOpen, toggleCollapse, isMobile } = useLayout();
 
   const isAdmin = role === UserRole.ADMIN || role === UserRole.MASTER_ADMIN || role === UserRole.LIMITED_ADMIN;
