@@ -118,6 +118,42 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, role, us
           ))}
         </nav>
 
+        {/* Logout & Homepage Buttons */}
+        <div className="px-2 pb-2 space-y-1 border-t border-slate-800/50 pt-2">
+          {onViewLandingPage && (
+            <button
+              onClick={onViewLandingPage}
+              title={sidebarCollapsed && !isMobile ? 'View Homepage' : undefined}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group hover:bg-slate-800 hover:text-slate-100
+                ${sidebarCollapsed && !isMobile ? 'justify-center' : ''}`}
+            >
+              <Home
+                size={20}
+                className="shrink-0 text-slate-500 group-hover:text-slate-300"
+              />
+              {(!sidebarCollapsed || isMobile) && (
+                <span className="font-medium text-sm whitespace-nowrap overflow-hidden">View Homepage</span>
+              )}
+            </button>
+          )}
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              title={sidebarCollapsed && !isMobile ? 'Logout' : undefined}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group hover:bg-red-900/20 hover:text-red-400
+                ${sidebarCollapsed && !isMobile ? 'justify-center' : ''}`}
+            >
+              <LogOut
+                size={20}
+                className="shrink-0 text-slate-500 group-hover:text-red-400"
+              />
+              {(!sidebarCollapsed || isMobile) && (
+                <span className="font-medium text-sm whitespace-nowrap overflow-hidden">Logout</span>
+              )}
+            </button>
+          )}
+        </div>
+
         {/* Collapse Toggle (Desktop only) */}
         {!isMobile && (
           <button
