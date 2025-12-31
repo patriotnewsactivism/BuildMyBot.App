@@ -655,6 +655,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
               {Object.entries(PLANS).map(([key, plan]: [string, any]) => {
                 const isEnterprise = key === PlanType.ENTERPRISE;
                 const isProfessional = key === PlanType.PROFESSIONAL;
+                const priceDisplay = Number.isFinite(plan.price)
+                  ? plan.price.toLocaleString()
+                  : plan.price;
 
                 return (
                   <div key={key} className={`p-8 rounded-2xl border flex flex-col transition-all hover:shadow-xl ${
@@ -673,7 +676,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                     
                     <h3 className={`text-lg font-bold ${isEnterprise ? 'text-white' : 'text-slate-900'}`}>{plan.name}</h3>
                     <div className="mt-4 mb-6">
-                      <span className={`text-4xl font-extrabold ${isEnterprise ? 'text-white' : 'text-slate-900'}`}>${plan.price}</span>
+                      <span className={`text-4xl font-extrabold ${isEnterprise ? 'text-white' : 'text-slate-900'}`}>${priceDisplay}</span>
                       <span className={`${isEnterprise ? 'text-slate-400' : 'text-slate-500'}`}>/mo</span>
                     </div>
                     

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Check, Shield, Zap, Star, Crown, Loader } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Check, Shield, Zap, Star, Crown, Loader, CheckCircle, AlertCircle } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType, User } from '../../types';
-import { dbService } from '../../services/dbService';
+import { supabase } from '../../services/supabaseClient';
 
 interface BillingProps {
   user?: User;
@@ -11,24 +11,80 @@ interface BillingProps {
 export const Billing: React.FC<BillingProps> = ({ user }) => {
   const currentPlan = user?.plan || PlanType.FREE;
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
+  const [upgradeStatus, setUpgradeStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  // Check for success/cancel redirect from Stripe
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      setUpgradeStatus({
+        type: 'success',
+        message: 'Payment successful! Your plan has been upgraded.'
+      });
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (urlParams.get('canceled') === 'true') {
+      setUpgradeStatus({
+        type: 'error',
+        message: 'Payment canceled. Your plan was not changed.'
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const handleUpgrade = async (planId: string) => {
     if (!user) return;
     setProcessingPlan(planId);
-    
-    // Simulate Stripe Checkout API Call
-    setTimeout(async () => {
-        try {
-            await dbService.updateUserPlan(user.id, planId as PlanType);
-            // In real app, this would redirect to Stripe URL
-            alert(`Upgrade successful! Welcome to the ${planId} plan.`);
-        } catch (e) {
-            console.error(e);
-            alert("Upgrade failed. Please try again.");
-        } finally {
-            setProcessingPlan(null);
+    setUpgradeStatus(null);
+
+    try {
+      // Get auth session
+      if (!supabase) {
+        throw new Error('Supabase client not initialized');
+      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      // Call Stripe Checkout Edge Function
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/stripe-checkout`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            plan: planId,
+            successUrl: `${window.location.origin}/billing?success=true`,
+            cancelUrl: `${window.location.origin}/billing?canceled=true`
+          })
         }
-    }, 2000);
+      );
+
+      const { url, error } = await response.json();
+
+      if (error) {
+        throw new Error(error);
+      }
+
+      if (!url) {
+        throw new Error('No checkout URL returned');
+      }
+
+      // Redirect to Stripe Checkout
+      window.location.href = url;
+
+    } catch (e) {
+      console.error('Upgrade error:', e);
+      setUpgradeStatus({
+        type: 'error',
+        message: e instanceof Error ? e.message : 'Upgrade failed. Please try again or contact support.'
+      });
+      setProcessingPlan(null);
+    }
   };
 
   return (
@@ -38,11 +94,36 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
         <p className="text-slate-500 mt-2">Scale your business with our power-packed tiers. Cancel anytime.</p>
       </div>
 
+      {/* Upgrade Status Banner */}
+      {upgradeStatus && (
+        <div className={`max-w-2xl mx-auto p-4 rounded-lg flex items-center gap-3 ${
+          upgradeStatus.type === 'success'
+            ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+            : 'bg-red-50 border border-red-200 text-red-800'
+        }`}>
+          {upgradeStatus.type === 'success' ? (
+            <CheckCircle size={20} className="text-emerald-600" />
+          ) : (
+            <AlertCircle size={20} className="text-red-600" />
+          )}
+          <span className="font-medium">{upgradeStatus.message}</span>
+          <button
+            onClick={() => setUpgradeStatus(null)}
+            className="ml-auto text-lg font-bold hover:opacity-70"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
          {Object.entries(PLANS).map(([key, plan]: [string, any]) => {
            const isCurrent = key === currentPlan;
            const isEnterprise = key === PlanType.ENTERPRISE;
            const isFree = key === PlanType.FREE;
+           const priceDisplay = Number.isFinite(plan.price)
+             ? plan.price.toLocaleString()
+             : plan.price;
            
            return (
              <div 
@@ -68,7 +149,7 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
                 <div className="mb-4">
                    <h3 className={`text-lg font-bold ${isEnterprise ? 'text-slate-900' : 'text-slate-800'}`}>{plan.name}</h3>
                    <div className="flex items-baseline mt-2">
-                     <span className="text-3xl font-extrabold text-slate-900">${plan.price}</span>
+                     <span className="text-3xl font-extrabold text-slate-900">${priceDisplay}</span>
                      <span className="text-slate-500 text-sm ml-1">/mo</span>
                    </div>
                    <p className="text-xs text-slate-400 mt-2 h-4">
@@ -81,7 +162,7 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
                   <div className="pt-2 space-y-3 border-t border-slate-50 mt-2">
                     {plan.features.map((feature: string, idx: number) => (
                       <div key={idx} className="flex items-start gap-2 text-sm text-slate-600">
-                        <Check size={16} className={`shrink-0 mt-0.5 ${isEnterprise ? 'text-yellow-500 fill-yellow-500' : 'text-emerald-500'}`} /> 
+                        <Check size={16} className={`shrink-0 mt-0.5 ${isEnterprise ? 'text-emerald-600 fill-emerald-600' : 'text-emerald-600'}`} /> 
                         <span className="leading-tight">{feature}</span>
                       </div>
                     ))}

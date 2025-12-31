@@ -103,7 +103,7 @@ export const MarketingTools: React.FC = () => {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-lg">
+        <div className="flex items-center gap-2 text-sm text-red-800 bg-red-50 border border-red-200 p-3 rounded-lg">
           <AlertCircle size={16} />
           <span>{error}</span>
         </div>

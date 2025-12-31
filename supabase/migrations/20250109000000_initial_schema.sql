@@ -5,7 +5,7 @@
 -- ============================================
 -- EXTENSIONS
 -- ============================================
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto"; -- For gen_random_uuid()
 CREATE EXTENSION IF NOT EXISTS "vector";
 
 -- ============================================
@@ -48,7 +48,7 @@ CREATE TABLE profiles (
 
 -- Bots
 CREATE TABLE bots (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     type TEXT DEFAULT 'general',
@@ -63,22 +63,23 @@ CREATE TABLE bots (
     randomize_identity BOOLEAN DEFAULT false,
     avatar TEXT,
     response_delay INTEGER DEFAULT 0,
-    embed_code UUID DEFAULT uuid_generate_v4(),
+    embed_code UUID DEFAULT gen_random_uuid(),
     knowledge_base TEXT[] DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Knowledge Base (with pgvector for RAG)
+-- Note: Using 1536 dimensions (text-embedding-3-small) to support pgvector indexes
 CREATE TABLE knowledge_base (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     bot_id UUID NOT NULL REFERENCES bots(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     file_name TEXT NOT NULL,
     file_url TEXT,
     file_type TEXT DEFAULT 'text',
     content TEXT NOT NULL,
-    embedding vector(3072),
+    embedding vector(1536),
     chunk_index INTEGER DEFAULT 0,
     metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -86,7 +87,7 @@ CREATE TABLE knowledge_base (
 
 -- Leads
 CREATE TABLE leads (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     bot_id UUID REFERENCES bots(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
@@ -102,7 +103,7 @@ CREATE TABLE leads (
 
 -- Conversations
 CREATE TABLE conversations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     bot_id UUID NOT NULL REFERENCES bots(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     session_id TEXT NOT NULL,
@@ -113,7 +114,7 @@ CREATE TABLE conversations (
 
 -- Messages
 CREATE TABLE messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
     role message_role NOT NULL,
     content TEXT NOT NULL,
@@ -122,7 +123,7 @@ CREATE TABLE messages (
 
 -- Phone Calls
 CREATE TABLE phone_calls (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     bot_id UUID REFERENCES bots(id) ON DELETE SET NULL,
     twilio_call_sid TEXT UNIQUE,
@@ -139,7 +140,7 @@ CREATE TABLE phone_calls (
 
 -- Billing Accounts
 CREATE TABLE billing_accounts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL UNIQUE REFERENCES profiles(id) ON DELETE CASCADE,
     stripe_customer_id TEXT UNIQUE,
     stripe_subscription_id TEXT UNIQUE,
@@ -155,7 +156,7 @@ CREATE TABLE billing_accounts (
 
 -- Usage Events
 CREATE TABLE usage_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     event_type usage_event_type NOT NULL,
     quantity NUMERIC DEFAULT 1,
@@ -167,7 +168,7 @@ CREATE TABLE usage_events (
 
 -- Reseller Earnings
 CREATE TABLE reseller_earnings (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     reseller_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     amount NUMERIC NOT NULL DEFAULT 0,
@@ -182,7 +183,7 @@ CREATE TABLE reseller_earnings (
 
 -- Marketplace Templates
 CREATE TABLE marketplace_templates (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     creator_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
     description TEXT,
@@ -200,7 +201,7 @@ CREATE TABLE marketplace_templates (
 
 -- Marketing Content
 CREATE TABLE marketing_content (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     content_type TEXT NOT NULL,
     title TEXT,
@@ -211,7 +212,7 @@ CREATE TABLE marketing_content (
 
 -- Website Pages
 CREATE TABLE website_pages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     bot_id UUID REFERENCES bots(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
@@ -225,7 +226,7 @@ CREATE TABLE website_pages (
 
 -- Referrals
 CREATE TABLE referrals (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     reseller_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     referred_user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     code TEXT NOT NULL,
@@ -238,7 +239,7 @@ CREATE TABLE referrals (
 -- INDEXES
 -- ============================================
 
--- Vector search index (HNSW for fast similarity)
+-- Vector search index (HNSW for fast similarity, optimized for 1536 dimensions)
 CREATE INDEX ON knowledge_base USING hnsw (embedding vector_cosine_ops);
 
 -- Full-text search index

@@ -11,7 +11,7 @@ const toSnakeCase = (str: string): string =>
 const toCamelCase = (str: string): string =>
   str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 
-const objectToSnakeCase = <T extends Record<string, unknown>>(obj: T): Record<string, unknown> => {
+const objectToSnakeCase = <T extends Record<string, any>>(obj: T): Record<string, unknown> => {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     result[toSnakeCase(key)] = value;
@@ -43,9 +43,12 @@ export const dbService = {
     // Initial fetch
     const fetchBots = async () => {
       const { data: { user } } = await client.auth.getUser();
+      console.log('SubscribeToBots - Fetching bots for user:', user?.id);
       const query = client.from('bots').select('*');
       const { data, error } = await (user ? query.eq('user_id', user.id) : query);
+      console.log('SubscribeToBots - Fetched bots:', data, 'Error:', error);
       if (!error && data && !cancelled) {
+        console.log('SubscribeToBots - Calling onUpdate with', data.length, 'bots');
         onUpdate(arrayToCamelCase<Bot>(data as Record<string, unknown>[]));
       }
     };
@@ -53,7 +56,10 @@ export const dbService = {
 
     // Subscribe to changes
     const channel = client.channel('public:bots')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bots' }, fetchBots)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bots' }, (payload) => {
+        console.log('SubscribeToBots - Change detected:', payload);
+        fetchBots();
+      })
       .subscribe();
 
     return () => {
@@ -64,30 +70,99 @@ export const dbService = {
 
   saveBot: async (bot: Bot) => {
     const client = supabase;
-    if (!client) return bot;
+    if (!client) throw new Error("Supabase client not initialized");
 
-    const { data: { user } } = await client.auth.getUser();
+    // Validate authentication
+    const { data: { user }, error: authError } = await client.auth.getUser();
+    if (authError) {
+        console.error("Authentication error:", authError);
+        throw new Error("Authentication failed: " + (authError.message || "Please log in again"));
+    }
     if (!user) {
         console.error("Cannot save bot: User not logged in");
-        return bot;
+        throw new Error("Cannot save bot: User not logged in");
     }
 
-    // Prepare payload with user_id and convert to snake_case
-    const payload = objectToSnakeCase({
-        ...bot,
-        userId: user.id
-    });
+    // Validate required fields
+    if (!bot.name || !bot.name.trim()) {
+        throw new Error("Bot name is required");
+    }
+    if (!bot.systemPrompt || !bot.systemPrompt.trim()) {
+        throw new Error("System prompt is required");
+    }
+
+    // Validate temperature range
+    if (bot.temperature !== undefined && (bot.temperature < 0 || bot.temperature > 2)) {
+        throw new Error("Temperature must be between 0 and 2");
+    }
+
+    const isNewBot = !bot.id || bot.id === 'new';
+
+    // Convert bot to snake_case FIRST
+    const botSnakeCase = objectToSnakeCase(bot);
+
+    // Then add/override user_id (don't rely on conversion)
+    const payload: Record<string, unknown> = {
+        ...botSnakeCase,
+        user_id: user.id
+    };
+
+    // CRITICAL: For new bots, remove 'id' so database generates UUID
+    if (isNewBot) {
+        delete payload.id;
+    }
+
+    console.log('SaveBot - Operation:', isNewBot ? 'INSERT' : 'UPDATE');
+    console.log('SaveBot - User ID:', user.id);
+    console.log('SaveBot - User Email:', user.email);
+    console.log('SaveBot - Payload being sent:', payload);
 
     const { data, error } = await client
       .from('bots')
-      .upsert(payload)
+      .upsert(payload, {
+        onConflict: 'id',
+        ignoreDuplicates: false
+      })
       .select()
       .single();
 
-    if (error) {
-        console.error("Error saving bot to Supabase:", error);
-        throw error;
+    console.log('SaveBot - Response data:', data);
+    console.log('SaveBot - Response error:', error);
+
+    if (error || !data) {
+        console.error("Error saving bot to Supabase:", {
+            error,
+            code: error?.code,
+            message: error?.message,
+            details: error?.details,
+            hint: error?.hint,
+            userId: user.id,
+            botId: bot.id
+        });
+
+        // Provide more detailed error messages
+        if (error?.code === 'PGRST116') {
+            throw new Error("Bot not found or you don't have permission to update it");
+        }
+        if (error?.code === '42501') {
+            throw new Error("Permission denied. Please ensure you're logged in.");
+        }
+        if (error?.code === '23503') {
+            throw new Error("User profile not found. Please refresh the page and try again.");
+        }
+        if (error?.code === '23505') {
+            throw new Error("A bot with this ID already exists.");
+        }
+
+        // Extract meaningful error message from Supabase error object
+        const errorMessage = error?.message
+            || error?.details
+            || error?.hint
+            || (typeof error === 'string' ? error : 'Failed to save bot - no data returned');
+
+        throw new Error(errorMessage);
     }
+
     return objectToCamelCase<Bot>(data as Record<string, unknown>);
   },
 

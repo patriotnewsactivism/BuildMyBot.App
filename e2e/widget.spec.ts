@@ -129,6 +129,9 @@ test.describe('Widget Integration', () => {
   });
 
   test('widget should gracefully handle missing bot ID', async ({ page }) => {
+    const consoleMessages: string[] = [];
+    page.on('console', (msg) => consoleMessages.push(msg.text()));
+
     // Create a test page with invalid bot ID
     await page.setContent(`
       <!DOCTYPE html>
@@ -155,10 +158,6 @@ test.describe('Widget Integration', () => {
     // Widget should not crash the page
     const heading = page.getByText('Test Page');
     await expect(heading).toBeVisible();
-
-    // Check console for error (but page should still work)
-    const consoleMessages: string[] = [];
-    page.on('console', (msg) => consoleMessages.push(msg.text()));
 
     await page.waitForTimeout(1000);
 

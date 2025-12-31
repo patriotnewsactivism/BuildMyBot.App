@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { PhoneAgent } from './PhoneAgent';
@@ -68,11 +68,15 @@ describe('PhoneAgent', () => {
     render(<PhoneAgent user={baseUser} />);
 
     const transcript = screen.getByPlaceholderText('What should the AI capture from this call?');
-    await userEvent.clear(transcript);
-    await userEvent.type(transcript, 'Please note this down');
+    await act(async () => {
+      await userEvent.clear(transcript);
+      await userEvent.type(transcript, 'Please note this down');
+    });
 
     const simulateButton = screen.getByTestId('simulate-call');
-    await userEvent.click(simulateButton);
+    await act(async () => {
+      await userEvent.click(simulateButton);
+    });
 
     expect(simulateInboundCall).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -88,7 +92,9 @@ describe('PhoneAgent', () => {
     render(<PhoneAgent />);
 
     const simulateButton = screen.getByTestId('simulate-call');
-    await userEvent.click(simulateButton);
+    await act(async () => {
+      await userEvent.click(simulateButton);
+    });
 
     expect(await screen.findByText('Sign in to log and view phone calls.')).toBeInTheDocument();
     expect(simulateInboundCall).not.toHaveBeenCalled();

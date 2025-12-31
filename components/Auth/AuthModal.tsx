@@ -136,12 +136,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
           {mode === 'signup' && (
              <div>
                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Company Name</label>
-               <input 
+               <input
                  type="text"
                  required
                  value={companyName}
                  onChange={(e) => setCompanyName(e.target.value)}
-                 className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-blue-900 focus:border-blue-900"
+                 className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-blue-900 focus:border-blue-900 text-slate-900"
                  placeholder="Acme Inc."
                />
              </div>
@@ -151,12 +151,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Email Address</label>
             <div className="relative">
               <Mail className="absolute left-3 top-3.5 text-slate-400" size={18} />
-              <input 
+              <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 focus:ring-blue-900 focus:border-blue-900"
+                className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 focus:ring-blue-900 focus:border-blue-900 text-slate-900"
                 placeholder="you@company.com"
               />
             </div>
@@ -166,12 +166,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Password</label>
             <div className="relative">
               <Lock className="absolute left-3 top-3.5 text-slate-400" size={18} />
-              <input 
+              <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 focus:ring-blue-900 focus:border-blue-900"
+                className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 focus:ring-blue-900 focus:border-blue-900 text-slate-900"
                 placeholder="••••••••"
               />
             </div>

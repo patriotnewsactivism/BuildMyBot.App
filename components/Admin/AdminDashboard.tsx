@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, DollarSign, Server, Activity, AlertTriangle, CheckCircle, Search, Briefcase, Globe, Loader } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { dbService } from '../../services/dbService';
+import { supabase } from '../../services/supabaseClient';
 import { User, UserRole } from '../../types';
 import { PLANS, RESELLER_TIERS } from '../../constants';
 
@@ -17,7 +18,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
   const [stats, setStats] = useState({
       totalMRR: 0,
       totalUsers: 0,
-      activeBots: 3850, // Mock for now until we query all bots
+      activeBots: 0,
       partnerCount: 0
   });
   const [roleUpdateEmail, setRoleUpdateEmail] = useState('');
@@ -28,32 +29,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
   useEffect(() => {
     const fetchData = async () => {
         try {
+            console.log('AdminDashboard - Fetching all users...');
             const allUsers = await dbService.getAllUsers();
-            
+            console.log('AdminDashboard - Got users:', allUsers.length);
+
             // Calculate MRR
             const mrr = allUsers.reduce((acc, u) => acc + (PLANS[u.plan]?.price || 0), 0);
-            
+            console.log('AdminDashboard - Calculated MRR:', mrr);
+
             // Segregate Partners
             const partnerList = allUsers.filter(u => u.role === UserRole.RESELLER);
-            
+            console.log('AdminDashboard - Partners:', partnerList.length);
+
+            // Count all bots across all users using the database helper function
+            let totalBots = 0;
+            if (supabase) {
+                console.log('AdminDashboard - Fetching bots count...');
+                const { data: botsCount, error: botsError } = await supabase.rpc('get_total_bots_count');
+                if (botsError) console.error('Error fetching bots count:', botsError);
+                totalBots = botsCount || 0;
+                console.log('AdminDashboard - Total bots:', totalBots);
+            }
+
             setUsers(allUsers);
             setPartners(partnerList);
-            
+
             setStats({
                 totalMRR: mrr,
                 totalUsers: allUsers.length,
-                activeBots: 3850, // Placeholder
+                activeBots: totalBots,
                 partnerCount: partnerList.length
             });
 
-            // Mock Revenue Data based on MRR for visualization
+            // Generate revenue trend data (using current MRR as baseline)
+            // TODO: Replace with actual historical revenue data from billing_events table
             setRevenueData([
-                { month: 'Jan', amount: mrr * 0.4 },
-                { month: 'Feb', amount: mrr * 0.55 },
-                { month: 'Mar', amount: mrr * 0.7 },
-                { month: 'Apr', amount: mrr * 0.85 },
-                { month: 'May', amount: mrr * 0.92 },
-                { month: 'Jun', amount: mrr },
+                { month: 'Jan', amount: Math.round(mrr * 0.4) },
+                { month: 'Feb', amount: Math.round(mrr * 0.55) },
+                { month: 'Mar', amount: Math.round(mrr * 0.7) },
+                { month: 'Apr', amount: Math.round(mrr * 0.85) },
+                { month: 'May', amount: Math.round(mrr * 0.92) },
+                { month: 'Jun', amount: Math.round(mrr) },
             ]);
 
         } catch (e) {
@@ -141,7 +157,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
   return (
     <div className="space-y-8 animate-fade-in pb-20">
       {readOnly && (
-        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800">
+        <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-800">
           <AlertTriangle size={18} className="mt-0.5" />
           <div>
             <p className="font-semibold text-sm">Read-only admin access</p>
@@ -398,7 +414,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
                         <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
                             tier.label === 'Platinum' ? 'bg-slate-900 text-white' : 
                             tier.label === 'Gold' ? 'bg-yellow-100 text-yellow-800' : 
-                            'bg-orange-100 text-orange-800'
+                            'bg-red-100 text-red-800'
                         }`}>
                             {tier.label}
                         </span>
@@ -406,7 +422,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
                         <td className="px-6 py-4">{clientCount}</td>
                         <td className="px-6 py-4 font-mono text-slate-500">{partner.resellerCode}</td>
                         <td className="px-6 py-4">
-                            <span className={`text-xs ${partner.status === 'Active' ? 'text-emerald-600' : 'text-orange-600'}`}>{partner.status || 'Pending'}</span>
+                            <span className={`text-xs ${partner.status === 'Active' ? 'text-emerald-700' : 'text-red-700'}`}>{partner.status || 'Pending'}</span>
                         </td>
                         <td className="px-6 py-4">
                         {(partner.status === 'Pending' || !partner.status) ? (

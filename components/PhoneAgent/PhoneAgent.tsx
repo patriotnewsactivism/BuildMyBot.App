@@ -27,10 +27,10 @@ const statusLabelMap: Record<CallStatus, string> = {
 };
 
 const statusColorMap: Record<CallStatus, string> = {
-  initiated: 'bg-amber-100 text-amber-700',
-  'in-progress': 'bg-blue-100 text-blue-700',
-  completed: 'bg-emerald-100 text-emerald-700',
-  failed: 'bg-rose-100 text-rose-700',
+  initiated: 'bg-blue-100 text-blue-800',
+  'in-progress': 'bg-indigo-100 text-indigo-800',
+  completed: 'bg-emerald-100 text-emerald-800',
+  failed: 'bg-rose-100 text-rose-800',
 };
 
 const defaultSimulatorState = {
@@ -99,10 +99,16 @@ export const PhoneAgent: React.FC<PhoneAgentProps> = ({ user, onUpdate }) => {
   }, []);
 
   const webhookUrl = useMemo(() => {
-    const env = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> }).env : undefined;
-    const baseUrl = env?.VITE_SUPABASE_URL || env?.NEXT_PUBLIC_SUPABASE_URL || '';
+    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     return baseUrl ? `${baseUrl}/functions/v1/twilio-call-webhook` : 'https://<your-project>.supabase.co/functions/v1/twilio-call-webhook';
   }, []);
+
+  const voiceHandlerUrl = useMemo(() => {
+    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    return baseUrl ? `${baseUrl}/functions/v1/twilio-voice-handler` : 'https://<your-project>.supabase.co/functions/v1/twilio-voice-handler';
+  }, []);
+
+  const [copiedVoice, setCopiedVoice] = useState(false);
 
   const startSimulation = () => {
     setSimulatorError(null);
@@ -189,6 +195,16 @@ export const PhoneAgent: React.FC<PhoneAgentProps> = ({ user, onUpdate }) => {
       window.setTimeout(() => setCopied(false), 1500);
     } catch (error) {
       console.error('Unable to copy webhook URL', error);
+    }
+  };
+
+  const handleCopyVoiceUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(voiceHandlerUrl);
+      setCopiedVoice(true);
+      window.setTimeout(() => setCopiedVoice(false), 1500);
+    } catch (error) {
+      console.error('Unable to copy voice handler URL', error);
     }
   };
 
@@ -335,7 +351,7 @@ export const PhoneAgent: React.FC<PhoneAgentProps> = ({ user, onUpdate }) => {
             </div>
 
             {callLogsError && (
-              <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+              <div className="flex items-center gap-2 text-red-800 bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
                 <AlertCircle size={16} />
                 <span className="text-sm">{callLogsError}</span>
               </div>
@@ -443,34 +459,76 @@ export const PhoneAgent: React.FC<PhoneAgentProps> = ({ user, onUpdate }) => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-slate-800">Twilio Webhook</h3>
-                <p className="text-sm text-slate-500">Send Voice status callbacks here to log calls and transcripts.</p>
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+            <div>
+              <h3 className="font-bold text-slate-800 mb-1">Twilio Setup</h3>
+              <p className="text-sm text-slate-500">Configure your Twilio phone number to work with Cartesia voice AI.</p>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <div className="text-blue-900 font-bold text-sm">1.</div>
+                <div className="text-sm text-blue-900">
+                  <p className="font-semibold mb-1">Voice Webhook URL (Primary)</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={voiceHandlerUrl}
+                      className="flex-1 rounded-md border border-blue-300 bg-white px-2 py-1.5 text-xs font-mono text-slate-700"
+                    />
+                    <button
+                      onClick={handleCopyVoiceUrl}
+                      className="px-2 py-1.5 rounded-md border border-blue-300 bg-white text-blue-900 hover:bg-blue-100 flex items-center gap-1 text-xs"
+                      aria-label="Copy voice handler URL"
+                    >
+                      {copiedVoice ? <CheckCircle2 size={14} /> : <Clipboard size={14} />} {copiedVoice ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-blue-800 mt-1">Set this as "A CALL COMES IN" webhook in Twilio (HTTP POST)</p>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-emerald-700 text-xs">
-                <CheckCircle2 size={16} /> Signature validation enabled when TWILIO_AUTH_TOKEN is set
+
+              <div className="flex items-start gap-2">
+                <div className="text-blue-900 font-bold text-sm">2.</div>
+                <div className="text-sm text-blue-900">
+                  <p className="font-semibold mb-1">Status Callback URL</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={webhookUrl}
+                      className="flex-1 rounded-md border border-blue-300 bg-white px-2 py-1.5 text-xs font-mono text-slate-700"
+                    />
+                    <button
+                      onClick={handleCopyWebhookUrl}
+                      className="px-2 py-1.5 rounded-md border border-blue-300 bg-white text-blue-900 hover:bg-blue-100 flex items-center gap-1 text-xs"
+                      aria-label="Copy status webhook URL"
+                    >
+                      {copied ? <CheckCircle2 size={14} /> : <Clipboard size={14} />} {copied ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-blue-800 mt-1">Set this as "STATUS CALLBACK URL" in Twilio phone number settings</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2">
+                <div className="text-blue-900 font-bold text-sm">3.</div>
+                <div className="text-sm text-blue-900">
+                  <p className="font-semibold mb-1">Configure Supabase Secrets</p>
+                  <pre className="text-xs bg-blue-900 text-blue-50 rounded p-2 mt-1 overflow-x-auto">
+{`supabase secrets set CARTESIA_API_KEY=your_key
+supabase secrets set TWILIO_ACCOUNT_SID=AC...
+supabase secrets set TWILIO_AUTH_TOKEN=your_token`}
+                  </pre>
+                  <p className="text-xs text-blue-800 mt-1">Get your Cartesia API key from <a href="https://cartesia.ai" target="_blank" rel="noopener noreferrer" className="underline">cartesia.ai</a></p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="text"
-                readOnly
-                value={webhookUrl}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-mono text-slate-700"
-              />
-              <button
-                onClick={handleCopyWebhookUrl}
-                className="px-3 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                aria-label="Copy Twilio webhook URL"
-              >
-                {copied ? <CheckCircle2 size={16} /> : <Clipboard size={16} />} {copied ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-            <div className="text-xs text-slate-500">
-              <p>Configure this URL in Twilio as both the Voice webhook and status callback. We automatically map calls using the Twilio Phone Number SID.</p>
-              <p className="mt-1">Webhook requests without a known phone number are safely rejected and never stored.</p>
+
+            <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+              <CheckCircle2 size={14} />
+              <span>Using Cartesia Sonic (sub-200ms latency) + Twilio Media Streams for real-time voice AI</span>
             </div>
           </div>
         </div>

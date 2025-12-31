@@ -184,7 +184,7 @@ export const ResellerDashboard: React.FC<ResellerProps> = ({ user, stats: initia
                          const price = profile?.plan ? PLANS[profile.plan]?.price || 0 : 0;
                          const commission = price * realStats.commissionRate;
                          const statusLabel = referral.status || 'active';
-                         const statusColor = statusLabel === 'active' ? 'text-emerald-600' : statusLabel === 'pending' ? 'text-amber-600' : 'text-slate-500';
+                         const statusColor = statusLabel === 'active' ? 'text-emerald-700' : statusLabel === 'pending' ? 'text-blue-700' : 'text-slate-800';
 
                          return (
                          <tr key={referral.id} className="hover:bg-slate-50 transition">

@@ -1,21 +1,9 @@
 import posthog from 'posthog-js';
 
-// Support both Vite (import.meta.env) and Next.js/Node (process.env) environment variable patterns
-const getEnvVar = (key: string) => {
-  const metaEnv = typeof import.meta !== 'undefined'
-    ? (import.meta as unknown as { env?: Record<string, string | undefined> }).env
-    : undefined;
-
-  if (metaEnv && key in metaEnv) {
-    return metaEnv[key];
-  }
-
-  return (typeof process !== 'undefined' ? process.env[key] : undefined) ?? undefined;
-};
-
-const posthogApiKey = getEnvVar('VITE_POSTHOG_API_KEY') || getEnvVar('NEXT_PUBLIC_POSTHOG_API_KEY');
-const posthogHost = getEnvVar('VITE_POSTHOG_HOST') || getEnvVar('NEXT_PUBLIC_POSTHOG_HOST') || 'https://app.posthog.com';
-const environment = getEnvVar('VITE_ENVIRONMENT') || getEnvVar('NEXT_PUBLIC_ENVIRONMENT') || 'development';
+// Next.js environment variables (NEXT_PUBLIC_ prefix required for client-side access)
+const posthogApiKey = process.env.NEXT_PUBLIC_POSTHOG_API_KEY;
+const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com';
+const environment = process.env.NEXT_PUBLIC_ENVIRONMENT || 'development';
 
 /**
  * Initialize PostHog for product analytics
