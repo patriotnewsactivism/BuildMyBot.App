@@ -985,62 +985,63 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
               {Object.entries(PLANS).map(([key, plan]: [string, any]) => {
                 const isEnterprise = key === PlanType.ENTERPRISE;
-                const isProfessional = key === PlanType.PROFESSIONAL;
+                const isStarter = key === PlanType.STARTER;
+                const isExecutive = key === PlanType.EXECUTIVE;
+                const hasBlueBorder = isStarter || isExecutive;
 
                 return (
-                  <div key={key} className={`p-8 rounded-2xl border flex flex-col transition-all hover:shadow-xl ${
-                    isProfessional 
-                      ? 'border-blue-900 shadow-xl ring-1 ring-blue-900 relative z-10 scale-105 bg-white' 
-                      : isEnterprise
-                        ? 'border-slate-800 bg-slate-900 text-white'
-                        : 'border-slate-200 bg-white'
+                  <div key={key} className={`p-8 rounded-2xl border-2 flex flex-col transition-all hover:shadow-xl relative ${
+                    hasBlueBorder
+                      ? 'border-blue-600 bg-white'
+                      : 'border-slate-200 bg-white'
                   }`}>
-                    {isProfessional && (
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-900 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Most Popular</div>
-                    )}
                     {isEnterprise && (
-                      <div className="mb-2 inline-flex items-center gap-1 text-yellow-400 font-bold text-xs uppercase tracking-wide"><Crown size={12} fill="currentColor"/> Ultimate Power</div>
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-400 to-yellow-600 text-slate-900 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wide flex items-center gap-1">
+                        <Crown size={12} fill="currentColor"/> ULTIMATE
+                      </div>
                     )}
-                    
-                    <h3 className={`text-lg font-bold ${isEnterprise ? 'text-white' : 'text-slate-900'}`}>{plan.name}</h3>
+
+                    <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
                     <div className="mt-4 mb-6">
-                      <span className={`text-4xl font-extrabold ${isEnterprise ? 'text-white' : 'text-slate-900'}`}>${plan.price}</span>
-                      <span className={`${isEnterprise ? 'text-slate-400' : 'text-slate-500'}`}>/mo</span>
+                      <span className="text-4xl font-extrabold text-slate-900">${plan.price}</span>
+                      <span className="text-slate-500">/mo</span>
                     </div>
-                    
+
                     <ul className="space-y-4 mb-8 flex-1">
-                      <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
-                        <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/> 
+                      <li className="flex items-center gap-3 text-sm text-slate-700">
+                        <CheckCircle size={16} className="text-teal-500 shrink-0"/>
                         {plan.bots >= 9999 ? 'Unlimited' : plan.bots} Bot(s)
                       </li>
-                      <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
-                        <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/> 
+                      <li className="flex items-center gap-3 text-sm text-slate-700">
+                        <CheckCircle size={16} className="text-teal-500 shrink-0"/>
                         <span className="font-bold">{plan.conversations.toLocaleString()}</span>&nbsp;Conversations
                       </li>
-                      <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
-                        <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/> 
+                      <li className="flex items-center gap-3 text-sm text-slate-700">
+                        <CheckCircle size={16} className="text-teal-500 shrink-0"/>
                         {isEnterprise ? 'Enterprise Analytics' : 'Basic Analytics'}
                       </li>
                       {isEnterprise && (
                         <>
-                           <li className="flex items-center gap-3 text-sm text-slate-300">
-                             <CheckCircle size={16} className="text-yellow-400 shrink-0"/> White-label Ready
+                           <li className="flex items-center gap-3 text-sm text-slate-700">
+                             <CheckCircle size={16} className="text-teal-500 shrink-0"/> White-label Ready
                            </li>
-                           <li className="flex items-center gap-3 text-sm text-slate-300">
-                             <CheckCircle size={16} className="text-yellow-400 shrink-0"/> SLA Support
+                           <li className="flex items-center gap-3 text-sm text-slate-700">
+                             <CheckCircle size={16} className="text-teal-500 shrink-0"/> SLA Support
                            </li>
                         </>
                       )}
                     </ul>
-                    
+
                     <button onClick={onLogin} className={`w-full py-3 rounded-lg font-bold transition ${
-                      isProfessional 
-                        ? 'bg-blue-900 text-white hover:bg-blue-950' 
-                        : isEnterprise
-                          ? 'bg-white text-slate-900 hover:bg-slate-200'
-                          : 'bg-white text-slate-900 border border-slate-300 hover:bg-slate-50'
+                      hasBlueBorder
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}>
-                      {isEnterprise ? 'Get Enterprise' : `Choose ${plan.name}`}
+                      {key === PlanType.FREE ? 'Get Started Free' :
+                       key === PlanType.STARTER ? 'Upgrade to Starter' :
+                       key === PlanType.PROFESSIONAL ? 'Upgrade to Professional' :
+                       key === PlanType.EXECUTIVE ? 'Upgrade to Executive' :
+                       'Upgrade to Enterprise'}
                     </button>
                   </div>
                 );
