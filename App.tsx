@@ -126,7 +126,7 @@ function AppContent() {
           if (MASTER_EMAILS.includes(email)) {
             const adminProfile = buildPrivilegedProfile(UserRole.MASTER_ADMIN);
             setUser(adminProfile);
-            setCurrentView('admin');
+            // Don't force to admin view - let users navigate freely
             await dbService.saveUserProfile(adminProfile);
             return;
           }
@@ -134,7 +134,7 @@ function AppContent() {
           if (LIMITED_ADMIN_EMAILS.includes(email)) {
             const adminProfile = buildPrivilegedProfile(UserRole.LIMITED_ADMIN);
             setUser(adminProfile);
-            setCurrentView('admin');
+            // Don't force to admin view - let users navigate freely
             await dbService.saveUserProfile(adminProfile);
             return;
           }
@@ -369,22 +369,49 @@ function AppContent() {
       setUser(newUser);
       setIsLoggedIn(true);
       setAuthModalOpen(false);
-      
-      if (role === UserRole.MASTER_ADMIN || role === UserRole.LIMITED_ADMIN) {
-          setCurrentView('admin');
-      }
-      
+
+      // Don't force to admin view - let users navigate freely
+
       setNotification("Logged in (Demo Mode)");
       setTimeout(() => setNotification(null), 3000);
   };
 
+  const handleLogout = async () => {
+    try {
+      // Sign out from Supabase
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
+
+      // Clear local state
+      setUser(null);
+      setIsLoggedIn(false);
+      setCurrentView('dashboard');
+      setBots([]);
+      setLeads([]);
+      setChatLogs([]);
+
+      setNotification("Logged out successfully");
+      setTimeout(() => setNotification(null), 3000);
+    } catch (error) {
+      console.error('Logout failed:', error);
+      setNotification("Logout failed. Please try again.");
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
+
+  const handleViewLandingPage = () => {
+    // Navigate to landing page without logging out
+    window.location.href = '/landing';
+  };
+
   const handlePartnerSignup = (data: any) => {
     // In a real flow, this would create the user in DB with RESELLER role
-    setUser({ 
+    setUser({
       id: 'reseller-' + Date.now(),
       email: data.email,
       name: data.name,
-      role: UserRole.RESELLER, 
+      role: UserRole.RESELLER,
       plan: PlanType.FREE,
       companyName: data.companyName,
       resellerCode: data.companyName.substring(0,3).toUpperCase() + '2024'
@@ -539,6 +566,8 @@ function AppContent() {
         role={user.role}
         user={user}
         usage={totalConversations}
+        onLogout={handleLogout}
+        onViewLandingPage={handleViewLandingPage}
       />
       
       <main className="flex-1 overflow-hidden relative flex flex-col h-full">
