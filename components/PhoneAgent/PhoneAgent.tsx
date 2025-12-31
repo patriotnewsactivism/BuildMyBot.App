@@ -109,6 +109,73 @@ export const PhoneAgent: React.FC<PhoneAgentProps> = ({ user, onUpdate }) => {
   }, []);
 
   const [copiedVoice, setCopiedVoice] = useState(false);
+  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+
+  const playVoiceSample = (voiceName: string) => {
+    // Stop any currently playing voice
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    setPlayingVoice(voiceName);
+
+    // Map voice names to sample text that highlights voice characteristics
+    const sampleTexts: Record<string, string> = {
+      alloy: 'Hello! I\'m Alloy, a neutral and balanced voice perfect for professional settings.',
+      echo: 'Hi there! I\'m Echo, clear and professional for business communications.',
+      fable: 'Welcome! I\'m Fable, warm and friendly for customer service.',
+      onyx: 'Greetings. I\'m Onyx, deep and authoritative for important announcements.',
+      nova: 'Hey! I\'m Nova, bright and energetic for dynamic conversations.',
+      shimmer: 'Hello! I\'m Shimmer, soft and welcoming for a gentle touch.',
+    };
+
+    const sampleText = sampleTexts[voiceName] || `This is a sample of the ${voiceName} voice.`;
+
+    // Use Web Speech API for preview (note: actual Cartesia voices will sound different)
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(sampleText);
+
+      // Try to map to similar system voices
+      const voices = window.speechSynthesis.getVoices();
+      let selectedVoice = voices[0];
+
+      // Map voice characteristics to system voices
+      const voicePreferences: Record<string, string[]> = {
+        alloy: ['Google US English', 'Microsoft David', 'Alex'],
+        echo: ['Google UK English Female', 'Microsoft Zira', 'Samantha'],
+        fable: ['Google US English Female', 'Microsoft Susan', 'Victoria'],
+        onyx: ['Google UK English Male', 'Microsoft David', 'Daniel'],
+        nova: ['Google US English Female', 'Microsoft Susan', 'Kate'],
+        shimmer: ['Google US English', 'Microsoft Zira', 'Samantha'],
+      };
+
+      const preferences = voicePreferences[voiceName] || [];
+
+      for (const pref of preferences) {
+        const match = voices.find((v) => v.name.includes(pref));
+        if (match) {
+          selectedVoice = match;
+          break;
+        }
+      }
+
+      utterance.voice = selectedVoice;
+      utterance.rate = voiceName === 'nova' ? 1.1 : 0.95;
+      utterance.pitch = voiceName === 'onyx' ? 0.8 : 1.0;
+
+      utterance.onend = () => setPlayingVoice(null);
+      utterance.onerror = () => setPlayingVoice(null);
+
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const stopVoicePreview = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setPlayingVoice(null);
+  };
 
   const startSimulation = () => {
     setSimulatorError(null);
@@ -322,21 +389,28 @@ export const PhoneAgent: React.FC<PhoneAgentProps> = ({ user, onUpdate }) => {
                   onClick={() => setVoice(v)}
                   className={`p-3 rounded-lg border cursor-pointer flex justify-between items-center hover:border-blue-300 transition ${
                     voice === v ? 'border-blue-900 bg-blue-50' : 'border-slate-200 bg-white'
-                  }`}
+                  } ${playingVoice === v ? 'ring-2 ring-blue-500' : ''}`}
                 >
                   <span className="capitalize font-medium text-slate-700">{v}</span>
                   <button
-                    className="text-slate-400 hover:text-blue-900"
+                    className={`transition ${playingVoice === v ? 'text-blue-900 animate-pulse' : 'text-slate-400 hover:text-blue-900'}`}
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (playingVoice === v) {
+                        stopVoicePreview();
+                      } else {
+                        playVoiceSample(v);
+                      }
                     }}
                     aria-label={`Play ${v} sample`}
+                    title="Click to hear voice sample"
                   >
                     <PlayCircle size={16} />
                   </button>
                 </div>
               ))}
             </div>
+            <p className="text-xs text-slate-500 mt-3">Click the play button to hear a voice sample. Actual Cartesia voices will have even higher quality.</p>
           </div>
 
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
