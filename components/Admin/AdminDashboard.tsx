@@ -252,8 +252,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ readOnly = false
           </div>
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><Briefcase size={20} /></div>
-              <span className="text-xs font-medium bg-purple-50 text-purple-600 px-2 py-1 rounded-full">New</span>
+              <div className="p-2 bg-blue-50 text-blue-900 rounded-lg"><Briefcase size={20} /></div>
+              <span className="text-xs font-medium bg-blue-50 text-blue-900 px-2 py-1 rounded-full">New</span>
             </div>
             <p className="text-3xl font-bold text-slate-800">{stats.partnerCount}</p>
             <p className="text-sm text-slate-500 mt-1">Active Partners</p>

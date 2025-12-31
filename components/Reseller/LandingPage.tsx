@@ -292,10 +292,10 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     amber: { icon: 'bg-amber-100 text-amber-600', text: 'text-amber-600' },
     slate: { icon: 'bg-slate-100 text-slate-600', text: 'text-slate-600' },
     orange: { icon: 'bg-orange-100 text-orange-600', text: 'text-orange-600' },
-    purple: { icon: 'bg-purple-100 text-purple-600', text: 'text-purple-600' },
+    navy: { icon: 'bg-blue-100 text-blue-900', text: 'text-blue-900' },
     lime: { icon: 'bg-lime-100 text-lime-600', text: 'text-lime-600' },
     indigo: { icon: 'bg-indigo-100 text-indigo-600', text: 'text-indigo-600' },
-    pink: { icon: 'bg-pink-100 text-pink-600', text: 'text-pink-600' },
+    darkred: { icon: 'bg-red-100 text-red-900', text: 'text-red-900' },
     sky: { icon: 'bg-sky-100 text-sky-600', text: 'text-sky-600' },
   };
 

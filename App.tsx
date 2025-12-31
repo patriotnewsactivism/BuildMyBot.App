@@ -535,17 +535,17 @@ function AppContent() {
 
   if (isBooting) {
       return (
-        <div className="h-screen w-full bg-slate-900 flex items-center justify-center">
+        <div className="h-screen w-full bg-slate-100 flex items-center justify-center">
             <div className="flex flex-col items-center animate-fade-in">
                 <div className="w-20 h-20 bg-blue-900 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-900/50 mb-6 animate-bounce-slow">
                     <BotIcon size={48} className="text-white" />
                 </div>
-                <h1 className="text-white font-bold text-2xl tracking-widest uppercase mb-2">BuildMyBot</h1>
-                <p className="text-blue-400 text-xs font-mono tracking-wide mb-6">INITIALIZING SYSTEM...</p>
+                <h1 className="text-blue-900 font-bold text-2xl tracking-widest uppercase mb-2">BuildMyBot</h1>
+                <p className="text-slate-600 text-xs font-mono tracking-wide mb-6">INITIALIZING SYSTEM...</p>
                 <div className="flex gap-1.5">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.1s'}}></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                    <div className="w-2 h-2 bg-blue-900 rounded-full animate-pulse"></div>
+                    <div className="w-2 h-2 bg-blue-900 rounded-full animate-pulse" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-blue-900 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
                 </div>
             </div>
         </div>

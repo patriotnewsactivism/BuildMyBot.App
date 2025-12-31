@@ -169,8 +169,8 @@ export const IntegrationGuides: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-purple-100 rounded-lg">
-          <Workflow className="text-purple-600" size={24} />
+        <div className="p-2 bg-blue-100 rounded-lg">
+          <Workflow className="text-blue-900" size={24} />
         </div>
         <div>
           <h3 className="text-lg font-bold text-slate-900">Integration Guides</h3>

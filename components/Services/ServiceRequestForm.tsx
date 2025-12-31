@@ -212,8 +212,8 @@ export const ServiceRequestForm: React.FC<ServiceRequestFormProps> = ({
         {step === 2 && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Cog size={24} className="text-purple-600" />
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Cog size={24} className="text-blue-900" />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-slate-900">Desired Features</h2>
