@@ -19,7 +19,7 @@ const LANGUAGE_COLORS = {
   javascript: 'text-yellow-400',
   python: 'text-blue-400',
   curl: 'text-green-400',
-  json: 'text-purple-400',
+  json: 'text-blue-300',
 };
 
 export const CodeExample: React.FC<CodeExampleProps> = ({

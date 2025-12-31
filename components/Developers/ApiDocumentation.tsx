@@ -466,8 +466,8 @@ print(response.json()['content'])`,
           <div className="space-y-6">
             <div className="bg-white rounded-xl border border-slate-200 p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Activity className="text-purple-600" size={24} />
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Activity className="text-blue-900" size={24} />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900">Rate Limits</h3>
               </div>

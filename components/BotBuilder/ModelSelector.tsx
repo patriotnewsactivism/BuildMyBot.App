@@ -19,7 +19,7 @@ const PROVIDER_INFO: Record<AIProvider, { name: string; color: string; bgColor: 
 const SPEED_ICONS: Record<string, React.ReactNode> = {
   fast: <Zap size={14} className="text-green-500" />,
   medium: <Clock size={14} className="text-amber-500" />,
-  slow: <Brain size={14} className="text-purple-500" />,
+  slow: <Brain size={14} className="text-blue-900" />,
 };
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
@@ -72,7 +72,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             <div className="flex items-center gap-2">
               <span className="font-medium text-slate-900">{selectedModel.name}</span>
               {selectedModel.tier === 'premium' && (
-                <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
+                <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-900 rounded-full font-medium">
                   Premium
                 </span>
               )}
@@ -147,7 +147,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-slate-900">{model.name}</span>
                       {model.tier === 'premium' && (
-                        <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-900 rounded-full font-medium">
                           Premium
                         </span>
                       )}

@@ -13,7 +13,7 @@ interface DoneForYouProps {
 const STATUS_CONFIG: Record<ServiceRequestStatus, { label: string; color: string; icon: React.ElementType }> = {
   pending: { label: 'Pending Review', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
   in_progress: { label: 'In Progress', color: 'bg-blue-100 text-blue-700', icon: Bot },
-  review: { label: 'Ready for Review', color: 'bg-purple-100 text-purple-700', icon: FileText },
+  review: { label: 'Ready for Review', color: 'bg-blue-100 text-blue-900', icon: FileText },
   completed: { label: 'Completed', color: 'bg-green-100 text-green-700', icon: CheckCircle },
   cancelled: { label: 'Cancelled', color: 'bg-slate-100 text-slate-700', icon: AlertCircle },
 };

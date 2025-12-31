@@ -518,10 +518,10 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     amber: { icon: 'bg-amber-100 text-amber-700', border: 'border-amber-100', accent: 'text-amber-700' },
     slate: { icon: 'bg-slate-100 text-slate-700', border: 'border-slate-200', accent: 'text-slate-700' },
     orange: { icon: 'bg-orange-100 text-orange-700', border: 'border-orange-100', accent: 'text-orange-700' },
-    purple: { icon: 'bg-purple-100 text-purple-700', border: 'border-purple-100', accent: 'text-purple-700' },
+    navy: { icon: 'bg-blue-100 text-blue-900', border: 'border-blue-100', accent: 'text-blue-900' },
     lime: { icon: 'bg-lime-100 text-lime-700', border: 'border-lime-100', accent: 'text-lime-700' },
     indigo: { icon: 'bg-indigo-100 text-indigo-700', border: 'border-indigo-100', accent: 'text-indigo-700' },
-    pink: { icon: 'bg-pink-100 text-pink-700', border: 'border-pink-100', accent: 'text-pink-700' },
+    darkred: { icon: 'bg-red-100 text-red-900', border: 'border-red-100', accent: 'text-red-900' },
     sky: { icon: 'bg-sky-100 text-sky-700', border: 'border-sky-100', accent: 'text-sky-700' }
   };
 
@@ -534,7 +534,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
 
   const timelineColorThemes: Record<string, { badgeBg: string; badgeText: string; circleBg: string; shadow: string }> = {
     blue: { badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', circleBg: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
-    purple: { badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', circleBg: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
+    navy: { badgeBg: 'bg-blue-100', badgeText: 'text-blue-900', circleBg: 'bg-blue-900', shadow: 'shadow-blue-900/30' },
     emerald: { badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700', circleBg: 'bg-emerald-500', shadow: 'shadow-emerald-500/30' },
     amber: { badgeBg: 'bg-amber-100', badgeText: 'text-amber-700', circleBg: 'bg-amber-500', shadow: 'shadow-amber-500/30' },
   };
@@ -1100,7 +1100,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                 <div>
                   <div className="flex justify-between mb-3">
                     <label className="text-white font-medium">Current Conversion Rate</label>
-                    <span className="text-purple-400 font-bold">{roiCurrentConversion}%</span>
+                    <span className="text-blue-400 font-bold">{roiCurrentConversion}%</span>
                   </div>
                   <input
                     type="range"
@@ -1109,7 +1109,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                     step="1"
                     value={roiCurrentConversion}
                     onChange={(e) => setRoiCurrentConversion(Number(e.target.value))}
-                    className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                    className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                   />
                   <div className="flex justify-between text-xs text-slate-500 mt-1">
                     <span>1%</span>
@@ -1144,7 +1144,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700">
                   <div>
                     <p className="text-slate-400 text-sm">New Conversion Rate</p>
-                    <p className="text-xl font-bold text-purple-400">{roiImprovedConversion.toFixed(1)}%</p>
+                    <p className="text-xl font-bold text-blue-400">{roiImprovedConversion.toFixed(1)}%</p>
                   </div>
                   <div>
                     <p className="text-slate-400 text-sm">Monthly Increase</p>
@@ -1439,10 +1439,10 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                </div>
 
                {/* 2. Viral Post Generator Demo */}
-               <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col shadow-2xl hover:shadow-purple-900/20 transition-all duration-300">
+               <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col shadow-2xl hover:shadow-blue-900/20 transition-all duration-300">
                   <div className="p-6 border-b border-slate-700 bg-slate-800/50">
                      <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 bg-purple-900/50 text-purple-400 rounded-lg border border-purple-500/20"><Megaphone size={20} /></div>
+                        <div className="p-2 bg-blue-900/50 text-blue-400 rounded-lg border border-blue-500/20"><Megaphone size={20} /></div>
                         <h3 className="font-bold text-lg text-white">Viral Post Creator</h3>
                      </div>
                      <p className="text-sm text-slate-400">Generate high-engagement social media content in seconds.</p>
