@@ -10,7 +10,7 @@ BuildMyBot is an all-in-one AI Operating System that empowers businesses to auto
 ## ✨ Key Features
 
 ### 🤖 AI Bot Builder
-- **Specialized Personas:** tailored roles for City Government (e.g., Batesville City Assistant), Recruitment, Travel, Real Estate, and more.
+- **Specialized Personas:** tailored roles for City Government, Recruitment, Travel, Real Estate, and more.
 - **RAG Knowledge Base:** Train bots on PDFs, Website URLs, and text data.
 - **Visual Editor:** No-code customization of identity, tone, and behavior.
 
@@ -89,7 +89,7 @@ BuildMyBot is an all-in-one AI Operating System that empowers businesses to auto
 For a detailed breakdown of the engineering plan, database schema, and migration strategy to Supabase, please refer to **[PLAN.md](./PLAN.md)**.
 
 ## 📱 Live Demos included in the App
-- **City Services:** Batesville City Assistant demo with utility payment logic.
+- **City Services:** City Government Assistant demo with utility payment logic.
 - **Instant Training:** Drag-and-drop PDF training.
 - **Viral Post Creator:** Content generation engine.
 - **Phone Agent:** Interactive call simulator.

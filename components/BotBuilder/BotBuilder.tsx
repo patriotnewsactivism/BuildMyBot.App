@@ -20,7 +20,6 @@ const PERSONAS = [
   { id: 'sales', name: 'Sales Representative', prompt: 'You are a top-performing sales representative for {company}. Your goal is to qualify leads and close deals. Be persuasive but not pushy. Focus on value and benefits. Always try to get a meeting booked.' },
   { id: 'receptionist', name: 'AI Receptionist', prompt: 'You are the front desk receptionist for {company}. Be warm and welcoming. Help schedule appointments and route calls. Keep responses short and professional.' },
   { id: 'city_gov', name: 'City Services Agent', prompt: 'You are the official AI agent for {company} (City Government). Assist citizens with utility bill payments, trash pickup schedules, and permit applications. Be authoritative, helpful, and community-focused. If a citizen reports an emergency, tell them to dial 911 immediately.' },
-  { id: 'batesville', name: 'Batesville City Assistant', prompt: 'You are the official AI liaison for the City of Batesville, Mississippi. Your primary duties are to assist residents with utility bill payments (water, gas, electricity), answer questions about city ordinances, and help schedule inspections. \n\nContext:\n- City Hall is located at 103 College St.\n- Utility payments can be made in person or via the online portal.\n- Trash pickup is weekly.\n\nBe professional, warm, and neighborly. Always direct utility payment queries to the secure payment portal.' },
   { id: 'hr', name: 'HR Assistant', prompt: 'You are a Human Resources assistant. Answer employee questions about benefits, holidays, and company policy. Maintain strict confidentiality and professionalism.' },
   { id: 'tech', name: 'Technical Support', prompt: 'You are a Tier 1 Technical Support agent. Walk users through troubleshooting steps logically. Ask clarifying questions to diagnose the issue.' },
   { id: 'scheduler', name: 'Appointment Scheduler', prompt: 'You are a dedicated scheduling assistant for {company}. Your primary goal is to book appointments. Be efficient and accommodating. Always offer specific time slots and confirm details.' },
@@ -117,17 +116,10 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
   const handleApplyPersona = (personaId: string) => {
     const persona = PERSONAS.find(p => p.id === personaId);
     if (persona) {
-      const isBatesville = personaId === 'batesville';
       setActiveBot({
         ...activeBot,
         systemPrompt: persona.prompt.replace('{company}', 'our organization'),
-        type: persona.name,
-        // Auto-set name for Batesville demo
-        name: isBatesville ? 'Batesville City Assistant' : activeBot.name,
-        // Auto-inject Knowledge for Batesville demo to ensure it works flawlessly immediately
-        knowledgeBase: isBatesville 
-            ? ['City Hall is located at 103 College St, Batesville, MS.', 'Utility payments can be made online at batesville.ms.gov/pay.', 'Trash pickup is every Tuesday for residential areas.'] 
-            : activeBot.knowledgeBase
+        type: persona.name
       });
     }
   };
@@ -321,9 +313,8 @@ export const BotBuilder: React.FC<BotBuilderProps> = ({ bots, onSave, customDoma
                                onClick={() => handleApplyPersona(p.id)}
                                className={`text-left p-3 rounded-lg border text-sm transition hover:shadow-md relative overflow-hidden ${activeBot.type === p.name ? 'border-blue-900 bg-blue-50 ring-1 ring-blue-900' : 'border-slate-200 bg-slate-50 hover:bg-white'}`}
                              >
-                                {p.id === 'batesville' && <div className="absolute top-0 right-0 bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded-bl-lg font-bold">DEMO</div>}
                                 <div className="font-semibold text-slate-900 flex items-center gap-1.5">
-                                    {p.id.includes('city') || p.id === 'batesville' ? <Building2 size={14} className="text-blue-600"/> : null}
+                                    {p.id.includes('city') ? <Building2 size={14} className="text-blue-600"/> : null}
                                     {p.id === 'recruiter' ? <Briefcase size={14} className="text-blue-600"/> : null}
                                     {p.id === 'travel' ? <Plane size={14} className="text-blue-600"/> : null}
                                     {p.id === 'financial' ? <DollarSign size={14} className="text-blue-600"/> : null}
