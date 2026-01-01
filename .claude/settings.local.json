@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx playwright test:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install)",
+      "Bash(npm run dev:*)",
+      "Bash(npx supabase stop)",
+      "Bash(npx supabase start)",
+      "Bash(netstat:*)",
+      "Bash(powershell \"Get-Process -Id 11788 | Select-Object Id, ProcessName\")",
+      "Bash(npx supabase:*)",
+      "Bash(docker ps:*)",
+      "Bash(ForEach-Object { docker rm -f $_ })",
+      "Bash(powershell \"docker ps -a --filter name=supabase --format ''{{.ID}}'' | ForEach-Object { docker rm -f $_}\")",
+      "Bash(xargs:*)",
+      "Bash(powershell \"netsh interface ipv4 show excludedportrange protocol=tcp\")"
+    ]
+  }
+}
