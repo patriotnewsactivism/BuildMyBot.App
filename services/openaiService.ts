@@ -1,17 +1,19 @@
-// Use process.env provided by Vite define config to avoid import.meta issues
-const getApiKey = () => process.env.VITE_OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+// OpenAI Service - Now routes through secure Edge Functions
+// API keys are never exposed to the browser
+import { supabase } from './supabaseClient';
+
+const SUPABASE_FUNCTION_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('/rest/v1', '') || 'https://qjwwkcoredotrjtstigt.supabase.co';
 
 export const generateBotResponse = async (
   systemPrompt: string,
   history: { role: 'user' | 'model'; text: string }[],
   lastMessage: string,
   modelName: string = 'gpt-4o-mini',
-  context?: string
+  context?: string,
+  botId?: string,
+  userId?: string
 ): Promise<string> => {
-  const apiKey = getApiKey();
-  if (!apiKey) return "Configuration Error: OpenAI API Key is missing. Please check your environment variables.";
-
-  // Construct messages
+  // Construct messages for Edge Function
   const messages: any[] = [
     { role: 'system', content: systemPrompt }
   ];
@@ -30,79 +32,70 @@ export const generateBotResponse = async (
   messages.push({ role: 'user', content: lastMessage });
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Get auth token
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    // Call Edge Function instead of OpenAI directly
+    const response = await fetch(`${SUPABASE_FUNCTION_URL}/functions/v1/ai-complete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': token ? `Bearer ${token}` : '',
+        'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
       },
       body: JSON.stringify({
-        model: modelName,
+        botId: botId || 'demo-bot',
         messages: messages,
-        temperature: 0.7,
-        max_tokens: 500
+        sessionId: `session-${Date.now()}`,
+        userId: userId,
+        skipLogging: !botId // Don't log if no botId (preview mode)
       })
     });
 
     if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        console.error("OpenAI API Error:", err);
-        throw new Error(err.error?.message || response.statusText);
+      const err = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.error("Edge Function Error:", err);
+      throw new Error(err.error || response.statusText);
     }
 
     const data = await response.json();
-    return data.choices[0]?.message?.content || "";
+    return data.reply || data.message || "";
   } catch (error: any) {
-    console.error("OpenAI Service Error:", error);
-    return "I'm having trouble connecting to my AI brain right now. Please check your internet connection or API Key configuration.";
+    console.error("AI Service Error:", error);
+    return "I'm having trouble connecting right now. Please try again in a moment.";
   }
 };
 
 export const scrapeWebsiteContent = async (url: string): Promise<string> => {
   if (!url) return "";
-  const apiKey = getApiKey();
-  
-  // Note: Scraping does not technically require OpenAI key until the summarization step.
-  // But we check it early to fail fast if the app isn't configured.
-  if (!apiKey) throw new Error("API Key missing");
 
   try {
-    let targetUrl = url;
-    if (!targetUrl.startsWith('http')) {
-      targetUrl = 'https://' + targetUrl;
-    }
+    // Get auth token
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
 
-    // 1. Scrape using Jina via CORS Proxy to avoid browser blocking
-    // Using corsproxy.io to bypass Access-Control-Allow-Origin errors in browser environment
-    const proxyUrl = 'https://corsproxy.io/?';
-    const jinaUrl = `https://r.jina.ai/${targetUrl}`;
-    
-    const scrapeResponse = await fetch(proxyUrl + encodeURIComponent(jinaUrl));
-    
-    if (!scrapeResponse.ok) throw new Error("Failed to scrape website. The URL might be blocked or invalid.");
-    
-    const rawText = await scrapeResponse.text();
-    const truncatedText = rawText.substring(0, 15000); // Limit context window for cost/speed
-
-    // 2. Summarize using GPT-4o-mini to create structured knowledge
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-                { role: 'system', content: 'You are a precise Data Extractor. Extract business facts.' },
-                { role: 'user', content: `Analyze this content and extract key business details:\n1. Business Name & Description\n2. Key Services/Products\n3. Contact Info (Email, Phone, Address)\n4. Pricing/Hours (if available)\n\nCONTENT:\n${truncatedText}` }
-            ]
-        })
+    // Call scrape-url Edge Function (server-side, no CORS issues)
+    const response = await fetch(`${SUPABASE_FUNCTION_URL}/functions/v1/scrape-url`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : '',
+        'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      },
+      body: JSON.stringify({
+        url: url,
+        summarize: true
+      })
     });
 
-    if (!response.ok) throw new Error("Failed to summarize content.");
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Scrape failed' }));
+      throw new Error(err.error || "Failed to scrape website");
+    }
+
     const data = await response.json();
-    return data.choices[0]?.message?.content || rawText.substring(0, 1000);
+    return data.content || data.summary || "";
 
   } catch (error: any) {
     console.error("Scrape Error:", error);
@@ -111,55 +104,79 @@ export const scrapeWebsiteContent = async (url: string): Promise<string> => {
 };
 
 export const generateMarketingContent = async (type: string, topic: string, tone: string): Promise<string> => {
-    const apiKey = getApiKey();
-    if (!apiKey) return "Error: API Key missing.";
-
     try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        if (!token) {
+            return "Please sign in to generate marketing content.";
+        }
+
+        // Call ai-complete Edge Function in marketing mode
+        const response = await fetch(`${SUPABASE_FUNCTION_URL}/functions/v1/ai-complete`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
+                'Authorization': `Bearer ${token}`,
+                'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
             },
             body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages: [
-                    { role: 'system', content: `You are an expert Copywriter. Tone: ${tone}.` },
-                    { role: 'user', content: `Write a ${type} about ${topic}. Return ONLY the content, no filler. Keep it engaging and high-converting.` }
-                ]
+                mode: 'marketing',
+                variant: type,
+                topic: topic,
+                tone: tone
             })
         });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ error: 'Generation failed' }));
+            throw new Error(err.error || "Failed to generate content");
+        }
+
         const data = await response.json();
-        return data.choices[0]?.message?.content || "";
-    } catch (e) {
-        return "Failed to generate content.";
+        return data.content || "";
+    } catch (e: any) {
+        console.error("Marketing content error:", e);
+        return "Failed to generate content. Please try again.";
     }
 };
 
 export const generateWebsiteStructure = async (businessName: string, description: string): Promise<string> => {
-    const apiKey = getApiKey();
-    if (!apiKey) throw new Error("API Key missing");
-
     try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        if (!token) {
+            throw new Error("Please sign in to generate website structure");
+        }
+
+        // Call ai-complete Edge Function for website generation
+        const response = await fetch(`${SUPABASE_FUNCTION_URL}/functions/v1/ai-complete`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
+                'Authorization': `Bearer ${token}`,
+                'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
             },
             body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                response_format: { type: "json_object" },
-                messages: [
-                    { role: 'system', content: 'You are a Website Builder AI. Output JSON only with keys: headline, subheadline, features (array of strings), ctaText.' },
-                    { role: 'user', content: `Generate landing page structure for "${businessName}". Description: ${description}` }
-                ]
+                mode: 'marketing',
+                variant: 'website',
+                topic: `${businessName}: ${description}`,
+                tone: 'Professional'
             })
         });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ error: 'Generation failed' }));
+            throw new Error(err.error || "Failed to generate structure");
+        }
+
         const data = await response.json();
-        return data.choices[0]?.message?.content || "{}";
+        return data.content || "{}";
     } catch (e) {
-        console.error(e);
+        console.error("Website generation error:", e);
         throw e;
     }
 };

@@ -3,11 +3,53 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, logUsage } from "../_shared/rateLimit.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Secure CORS configuration
+const ALLOWED_ORIGINS = [
+  "http://localhost:3000",
+  "http://localhost:5173", // Vite dev server
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5173",
+  "https://app.buildmybot.com", // Production domain
+  "https://buildmybot.vercel.app", // Vercel preview deployments
+];
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Max-Age": "86400",
+  };
+}
+
+// Zod schemas for input validation
+const ChatMessageSchema = z.object({
+  role: z.enum(["user", "assistant", "system"]),
+  content: z.string().min(1).max(50000),
+});
+
+const ChatRequestSchema = z.object({
+  botId: z.string().uuid(),
+  messages: z.array(ChatMessageSchema).min(1).max(100),
+  sessionId: z.string().min(1).max(255),
+  userId: z.string().uuid().optional(),
+  skipLogging: z.boolean().optional(),
+});
+
+const MarketingRequestSchema = z.object({
+  mode: z.literal("marketing"),
+  variant: z.enum(["email", "ad", "blog", "social", "website"]),
+  topic: z.string().min(1).max(1000),
+  tone: z.string().max(100).optional(),
+  templateContent: z.string().max(10000).optional(),
+  templateId: z.string().uuid().optional(),
+  title: z.string().max(200).optional(),
+});
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -33,6 +75,9 @@ interface MarketingRequestBody {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -61,8 +106,62 @@ serve(async (req) => {
       }
     }
 
+    // Check rate limiting for authenticated users
+    if (userId) {
+      const rateLimitResult = await checkRateLimit(
+        userId,
+        "ai-complete",
+        supabaseUrl,
+        supabaseServiceKey
+      );
+
+      if (!rateLimitResult.allowed) {
+        return new Response(
+          JSON.stringify({
+            error: rateLimitResult.error || "Rate limit exceeded",
+            remaining: rateLimitResult.remaining,
+            reset: rateLimitResult.reset,
+          }),
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+              "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+              "X-RateLimit-Reset": rateLimitResult.reset.toString(),
+            },
+          }
+        );
+      }
+    }
+
     const rawBody = await req.json() as ChatRequestBody | MarketingRequestBody;
     const isMarketingRequest = (rawBody as MarketingRequestBody)?.mode === "marketing" || "variant" in rawBody;
+
+    // Validate input based on request type
+    if (isMarketingRequest) {
+      const validation = MarketingRequestSchema.safeParse(rawBody);
+      if (!validation.success) {
+        return new Response(
+          JSON.stringify({
+            error: "Invalid request format",
+            details: validation.error.format()
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      const validation = ChatRequestSchema.safeParse(rawBody);
+      if (!validation.success) {
+        return new Response(
+          JSON.stringify({
+            error: "Invalid request format",
+            details: validation.error.format()
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     // --------------------------
     // MARKETING CONTENT VARIANT
@@ -131,6 +230,11 @@ serve(async (req) => {
       const openaiData = await openaiResponse.json();
       const assistantMessage = openaiData.choices?.[0]?.message?.content || "";
       const tokensUsed = openaiData.usage?.total_tokens || 0;
+
+      // Log usage for rate limiting
+      if (userId) {
+        await logUsage(userId, "ai-complete", tokensUsed, supabaseUrl, supabaseServiceKey);
+      }
 
       let savedContent = null;
       const safeTitle = title || `${variant.toUpperCase()} - ${topic}`.slice(0, 120);
@@ -275,6 +379,11 @@ serve(async (req) => {
     const openaiData = await openaiResponse.json();
     const assistantMessage = openaiData.choices[0].message.content;
     const tokensUsed = openaiData.usage?.total_tokens || 0;
+
+    // Log usage for rate limiting
+    if (userId) {
+      await logUsage(userId, "ai-complete", tokensUsed, supabaseUrl, supabaseServiceKey);
+    }
 
     // Get or create conversation
     let conversationId: string | undefined;

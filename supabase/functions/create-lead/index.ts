@@ -3,11 +3,20 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/cors.ts";
+import { checkRateLimit, logUsage } from "../_shared/rateLimit.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Zod schema for input validation
+const CreateLeadSchema = z.object({
+  botId: z.string().uuid(),
+  name: z.string().min(1).max(255),
+  email: z.string().email().max(255),
+  phone: z.string().max(50).optional(),
+  score: z.number().int().min(0).max(100).optional(),
+  sourceUrl: z.string().url().max(2048).optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
 
 interface RequestBody {
   botId: string;
@@ -20,6 +29,9 @@ interface RequestBody {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -29,24 +41,21 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const body: RequestBody = await req.json();
-    const { botId, name, email, phone, score, sourceUrl, metadata } = body;
+    const rawBody = await req.json();
 
-    if (!botId || !name || !email) {
+    // Validate input
+    const validation = CreateLeadSchema.safeParse(rawBody);
+    if (!validation.success) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: botId, name, email" }),
+        JSON.stringify({
+          error: "Invalid request format",
+          details: validation.error.format()
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid email format" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const { botId, name, email, phone, score, sourceUrl, metadata } = validation.data;
 
     // Fetch bot to get owner
     const { data: bot, error: botError } = await supabase
@@ -59,6 +68,33 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Bot not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check rate limiting for bot owner
+    const rateLimitResult = await checkRateLimit(
+      bot.user_id,
+      "create-lead",
+      supabaseUrl,
+      supabaseServiceKey
+    );
+
+    if (!rateLimitResult.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: rateLimitResult.error || "Rate limit exceeded",
+          remaining: rateLimitResult.remaining,
+          reset: rateLimitResult.reset,
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+            "X-RateLimit-Reset": rateLimitResult.reset.toString(),
+          },
+        }
       );
     }
 
@@ -108,6 +144,9 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Log usage for rate limiting
+    await logUsage(bot.user_id, "create-lead", 1, supabaseUrl, supabaseServiceKey);
 
     // Log usage event
     await supabase.from("usage_events").insert({

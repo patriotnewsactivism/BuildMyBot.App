@@ -11,7 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "vector";
 -- ============================================
 -- ENUMS
 -- ============================================
-CREATE TYPE user_role AS ENUM ('OWNER', 'ADMIN', 'RESELLER');
+CREATE TYPE user_role AS ENUM ('MASTER_ADMIN', 'ADMIN', 'OWNER', 'RESELLER');
 CREATE TYPE plan_type AS ENUM ('FREE', 'STARTER', 'PROFESSIONAL', 'EXECUTIVE', 'ENTERPRISE');
 CREATE TYPE lead_status AS ENUM ('New', 'Contacted', 'Qualified', 'Closed');
 CREATE TYPE message_role AS ENUM ('user', 'assistant', 'system');

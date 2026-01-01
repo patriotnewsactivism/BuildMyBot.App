@@ -3,11 +3,15 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/cors.ts";
+import { checkRateLimit, logUsage } from "../_shared/rateLimit.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Zod schema for input validation
+const InstallTemplateSchema = z.object({
+  templateId: z.string().uuid(),
+  botName: z.string().min(1).max(255).optional(),
+});
 
 interface RequestBody {
   templateId: string;
@@ -15,6 +19,9 @@ interface RequestBody {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -43,15 +50,48 @@ serve(async (req) => {
       );
     }
 
-    const body: RequestBody = await req.json();
-    const { templateId, botName } = body;
+    // Check rate limiting
+    const rateLimitResult = await checkRateLimit(
+      user.id,
+      "marketplace-install-template",
+      supabaseUrl,
+      supabaseServiceKey
+    );
 
-    if (!templateId) {
+    if (!rateLimitResult.allowed) {
       return new Response(
-        JSON.stringify({ error: "Missing required field: templateId" }),
+        JSON.stringify({
+          error: rateLimitResult.error || "Rate limit exceeded",
+          remaining: rateLimitResult.remaining,
+          reset: rateLimitResult.reset,
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+            "X-RateLimit-Reset": rateLimitResult.reset.toString(),
+          },
+        }
+      );
+    }
+
+    const rawBody = await req.json();
+
+    // Validate input
+    const validation = InstallTemplateSchema.safeParse(rawBody);
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({
+          error: "Invalid request format",
+          details: validation.error.format()
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { templateId, botName } = validation.data;
 
     // Fetch template
     const { data: template, error: templateError } = await supabase
@@ -129,6 +169,9 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Log usage for rate limiting
+    await logUsage(user.id, "marketplace-install-template", 1, supabaseUrl, supabaseServiceKey);
 
     // Increment template install count
     await supabase

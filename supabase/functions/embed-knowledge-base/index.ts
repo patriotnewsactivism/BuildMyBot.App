@@ -3,11 +3,19 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/cors.ts";
+import { checkRateLimit, logUsage } from "../_shared/rateLimit.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Zod schema for input validation
+const EmbedKnowledgeBaseSchema = z.object({
+  botId: z.string().uuid(),
+  content: z.string().min(1).max(1000000), // Max 1MB of text
+  fileName: z.string().min(1).max(255),
+  fileType: z.string().max(50).optional(),
+  fileUrl: z.string().url().max(2048).optional(),
+  chunkSize: z.number().int().min(100).max(5000).optional(),
+});
 
 interface RequestBody {
   botId: string;
@@ -49,6 +57,9 @@ function chunkText(text: string, chunkSize: number = 1000, overlap: number = 200
 }
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -83,15 +94,48 @@ serve(async (req) => {
       );
     }
 
-    const body: RequestBody = await req.json();
-    const { botId, content, fileName, fileType, fileUrl, chunkSize } = body;
+    // Check rate limiting
+    const rateLimitResult = await checkRateLimit(
+      user.id,
+      "embed-knowledge-base",
+      supabaseUrl,
+      supabaseServiceKey
+    );
 
-    if (!botId || !content || !fileName) {
+    if (!rateLimitResult.allowed) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: botId, content, fileName" }),
+        JSON.stringify({
+          error: rateLimitResult.error || "Rate limit exceeded",
+          remaining: rateLimitResult.remaining,
+          reset: rateLimitResult.reset,
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+            "X-RateLimit-Reset": rateLimitResult.reset.toString(),
+          },
+        }
+      );
+    }
+
+    const rawBody = await req.json();
+
+    // Validate input
+    const validation = EmbedKnowledgeBaseSchema.safeParse(rawBody);
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({
+          error: "Invalid request format",
+          details: validation.error.format()
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { botId, content, fileName, fileType, fileUrl, chunkSize } = validation.data;
 
     // Verify bot ownership
     const { data: bot, error: botError } = await supabase
@@ -172,6 +216,9 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Log usage for rate limiting
+    await logUsage(user.id, "embed-knowledge-base", chunks.length, supabaseUrl, supabaseServiceKey);
 
     // Track usage
     await supabase.from("usage_events").insert({

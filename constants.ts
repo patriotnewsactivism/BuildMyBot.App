@@ -55,10 +55,10 @@ export const PLANS = {
       'Team collaboration'
     ]
   },
-  [PlanType.ENTERPRISE]: { 
-    price: 399, 
+  [PlanType.ENTERPRISE]: {
+    price: 499,
     bots: 9999, // Represents Unlimited
-    conversations: 50000, 
+    conversations: 50000,
     name: 'Enterprise',
     overage: 0.01, // Cost per conversation over limit
     features: [

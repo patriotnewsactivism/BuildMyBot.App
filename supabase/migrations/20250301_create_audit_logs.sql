@@ -50,7 +50,7 @@ CREATE POLICY "Admins can view all audit logs"
     EXISTS (
       SELECT 1 FROM profiles
       WHERE profiles.id = auth.uid()
-      AND profiles.role IN ('ADMIN', 'MASTER_ADMIN')
+      AND profiles.role IN ('MASTER_ADMIN', 'ADMIN')
     )
   );
 

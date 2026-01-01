@@ -31,9 +31,6 @@ const INITIAL_RESELLER_STATS: ResellerStats = {
   pendingPayout: 0,
 };
 
-// Define Master Admins here
-const MASTER_EMAILS = ['admin@buildmybot.app', 'master@buildmybot.app', 'ceo@buildmybot.app', 'mreardon@wtpnews.org', 'ben@texasplanninglaw.com'];
-
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isBooting, setIsBooting] = useState(true); // Premium loading state
@@ -82,22 +79,8 @@ function App() {
       if (session?.user) {
         setIsLoggedIn(true);
         const email = session.user.email;
-        
-        // CHECK FOR GOD MODE (Master Emails)
-        if (email && MASTER_EMAILS.includes(email.toLowerCase())) {
-           setUser({
-              id: session.user.id,
-              name: 'Master Admin',
-              email: email,
-              role: UserRole.ADMIN, // Grant Full Access
-              plan: PlanType.ENTERPRISE, // Grant Uncapped Limits
-              companyName: 'BuildMyBot HQ',
-              avatarUrl: session.user.user_metadata?.avatar_url
-           });
-           return;
-        }
 
-        // Standard User Flow
+        // Get user profile from database (role set server-side via admin invitation system)
         const profile = await dbService.getUserProfile(session.user.id);
         if (profile) {
           setUser(profile);
@@ -144,33 +127,22 @@ function App() {
   const estSavings = totalConversations * 5; 
   const avgResponseTime = "0.8s";
 
-  const handleAdminLogin = () => {
-      // Manual trigger for demo purposes if needed (from footer)
-      handleManualAuth('admin@buildmybot.app', 'Master Admin', 'BuildMyBot HQ');
-  };
-
   // Fallback authentication for when Supabase Config is invalid or blocked
   const handleManualAuth = (email: string, name?: string, companyName?: string) => {
-      const isMaster = MASTER_EMAILS.includes(email.toLowerCase());
-      
       const newUser: User = {
-          id: isMaster ? 'master-admin' : 'demo-user-' + Date.now(),
+          id: 'demo-user-' + Date.now(),
           name: name || email.split('@')[0],
           email: email,
-          role: isMaster ? UserRole.ADMIN : UserRole.OWNER,
-          plan: isMaster ? PlanType.ENTERPRISE : PlanType.FREE,
-          companyName: companyName || (isMaster ? 'BuildMyBot HQ' : 'Demo Company'),
+          role: UserRole.OWNER,
+          plan: PlanType.FREE,
+          companyName: companyName || 'Demo Company',
           createdAt: new Date().toISOString()
       };
 
       setUser(newUser);
       setIsLoggedIn(true);
       setAuthModalOpen(false);
-      
-      if (isMaster) {
-          setCurrentView('admin');
-      }
-      
+
       setNotification("Logged in (Demo Mode)");
       setTimeout(() => setNotification(null), 3000);
   };

@@ -4,11 +4,15 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/cors.ts";
+import { checkRateLimit, logUsage } from "../_shared/rateLimit.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Zod schema for input validation
+const ScrapeUrlSchema = z.object({
+  url: z.string().min(1).max(2048),
+  summarize: z.boolean().optional(),
+});
 
 interface RequestBody {
   url: string;
@@ -73,6 +77,9 @@ function isBlockedUrl(urlString: string): { blocked: boolean; reason?: string } 
 }
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -108,15 +115,48 @@ serve(async (req) => {
       );
     }
 
-    const body: RequestBody = await req.json();
-    let { url, summarize = true } = body;
+    // Check rate limiting
+    const rateLimitResult = await checkRateLimit(
+      user.id,
+      "scrape-url",
+      supabaseUrl,
+      supabaseServiceKey
+    );
 
-    if (!url) {
+    if (!rateLimitResult.allowed) {
       return new Response(
-        JSON.stringify({ error: "Missing required field: url" }),
+        JSON.stringify({
+          error: rateLimitResult.error || "Rate limit exceeded",
+          remaining: rateLimitResult.remaining,
+          reset: rateLimitResult.reset,
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+            "X-RateLimit-Reset": rateLimitResult.reset.toString(),
+          },
+        }
+      );
+    }
+
+    const rawBody = await req.json();
+
+    // Validate input
+    const validation = ScrapeUrlSchema.safeParse(rawBody);
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({
+          error: "Invalid request format",
+          details: validation.error.format()
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    let { url, summarize = true } = validation.data;
 
     // Normalize URL
     if (!url.startsWith("http")) {
@@ -252,6 +292,9 @@ ${truncatedText}`,
         console.warn("Summarization failed, using raw text:", e.message);
       }
     }
+
+    // Log usage for rate limiting
+    await logUsage(user.id, "scrape-url", 1, supabaseUrl, supabaseServiceKey);
 
     // Track usage
     await supabase.from("usage_events").insert({
