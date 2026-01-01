@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Check, Shield, Zap, Star, Crown, Loader } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType, User } from '../../types';
-import { supabase } from '../../services/supabaseClient';
+import { dbService } from '../../services/dbService';
 
 interface BillingProps {
   user?: User;
@@ -11,70 +11,24 @@ interface BillingProps {
 export const Billing: React.FC<BillingProps> = ({ user }) => {
   const currentPlan = user?.plan || PlanType.FREE;
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-
-  useEffect(() => {
-    // Check for success/canceled query params
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('success')) {
-      const plan = params.get('plan');
-      setMessage({ type: 'success', text: `Successfully upgraded to ${plan}! Your new features are now active.` });
-      // Clear query params
-      window.history.replaceState({}, '', window.location.pathname);
-    } else if (params.get('canceled')) {
-      setMessage({ type: 'error', text: 'Upgrade canceled. No charges were made.' });
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
 
   const handleUpgrade = async (planId: string) => {
     if (!user) return;
     setProcessingPlan(planId);
-    setMessage(null);
-
-    try {
-      // Get auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
-        setMessage({ type: 'error', text: 'Please sign in to upgrade your plan.' });
-        setProcessingPlan(null);
-        return;
-      }
-
-      // Call create-checkout-session Edge Function
-      const SUPABASE_FUNCTION_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('/rest/v1', '') || 'https://qjwwkcoredotrjtstigt.supabase.co';
-      const response = await fetch(`${SUPABASE_FUNCTION_URL}/functions/v1/create-checkout-session`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-        },
-        body: JSON.stringify({
-          planId,
-          successUrl: `${window.location.origin}/billing?success=true&plan=${planId}`,
-          cancelUrl: `${window.location.origin}/billing?canceled=true`
-        })
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || response.statusText);
-      }
-
-      const { url } = await response.json();
-
-      // Redirect to Stripe Checkout
-      if (url) {
-        window.location.href = url;
-      }
-    } catch (error: any) {
-      console.error('Checkout error:', error);
-      setMessage({ type: 'error', text: error.message || 'Failed to start checkout. Please try again.' });
-      setProcessingPlan(null);
-    }
+    
+    // Simulate Stripe Checkout API Call
+    setTimeout(async () => {
+        try {
+            await dbService.updateUserPlan(user.id, planId as PlanType);
+            // In real app, this would redirect to Stripe URL
+            alert(`Upgrade successful! Welcome to the ${planId} plan.`);
+        } catch (e) {
+            console.error(e);
+            alert("Upgrade failed. Please try again.");
+        } finally {
+            setProcessingPlan(null);
+        }
+    }, 2000);
   };
 
   return (
@@ -83,16 +37,6 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
         <h2 className="text-3xl font-bold text-slate-800">Upgrade your Plan</h2>
         <p className="text-slate-500 mt-2">Scale your business with our power-packed tiers. Cancel anytime.</p>
       </div>
-
-      {message && (
-        <div className={`max-w-3xl mx-auto p-4 rounded-lg border ${
-          message.type === 'success'
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-            : 'bg-red-50 border-red-200 text-red-800'
-        }`}>
-          <p className="text-sm font-medium">{message.text}</p>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
          {Object.entries(PLANS).map(([key, plan]: [string, any]) => {

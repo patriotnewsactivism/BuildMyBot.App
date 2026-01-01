@@ -3,8 +3,6 @@ import { Bot, Zap, CheckCircle, Globe, ArrowRight, X, Play, LayoutDashboard, Mes
 import { PLANS } from '../../constants';
 import { PlanType } from '../../types';
 import { generateBotResponse, generateMarketingContent, scrapeWebsiteContent, generateWebsiteStructure } from '../../services/openaiService';
-import { HoverWidgetChat } from '../Chat/HoverWidgetChat';
-import { EmbeddedChatGPT } from '../Chat/EmbeddedChatGPT';
 
 interface LandingProps {
   onLogin: () => void;
@@ -13,11 +11,19 @@ interface LandingProps {
 }
 
 const HUMAN_NAMES = ['Sarah', 'Michael', 'Jessica', 'David', 'Emma', 'James'];
-const AVATAR_COLORS = ['#1e3a8a', '#be123c', '#047857', '#d97706', '#991b1b'];
+const AVATAR_COLORS = ['#1e3a8a', '#be123c', '#047857', '#d97706', '#7c3aed'];
 
 export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartner, onAdminLogin }) => {
   const [modalContent, setModalContent] = useState<'privacy' | 'terms' | 'about' | 'contact' | 'features' | null>(null);
+  
+  // Demo Chatbot State
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatHistory, setChatHistory] = useState<{role: 'user'|'model', text: string}[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const [demoIdentity, setDemoIdentity] = useState({ name: 'Bot', color: '#1e3a8a' });
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const hasGreeted = useRef(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Demo States for New Features
@@ -45,6 +51,76 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     const randomColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
     setDemoIdentity({ name: randomName, color: randomColor });
   }, []);
+
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatHistory, isTyping, isChatOpen]);
+
+  // Open Greeting
+  useEffect(() => {
+    if (isChatOpen && !hasGreeted.current && chatHistory.length === 0) {
+        setIsTyping(true);
+        hasGreeted.current = true;
+        setTimeout(() => {
+            setChatHistory([{ role: 'model', text: `Hi! I'm ${demoIdentity.name}. I can qualify leads, schedule appointments, and answer questions 24/7. How can I help your business grow today?` }]);
+            setIsTyping(false);
+        }, 1500);
+    }
+  }, [isChatOpen, demoIdentity]);
+
+  const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    setMobileMenuOpen(false);
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      console.warn(`Section with id '${id}' not found`);
+    }
+  };
+
+  const handleDemoSend = async () => {
+    if (!chatInput.trim()) return;
+    
+    // Fail-safe logic for Demo (limit to 5 interactions)
+    if (chatHistory.length > 8) {
+        const limitMsg = { role: 'user' as const, text: chatInput };
+        setChatHistory(prev => [...prev, limitMsg]);
+        setChatInput('');
+        setIsTyping(true);
+        setTimeout(() => {
+             setChatHistory(prev => [...prev, { role: 'model', text: "I'd love to keep chatting, but I have a meeting coming up! Why don't you sign up for free to create your own bot? It takes less than a minute." }]);
+             setIsTyping(false);
+        }, 1500);
+        return;
+    }
+
+    const userMsg = { role: 'user' as const, text: chatInput };
+    setChatHistory(prev => [...prev, userMsg]);
+    setChatInput('');
+    setIsTyping(true);
+
+    try {
+        const systemPrompt = `You are a high-performing sales assistant for BuildMyBot. Act like a human named ${demoIdentity.name}. Your goal is to qualify the user as a potential lead. Ask smart questions. Be casual, professional, and convincing. Never give the exact same response twice. Do not mention you are an AI unless asked directly. Keep responses concise (under 50 words).`;
+        const startTime = Date.now();
+        const response = await generateBotResponse(systemPrompt, [...chatHistory, userMsg], userMsg.text);
+        
+        // Human-like delay logic (at least 2s, up to 3s for demo feel)
+        const elapsed = Date.now() - startTime;
+        const minDelay = 2000;
+        const remainingDelay = Math.max(0, minDelay - elapsed);
+
+        setTimeout(() => {
+           setChatHistory(prev => [...prev, { role: 'model', text: response }]);
+           setIsTyping(false);
+        }, remainingDelay);
+    } catch (e) {
+        setIsTyping(false);
+        setChatHistory(prev => [...prev, { role: 'model', text: "I'm unable to connect to my brain. Please check your internet connection." }]);
+    }
+  };
 
   const handleTrainingDemo = async () => {
     if (!trainingUrl) return;
@@ -254,7 +330,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     {
       title: 'Influencers',
       icon: Instagram,
-      color: 'red',
+      color: 'purple',
       desc: 'Scale your personal brand. Reply to every DM, engage fans, and sell merch automatically without spending all day on your phone.'
     },
     {
@@ -286,14 +362,87 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden">
       {modalContent && <InfoModal />}
+      
+      {/* Demo Chatbot Widget */}
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-4">
+          {/* Chat Window */}
+          {isChatOpen && (
+              <div className="bg-white w-80 md:w-96 h-[500px] rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-fade-in mb-2">
+                  <div className="bg-blue-900 p-4 flex items-center justify-between text-white">
+                      <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center text-sm font-bold shadow-sm" style={{ backgroundColor: demoIdentity.color }}>
+                              {demoIdentity.name.substring(0,2)}
+                          </div>
+                          <div>
+                              <span className="font-bold block">{demoIdentity.name}</span>
+                              <div className="flex items-center gap-1.5 opacity-80">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                                <span className="text-xs">Online</span>
+                              </div>
+                          </div>
+                      </div>
+                      <button onClick={() => setIsChatOpen(false)} className="p-1 hover:bg-white/10 rounded"><X size={18}/></button>
+                  </div>
+                  
+                  <div className="flex-1 bg-slate-50 overflow-y-auto p-4 space-y-4" ref={chatScrollRef}>
+                      <div className="text-center text-[10px] text-slate-400 font-medium uppercase tracking-wider my-2">Powered by GPT-4o</div>
+                      {chatHistory.map((msg, i) => (
+                          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm shadow-sm ${
+                                  msg.role === 'user' 
+                                  ? 'bg-blue-600 text-white rounded-br-sm' 
+                                  : 'bg-white text-slate-700 border border-slate-200 rounded-bl-sm'
+                              }`}>
+                                  {msg.text}
+                              </div>
+                          </div>
+                      ))}
+                      {isTyping && (
+                          <div className="flex justify-start">
+                             <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm flex gap-1 items-center">
+                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
+                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                             </div>
+                          </div>
+                      )}
+                  </div>
 
-      {/* Hovering Widget Chatbot */}
-      <HoverWidgetChat
-        botName={demoIdentity.name}
-        systemPrompt={`You are a high-performing sales assistant for BuildMyBot named ${demoIdentity.name}. Your goal is to qualify the user as a potential lead. Ask smart questions. Be casual, professional, and convincing. Keep responses concise (under 50 words).`}
-        themeColor="#102a43"
-        position="bottom-right"
-      />
+                  <div className="p-3 bg-white border-t border-slate-100">
+                      <div className="relative">
+                          <input 
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleDemoSend()}
+                            placeholder="Type a message..." 
+                            className="w-full pl-4 pr-10 py-3 bg-slate-100 border-transparent focus:bg-white focus:border-blue-900 focus:ring-0 rounded-xl text-sm transition-all"
+                          />
+                          <button 
+                            onClick={handleDemoSend}
+                            disabled={!chatInput.trim() || isTyping}
+                            className="absolute right-2 top-2 p-1.5 bg-blue-900 text-white rounded-lg hover:bg-blue-950 disabled:opacity-50 transition">
+                             <ArrowRight size={16} />
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {/* Trigger Button */}
+          {!isChatOpen && (
+              <button 
+                onClick={() => setIsChatOpen(true)}
+                className="group flex items-center gap-3 bg-blue-900 text-white px-5 py-4 rounded-full shadow-xl shadow-blue-900/30 hover:scale-105 hover:bg-blue-950 transition-all duration-300"
+              >
+                <span className="font-bold text-sm hidden md:block">Chat with {demoIdentity.name}</span>
+                <MessageSquare size={24} fill="currentColor" />
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
+                </span>
+              </button>
+          )}
+      </div>
 
       {/* Navbar */}
       <nav className="fixed w-full bg-white/90 backdrop-blur-md z-30 border-b border-slate-200 transition-all">
@@ -308,8 +457,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
             <button onClick={() => openModal('features')} className="hover:text-blue-900 transition">Features</button>
-            <a href="#voice" className="hover:text-blue-900 transition">Voice AI</a>
-            <a href="#pricing" className="hover:text-blue-900 transition">Pricing</a>
+            <a href="#voice" onClick={(e) => scrollToSection(e, 'voice')} className="hover:text-blue-900 transition">Voice AI</a>
+            <a href="#pricing" onClick={(e) => scrollToSection(e, 'pricing')} className="hover:text-blue-900 transition">Pricing</a>
             {onNavigateToPartner && (
               <button onClick={onNavigateToPartner} className="text-blue-900 font-bold hover:text-blue-700 transition">Partner Program</button>
             )}
@@ -333,8 +482,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-slate-100 absolute w-full px-6 py-4 flex flex-col gap-4 shadow-xl">
              <button onClick={() => {openModal('features'); setMobileMenuOpen(false);}} className="text-left font-medium text-slate-600 py-2">Features</button>
-             <a href="#voice" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-600 py-2">Voice AI</a>
-             <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="text-left font-medium text-slate-600 py-2">Pricing</a>
+             <a href="#voice" onClick={(e) => scrollToSection(e, 'voice')} className="text-left font-medium text-slate-600 py-2">Voice AI</a>
+             <a href="#pricing" onClick={(e) => scrollToSection(e, 'pricing')} className="text-left font-medium text-slate-600 py-2">Pricing</a>
              {onNavigateToPartner && (
                <button onClick={() => {onNavigateToPartner(); setMobileMenuOpen(false);}} className="text-left font-bold text-blue-900 py-2">Partner Program</button>
              )}
@@ -350,7 +499,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         {/* Background Gradients */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
            <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-           <div className="absolute top-0 right-1/4 w-96 h-96 bg-crimson-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+           <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
            <div className="absolute -bottom-8 left-1/2 w-96 h-96 bg-emerald-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
         </div>
 
@@ -360,8 +509,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
              New: Auto-Qualify "Hot Leads"
            </div>
            <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight mb-6 leading-tight">
-             Capture Every Lead. <br/>
-             <span className="text-transparent bg-clip-text bg-gradient-to-r from-crimson-900 via-crimson-700 to-navy-900">Automate Every Answer.</span>
+             Capture Every Lead. <br/> 
+             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-900 to-sky-600">Automate Every Answer.</span>
            </h1>
            
            <h2 className="text-xl md:text-2xl font-semibold text-slate-500 tracking-wide mb-10 max-w-3xl mx-auto">
@@ -372,9 +521,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
               <button onClick={onLogin} className="w-full md:w-auto px-8 py-4 bg-blue-900 text-white rounded-xl text-lg font-bold hover:bg-blue-950 transition shadow-xl shadow-blue-900/40 flex items-center justify-center gap-2 transform hover:-translate-y-1">
                 Start Building Free <ArrowRight size={20} />
               </button>
-              <a href="#chatbot-demo" className="w-full md:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-xl text-lg font-bold hover:bg-slate-50 transition flex items-center justify-center gap-2 transform hover:-translate-y-1">
+              <button onClick={() => setIsChatOpen(true)} className="w-full md:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-xl text-lg font-bold hover:bg-slate-50 transition flex items-center justify-center gap-2 transform hover:-translate-y-1">
                 <Play size={20} fill="currentColor" className="text-slate-400" /> Live Demo
-              </a>
+              </button>
            </div>
            
            {/* High Fidelity Dashboard Preview */}
@@ -426,9 +575,9 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                             {l: 'Revenue', v: '$4,200', i: TrendingUp, c: 'emerald'}
                          ].map((s, i) => (
                             <div key={i} className="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
-                               <div className={`w-8 h-8 rounded-lg bg-${s.c}-50 text-${s.c}-600 flex items-center justify-center mb-3`}><s.i size={16}/></div>
-                               <div className="text-xl md:text-2xl font-bold text-slate-800">{s.v}</div>
-                               <div className="text-xs text-slate-500">{s.l}</div>
+                                <div className={`w-8 h-8 rounded-lg bg-${s.c}-50 text-${s.c}-600 flex items-center justify-center mb-3`}><s.i size={16}/></div>
+                                <div className="text-xl md:text-2xl font-bold text-slate-800">{s.v}</div>
+                                <div className="text-xs text-slate-500">{s.l}</div>
                             </div>
                          ))}
                       </div>
@@ -451,178 +600,6 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
         </div>
       </section>
 
-      {/* NEW: Live Chatbot Showcase Section */}
-      <section id="chatbot-demo" className="py-24 px-6 bg-white border-y border-slate-200">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-crimson-50 to-navy-50 border border-crimson-200 text-crimson-900 text-xs font-bold uppercase tracking-wide mb-6">
-              <MessageSquare size={14} fill="currentColor" /> Live Chatbot Demos
-            </div>
-            <h2 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-navy-900 via-crimson-700 to-navy-900">
-                Two Powerful Chat Experiences
-              </span>
-            </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-4">
-              Deploy chatbots exactly how your customers need them. Hovering widget for quick interactions or full embedded chat for deep conversations.
-            </p>
-            <p className="text-sm text-slate-500 max-w-2xl mx-auto">
-              Both examples below are powered by real AI. Try them now—no signup required.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-            {/* Hovering Widget Demo */}
-            <div className="space-y-6">
-              <div className="bg-gradient-to-br from-navy-50 to-navy-100 rounded-2xl p-8 border-2 border-navy-200 shadow-xl">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-navy-900 text-white flex items-center justify-center font-bold shadow-lg shrink-0">
-                    1
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-extrabold text-navy-900 mb-2">Hovering Widget</h3>
-                    <p className="text-slate-700 text-sm leading-relaxed">
-                      The floating chatbot that lives in the corner of your website. Perfect for lead capture, quick questions, and always-available support.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl p-6 border border-navy-200 shadow-md mb-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle size={18} className="text-navy-900 shrink-0" />
-                      <span className="text-sm font-medium text-slate-700">Unobtrusive & always accessible</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle size={18} className="text-navy-900 shrink-0" />
-                      <span className="text-sm font-medium text-slate-700">Pulsing notification badge</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle size={18} className="text-navy-900 shrink-0" />
-                      <span className="text-sm font-medium text-slate-700">Auto-greets visitors</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle size={18} className="text-navy-900 shrink-0" />
-                      <span className="text-sm font-medium text-slate-700">Minimal screen real estate</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-navy-900 text-white rounded-xl p-4 text-center">
-                  <p className="text-sm font-bold mb-2">👉 Look for the widget in the bottom-right corner</p>
-                  <p className="text-xs text-navy-300">Click it to start chatting with a real AI assistant</p>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 rounded-xl p-6 border border-slate-200">
-                <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                  <Target size={16} className="text-crimson-600" />
-                  Best For:
-                </h4>
-                <ul className="space-y-2 text-sm text-slate-600">
-                  <li>• E-commerce product inquiries</li>
-                  <li>• Real estate lead capture</li>
-                  <li>• SaaS customer support</li>
-                  <li>• Service booking & appointments</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Embedded ChatGPT Demo */}
-            <div className="space-y-6">
-              <div className="bg-gradient-to-br from-crimson-50 to-crimson-100 rounded-2xl p-8 border-2 border-crimson-200 shadow-xl">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-crimson-900 text-white flex items-center justify-center font-bold shadow-lg shrink-0">
-                    2
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-extrabold text-crimson-900 mb-2">Embedded Chat Window</h3>
-                    <p className="text-slate-700 text-sm leading-relaxed">
-                      A full-featured ChatGPT-style interface embedded directly on your page. Ideal for consultations, detailed support, and in-depth conversations.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl p-6 border border-crimson-200 shadow-md mb-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle size={18} className="text-crimson-900 shrink-0" />
-                      <span className="text-sm font-medium text-slate-700">Full-screen chat experience</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle size={18} className="text-crimson-900 shrink-0" />
-                      <span className="text-sm font-medium text-slate-700">Rich message formatting</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle size={18} className="text-crimson-900 shrink-0" />
-                      <span className="text-sm font-medium text-slate-700">Conversation history visible</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle size={18} className="text-crimson-900 shrink-0" />
-                      <span className="text-sm font-medium text-slate-700">Professional interface</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-crimson-900 text-white rounded-xl p-4 text-center">
-                  <p className="text-sm font-bold mb-2">👇 Try the chat window below</p>
-                  <p className="text-xs text-crimson-300">Start a conversation with our embedded AI assistant</p>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 rounded-xl p-6 border border-slate-200">
-                <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                  <Target size={16} className="text-crimson-600" />
-                  Best For:
-                </h4>
-                <ul className="space-y-2 text-sm text-slate-600">
-                  <li>• Help centers & documentation</li>
-                  <li>• Technical support portals</li>
-                  <li>• AI consultations & assessments</li>
-                  <li>• Educational platforms</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Live Embedded Chat Demo */}
-          <div className="mt-16">
-            <div className="bg-gradient-to-r from-slate-100 to-slate-50 rounded-2xl p-8 border-2 border-slate-200">
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">Try the Embedded Chat Now</h3>
-                <p className="text-slate-600">This is a fully functional AI chatbot. Ask anything!</p>
-              </div>
-              <div className="max-w-4xl mx-auto">
-                <EmbeddedChatGPT
-                  botName="BuildMyBot Assistant"
-                  systemPrompt="You are a helpful sales assistant for BuildMyBot, an AI chatbot platform. Be professional, friendly, and concise. Help users understand the value of AI chatbots for their business. Keep responses under 60 words."
-                  themeColor="#7f1d40"
-                  height="500px"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* CTA */}
-          <div className="mt-16 text-center">
-            <div className="inline-block bg-gradient-to-r from-navy-900 via-crimson-900 to-navy-900 p-[2px] rounded-2xl">
-              <div className="bg-white rounded-2xl px-8 py-6">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3">Ready to Deploy Your Own?</h3>
-                <p className="text-slate-600 mb-6 max-w-2xl mx-auto">
-                  Create unlimited chatbots with custom branding, training, and deployment options. Get started in under 2 minutes.
-                </p>
-                <button
-                  onClick={onLogin}
-                  className="px-8 py-4 bg-gradient-to-r from-navy-900 to-crimson-900 text-white rounded-xl text-lg font-bold hover:shadow-2xl transition-all transform hover:scale-105 flex items-center gap-3 mx-auto"
-                >
-                  Start Building Free <ArrowRight size={20} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* NEW: AI Phone Agent Feature */}
       <section id="voice" className="py-24 px-6 bg-slate-50">
         <div className="max-w-7xl mx-auto">
@@ -631,8 +608,8 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-xs font-bold uppercase tracking-wide">
                      <Mic size={14} /> New: AI Phone Receptionist
                   </div>
-                  <h2 className="text-4xl md:text-5xl font-extrabold leading-tight">
-                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-navy-900 to-navy-700">Never Miss a Call Again.</span>
+                  <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 leading-tight">
+                     Never Miss a Call Again.
                   </h2>
                   <p className="text-xl text-slate-600 leading-relaxed">
                      Deploy an AI receptionist that picks up instantly, 24/7. It handles bookings, answers FAQs, and routes urgent calls to you—all with a human-like voice.
@@ -700,9 +677,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-blue-300 text-xs font-bold uppercase tracking-wide mb-6">
                  Live Interactive Demos
                </div>
-               <h2 className="text-3xl md:text-5xl font-extrabold mb-4">
-                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-navy-500 via-crimson-500 to-navy-500">See the Magic in Action</span>
-               </h2>
+               <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4">See the Magic in Action</h2>
                <p className="text-lg text-slate-400">Try our AI capabilities right here, right now.</p>
             </div>
 
@@ -787,10 +762,10 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                </div>
 
                {/* 2. Viral Post Generator Demo */}
-               <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col shadow-2xl hover:shadow-crimson-900/20 transition-all duration-300">
+               <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col shadow-2xl hover:shadow-purple-900/20 transition-all duration-300">
                   <div className="p-6 border-b border-slate-700 bg-slate-800/50">
                      <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 bg-crimson-900/50 text-crimson-400 rounded-lg border border-crimson-500/20"><Megaphone size={20} /></div>
+                        <div className="p-2 bg-purple-900/50 text-purple-400 rounded-lg border border-purple-500/20"><Megaphone size={20} /></div>
                         <h3 className="font-bold text-lg text-white">Viral Post Creator</h3>
                      </div>
                      <p className="text-sm text-slate-400">Generate high-engagement social media content in seconds.</p>
@@ -803,12 +778,12 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
                              placeholder="e.g. AI is changing marketing" 
                              value={marketingTopic}
                              onChange={(e) => setMarketingTopic(e.target.value)}
-                             className="flex-1 rounded-lg border-slate-600 bg-slate-900 text-white text-sm focus:ring-crimson-500 focus:border-crimson-500 placeholder-slate-500"
+                             className="flex-1 rounded-lg border-slate-600 bg-slate-900 text-white text-sm focus:ring-purple-500 focus:border-purple-500 placeholder-slate-500"
                            />
                            <button 
                              onClick={handleViralGenerate}
                              disabled={isMarketingLoading || !marketingTopic}
-                             className="bg-crimson-600 text-white px-4 rounded-lg text-sm font-bold disabled:opacity-50 hover:bg-crimson-500 transition"
+                             className="bg-purple-600 text-white px-4 rounded-lg text-sm font-bold disabled:opacity-50 hover:bg-purple-500 transition"
                            >
                               {isMarketingLoading ? <Loader className="animate-spin" size={16}/> : 'Generate'}
                            </button>
@@ -907,7 +882,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
               </div>
               <h2 className="text-3xl md:text-5xl font-extrabold mb-6 leading-tight">
                 It doesn't just chat. <br/>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-crimson-500 to-crimson-700">It closes deals.</span>
+                <span className="text-blue-400">It closes deals.</span>
               </h2>
               <p className="text-lg text-slate-300 mb-8 leading-relaxed">
                 Most chatbots are passive. Ours is proactive. It scores every conversation in real-time based on intent, budget, and urgency.
@@ -976,72 +951,69 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
       <section id="pricing" className="py-24 px-6 bg-slate-50">
         <div className="max-w-[90rem] mx-auto">
            <div className="text-center mb-16">
-             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-               <span className="text-transparent bg-clip-text bg-gradient-to-r from-navy-900 to-crimson-900">Pricing that Scales with You</span>
-             </h2>
+             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Pricing that Scales with You</h2>
              <p className="text-lg text-slate-600">Start for free. Upgrade as you grow.</p>
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
               {Object.entries(PLANS).map(([key, plan]: [string, any]) => {
                 const isEnterprise = key === PlanType.ENTERPRISE;
-                const isStarter = key === PlanType.STARTER;
-                const isExecutive = key === PlanType.EXECUTIVE;
-                const hasBlueBorder = isStarter || isExecutive;
+                const isProfessional = key === PlanType.PROFESSIONAL;
 
                 return (
-                  <div key={key} className={`p-8 rounded-2xl border-2 flex flex-col transition-all hover:shadow-xl relative ${
-                    hasBlueBorder
-                      ? 'border-blue-600 bg-white'
-                      : 'border-slate-200 bg-white'
+                  <div key={key} className={`p-8 rounded-2xl border flex flex-col transition-all hover:shadow-xl ${
+                    isProfessional 
+                      ? 'border-blue-900 shadow-xl ring-1 ring-blue-900 relative z-10 scale-105 bg-white' 
+                      : isEnterprise
+                        ? 'border-slate-800 bg-slate-900 text-white'
+                        : 'border-slate-200 bg-white'
                   }`}>
-                    {isEnterprise && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-400 to-yellow-600 text-slate-900 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wide flex items-center gap-1">
-                        <Crown size={12} fill="currentColor"/> ULTIMATE
-                      </div>
+                    {isProfessional && (
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-900 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Most Popular</div>
                     )}
-
-                    <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
+                    {isEnterprise && (
+                      <div className="mb-2 inline-flex items-center gap-1 text-yellow-400 font-bold text-xs uppercase tracking-wide"><Crown size={12} fill="currentColor"/> Ultimate Power</div>
+                    )}
+                    
+                    <h3 className={`text-lg font-bold ${isEnterprise ? 'text-white' : 'text-slate-900'}`}>{plan.name}</h3>
                     <div className="mt-4 mb-6">
-                      <span className="text-4xl font-extrabold text-slate-900">${plan.price}</span>
-                      <span className="text-slate-500">/mo</span>
+                      <span className={`text-4xl font-extrabold ${isEnterprise ? 'text-white' : 'text-slate-900'}`}>${plan.price}</span>
+                      <span className={`${isEnterprise ? 'text-slate-400' : 'text-slate-500'}`}>/mo</span>
                     </div>
-
+                    
                     <ul className="space-y-4 mb-8 flex-1">
-                      <li className="flex items-center gap-3 text-sm text-slate-700">
-                        <CheckCircle size={16} className="text-teal-500 shrink-0"/>
+                      <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/> 
                         {plan.bots >= 9999 ? 'Unlimited' : plan.bots} Bot(s)
                       </li>
-                      <li className="flex items-center gap-3 text-sm text-slate-700">
-                        <CheckCircle size={16} className="text-teal-500 shrink-0"/>
+                      <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/> 
                         <span className="font-bold">{plan.conversations.toLocaleString()}</span>&nbsp;Conversations
                       </li>
-                      <li className="flex items-center gap-3 text-sm text-slate-700">
-                        <CheckCircle size={16} className="text-teal-500 shrink-0"/>
+                      <li className={`flex items-center gap-3 text-sm ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <CheckCircle size={16} className={`${isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} shrink-0`}/> 
                         {isEnterprise ? 'Enterprise Analytics' : 'Basic Analytics'}
                       </li>
                       {isEnterprise && (
                         <>
-                           <li className="flex items-center gap-3 text-sm text-slate-700">
-                             <CheckCircle size={16} className="text-teal-500 shrink-0"/> White-label Ready
+                           <li className="flex items-center gap-3 text-sm text-slate-300">
+                             <CheckCircle size={16} className="text-yellow-400 shrink-0"/> White-label Ready
                            </li>
-                           <li className="flex items-center gap-3 text-sm text-slate-700">
-                             <CheckCircle size={16} className="text-teal-500 shrink-0"/> SLA Support
+                           <li className="flex items-center gap-3 text-sm text-slate-300">
+                             <CheckCircle size={16} className="text-yellow-400 shrink-0"/> SLA Support
                            </li>
                         </>
                       )}
                     </ul>
-
+                    
                     <button onClick={onLogin} className={`w-full py-3 rounded-lg font-bold transition ${
-                      hasBlueBorder
-                        ? 'bg-blue-600 text-white hover:bg-blue-700'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                      isProfessional 
+                        ? 'bg-blue-900 text-white hover:bg-blue-950' 
+                        : isEnterprise
+                          ? 'bg-white text-slate-900 hover:bg-slate-200'
+                          : 'bg-white text-slate-900 border border-slate-300 hover:bg-slate-50'
                     }`}>
-                      {key === PlanType.FREE ? 'Get Started Free' :
-                       key === PlanType.STARTER ? 'Upgrade to Starter' :
-                       key === PlanType.PROFESSIONAL ? 'Upgrade to Professional' :
-                       key === PlanType.EXECUTIVE ? 'Upgrade to Executive' :
-                       'Upgrade to Enterprise'}
+                      {isEnterprise ? 'Get Enterprise' : `Choose ${plan.name}`}
                     </button>
                   </div>
                 );
@@ -1066,7 +1038,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
              <h4 className="text-white font-bold mb-4">Product</h4>
              <ul className="space-y-2 text-sm">
                <li><button onClick={() => openModal('features')} className="hover:text-white transition">Features</button></li>
-               <li><a href="#pricing" className="hover:text-white transition">Pricing</a></li>
+               <li><a href="#pricing" onClick={(e) => scrollToSection(e, 'pricing')} className="hover:text-white transition">Pricing</a></li>
                <li><button onClick={onLogin} className="hover:text-white transition">Login</button></li>
              </ul>
            </div>
@@ -1101,3 +1073,4 @@ export const LandingPage: React.FC<LandingProps> = ({ onLogin, onNavigateToPartn
     </div>
   );
 };
+    
