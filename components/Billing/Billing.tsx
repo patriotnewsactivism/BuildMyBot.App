@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Shield, Zap, Star, Crown, Loader } from 'lucide-react';
+import { CheckCircle, Shield, Crown, Loader, Bot, MessageSquare, BarChart3 } from 'lucide-react';
 import { PLANS } from '../../constants';
 import { PlanType, User } from '../../types';
 import { dbService } from '../../services/dbService';
@@ -20,7 +20,6 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
     setTimeout(async () => {
         try {
             await dbService.updateUserPlan(user.id, planId as PlanType);
-            // In real app, this would redirect to Stripe URL
             alert(`Upgrade successful! Welcome to the ${planId} plan.`);
         } catch (e) {
             console.error(e);
@@ -38,69 +37,99 @@ export const Billing: React.FC<BillingProps> = ({ user }) => {
         <p className="text-slate-500 mt-2">Scale your business with our power-packed tiers. Cancel anytime.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-start">
          {Object.entries(PLANS).map(([key, plan]: [string, any]) => {
            const isCurrent = key === currentPlan;
            const isEnterprise = key === PlanType.ENTERPRISE;
-           const isFree = key === PlanType.FREE;
+           const isProfessional = key === PlanType.PROFESSIONAL;
+           
+           // Distinct Title Logic for Enterprise
+           const displayTitle = isEnterprise ? 'Enterprise / White-label' : plan.name;
            
            return (
              <div 
                 key={key} 
-                className={`relative bg-white rounded-2xl p-6 border transition-all duration-300 flex flex-col hover:shadow-lg ${
-                  isCurrent 
-                    ? 'border-blue-900 shadow-xl shadow-blue-100 scale-105 z-10' 
+                className={`relative rounded-2xl p-6 flex flex-col transition-all duration-300 h-full ${
+                  isProfessional 
+                    ? 'bg-white border-2 border-blue-900 shadow-xl scale-105 z-10' 
                     : isEnterprise 
-                        ? 'border-slate-800 shadow-md ring-1 ring-slate-800/10' 
-                        : 'border-slate-200 hover:border-blue-300 shadow-sm'
+                        ? 'bg-slate-900 border border-slate-800 text-white shadow-lg' 
+                        : 'bg-white border border-slate-200 hover:shadow-lg'
                 }`}
               >
-                {isCurrent && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-900 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
-                    Current Plan
+                {/* Most Popular Badge */}
+                {isProfessional && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-900 text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide shadow-sm">
+                    Most Popular
                   </div>
                 )}
+
+                {/* Ultimate Power Badge */}
                 {isEnterprise && (
-                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide flex items-center gap-1">
-                    <Crown size={12} fill="currentColor" className="text-yellow-400" /> Ultimate
+                   <div className="mb-4 flex items-center gap-1.5 text-yellow-400 font-bold text-[10px] uppercase tracking-widest">
+                    <Crown size={12} fill="currentColor" /> Ultimate Power
                   </div>
                 )}
-                <div className="mb-4">
-                   <h3 className={`text-lg font-bold ${isEnterprise ? 'text-slate-900' : 'text-slate-800'}`}>{plan.name}</h3>
-                   <div className="flex items-baseline mt-2">
-                     <span className="text-3xl font-extrabold text-slate-900">${plan.price}</span>
-                     <span className="text-slate-500 text-sm ml-1">/mo</span>
-                   </div>
-                   <p className="text-xs text-slate-400 mt-2 h-4">
-                     {isEnterprise ? 'For agencies & scale' : isFree ? 'Forever free' : 'For growing businesses'}
-                   </p>
-                </div>
                 
-                <div className="space-y-3 flex-1 mb-8">
-                  {/* Dynamic Feature List */}
-                  <div className="pt-2 space-y-3 border-t border-slate-50 mt-2">
-                    {plan.features.map((feature: string, idx: number) => (
-                      <div key={idx} className="flex items-start gap-2 text-sm text-slate-600">
-                        <Check size={16} className={`shrink-0 mt-0.5 ${isEnterprise ? 'text-yellow-500 fill-yellow-500' : 'text-emerald-500'}`} /> 
-                        <span className="leading-tight">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
+                {/* Header */}
+                <div className="mb-6">
+                   <h3 className={`text-lg font-bold ${isEnterprise ? 'text-white' : 'text-slate-900'}`}>{displayTitle}</h3>
+                   <div className="flex items-baseline mt-2">
+                     <span className={`text-4xl font-extrabold ${isEnterprise ? 'text-white' : 'text-slate-900'}`}>${plan.price}</span>
+                     <span className={`text-sm ml-1 ${isEnterprise ? 'text-slate-400' : 'text-slate-500'}`}>/mo</span>
+                   </div>
                 </div>
 
+                {/* Top Metrics */}
+                <div className="space-y-3 mb-6">
+                    <div className={`flex items-center gap-3 text-sm font-medium ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <CheckCircle size={18} className={isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} />
+                        <span>{plan.bots >= 9999 ? 'Unlimited' : plan.bots} Bot(s)</span>
+                    </div>
+                    <div className={`flex items-center gap-3 text-sm font-medium ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <CheckCircle size={18} className={isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} />
+                        <span>{plan.conversations.toLocaleString()} Conversations</span>
+                    </div>
+                    <div className={`flex items-center gap-3 text-sm font-medium ${isEnterprise ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <CheckCircle size={18} className={isEnterprise ? 'text-yellow-400' : 'text-emerald-500'} />
+                        <span>{isEnterprise ? 'Enterprise Analytics' : 'Advanced Analytics'}</span>
+                    </div>
+                </div>
+
+                {/* Separator */}
+                <div className="mb-4">
+                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-3 ${isEnterprise ? 'text-slate-500' : 'text-slate-400'}`}>
+                        Everything in this plan
+                    </p>
+                    <div className={`h-px w-full ${isEnterprise ? 'bg-slate-800' : 'bg-slate-100'}`}></div>
+                </div>
+                
+                {/* Feature List */}
+                <ul className="space-y-3 mb-8 flex-1">
+                    {plan.features.map((feature: string, idx: number) => (
+                      <li key={idx} className={`flex items-start gap-3 text-xs leading-relaxed ${isEnterprise ? 'text-slate-400' : 'text-slate-600'}`}>
+                        <CheckCircle size={14} className={`shrink-0 mt-0.5 ${isEnterprise ? 'text-yellow-500/50' : 'text-emerald-500/50'}`} /> 
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                </ul>
+
+                {/* Action Button */}
                 <button 
                   onClick={() => handleUpgrade(key)}
                   disabled={isCurrent || processingPlan !== null}
-                  className={`w-full py-3 rounded-lg font-bold text-sm transition shadow-md flex items-center justify-center gap-2 ${
+                  className={`w-full py-3 rounded-lg font-bold text-sm transition shadow-sm flex items-center justify-center gap-2 ${
                     isCurrent 
-                    ? 'bg-slate-100 text-slate-400 cursor-default shadow-none' 
+                    ? 'bg-slate-100 text-slate-400 cursor-default shadow-none border border-slate-200' 
                     : isEnterprise 
-                        ? 'bg-slate-900 text-white hover:bg-black hover:shadow-lg'
-                        : 'bg-blue-900 text-white hover:bg-blue-950 hover:shadow-blue-200'
+                        ? 'bg-white text-slate-900 hover:bg-slate-200'
+                        : isProfessional
+                            ? 'bg-blue-900 text-white hover:bg-blue-950 shadow-blue-900/20'
+                            : 'bg-white text-slate-900 border border-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   {processingPlan === key ? <Loader className="animate-spin" size={16} /> : null}
-                  {isCurrent ? 'Current Plan' : isEnterprise ? 'Upgrade to Enterprise' : `Upgrade to ${plan.name}`}
+                  {isCurrent ? 'Current Plan' : isEnterprise ? 'Get Enterprise' : `Choose ${plan.name}`}
                 </button>
              </div>
            );
