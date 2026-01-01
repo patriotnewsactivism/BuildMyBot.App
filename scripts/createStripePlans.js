@@ -13,26 +13,72 @@ const PLANS = [
   { 
     id: 'starter',
     name: 'Starter', 
-    amount: 2900, // in cents
-    description: '1 Bot, 750 Conversations, GPT-4o Mini' 
+    amount: 2900, // in cents ($29.00)
+    description: 'Website embeds, 750 conversations, 500MB storage, GPT-4o Mini, Lead capture alerts, Basic analytics.',
+    features: [
+      'Website + landing page embeds',
+      'Multi-page training (URLs, PDFs)',
+      '750 conversations/month',
+      '500MB knowledge base storage',
+      'GPT-4o Mini model',
+      'Lead capture via email & SMS alerts',
+      'Office-hours & scheduling rules',
+      'Basic analytics dashboard',
+      'Email support'
+    ]
   },
   { 
     id: 'professional',
     name: 'Professional', 
-    amount: 9900, 
-    description: '5 Bots, 5,000 Conversations, API Access' 
+    amount: 9900, // $99.00
+    description: '5 bots, 5000 conversations, 2GB storage, Multi-language, CRM integrations, Lead scoring, API access.',
+    features: [
+      '5 bots for multiple brands',
+      '5,000 conversations/month',
+      '2GB knowledge base storage',
+      'Multi-language support',
+      'CRM & calendar integrations',
+      'Proactive lead scoring & alerts',
+      'Knowledge base + custom training',
+      'Advanced analytics & conversion tracking',
+      'API access & webhooks',
+      'Priority chat & email support'
+    ]
   },
   { 
     id: 'executive',
     name: 'Executive', 
-    amount: 19900, 
-    description: '10 Bots, 30,000 Conversations, Voice/Phone Agent' 
+    amount: 19900, // $199.00
+    description: '10 bots, 30k conversations, 10GB storage, Voice agent, Workflow automation, Premium analytics, AB testing.',
+    features: [
+      '10 bots with shared knowledge bases',
+      '30,000 conversations/month',
+      '10GB knowledge base storage',
+      'Voice & phone agent included',
+      'Workflow automation & triggers',
+      'Premium analytics with attribution',
+      'AB testing & copy experiments',
+      'Team seats & roles',
+      'Priority onboarding concierge'
+    ]
   },
   { 
     id: 'enterprise',
-    name: 'Enterprise', 
-    amount: 49900, 
-    description: 'Unlimited Bots, 50,000 Conversations, White-label' 
+    name: 'Ultimate Power', 
+    amount: 49900, // $499.00
+    description: 'Unlimited bots, 50k convos, 100GB storage, White-label, SSO, Dedicated SLA support, Custom data residency.',
+    features: [
+      'Unlimited bots & workspaces',
+      '50,000 convos included',
+      '100GB knowledge base storage',
+      '$0.01 per overage conversation',
+      'Full white-label (domains, emails, branding)',
+      'SAML/SSO + SCIM provisioning',
+      'Dedicated Slack/phone support with SLA',
+      'Security reviews, DPA & audit logs',
+      'Custom data residency & backups',
+      'Dedicated success manager'
+    ]
   }
 ];
 
@@ -48,11 +94,13 @@ async function createPlans() {
     try {
       console.log(`Creating Product: ${plan.name}...`);
       
+      // Create Product with features in metadata for future syncing
       const product = await stripe.products.create({
         name: `BuildMyBot - ${plan.name}`,
         description: plan.description,
         metadata: {
-          app_plan_id: plan.id
+          app_plan_id: plan.id,
+          features_list: JSON.stringify(plan.features) // Store full list in metadata
         }
       });
 
@@ -63,9 +111,18 @@ async function createPlans() {
         currency: 'usd',
         recurring: { interval: 'month' },
         product: product.id,
+        metadata: {
+          app_plan_id: plan.id
+        }
       });
 
-      console.log(`✅ Created ${plan.name}: Product ID ${product.id}, Price ID ${price.id}`);
+      console.log(`✅ Created ${plan.name}: \n   Product ID: ${product.id} \n   Price ID: ${price.id}`);
+      
+      // Feature list logging for verification
+      console.log('   Features included:');
+      plan.features.forEach(f => console.log(`   - ${f}`));
+      console.log('---');
+
     } catch (error) {
       console.error(`❌ Failed to create ${plan.name}:`, error.message);
     }

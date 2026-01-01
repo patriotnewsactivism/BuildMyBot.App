@@ -70,10 +70,10 @@ export const PLANS = {
   },
   [PlanType.ENTERPRISE]: { 
     price: 499, 
-    bots: 9999, // Represents Unlimited
+    bots: 9999, // Unlimited
     conversations: 50000, 
-    name: 'Enterprise', // Displayed as Ultimate Power / Enterprise
-    overage: 0.01, // Cost per conversation over limit
+    name: 'Ultimate Power', // Updated from Enterprise
+    overage: 0.01, 
     features: [
       'Unlimited bots & workspaces',
       '50,000 convos included',
@@ -84,7 +84,8 @@ export const PLANS = {
       'Dedicated Slack/phone support with SLA',
       'Security reviews, DPA & audit logs',
       'Custom data residency & backups',
-      'Dedicated success manager'
+      'Dedicated success manager',
+      'All Executive features'
     ]
   },
 };
